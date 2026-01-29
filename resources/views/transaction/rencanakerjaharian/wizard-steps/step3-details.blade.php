@@ -267,7 +267,7 @@ function plotDetailCard(actCode, plot) {
         if (data.success) {
           this.plotInfo = {
             luasplot: parseFloat(data.luasplot || 0).toFixed(2),
-            luassisa: this.isPiasActivity ? '-' : parseFloat(data.luassisa || 0).toFixed(2), // Override kalau PIAS
+            luassisa: this.isPiasActivity ? '-' : parseFloat(data.luassisa || 0).toFixed(2),
             batchno: data.batchinfo?.batchno || data.activebatchno || '',
             lifecyclestatus: data.batchinfo?.lifecyclestatus || this.plot.lifecyclestatus || '',
             tanggal: data.tanggal || '',
@@ -279,11 +279,12 @@ function plotDetailCard(actCode, plot) {
             zpk_status: data.batchinfo?.zpk_status || ''
           };
           
-          // PIAS: Auto-fill luas plot, Non-PIAS: luas sisa
+          // Auto-fill luas
           this.luasKerja = this.isPiasActivity ? 
             parseFloat(this.plotInfo.luasplot).toFixed(2) : 
             parseFloat(this.plotInfo.luassisa).toFixed(2);
           
+          // ✅ FIX: Safe parent access
           this.updateParentLuas(this.luasKerja);
         }
       } catch (error) {
@@ -303,7 +304,6 @@ function plotDetailCard(actCode, plot) {
       
       this.luasKerja = value;
       
-      // PIAS: Validate against luasplot, not luassisa
       if (this.isPiasActivity) {
         if (value && !value.endsWith('.')) {
           const numValue = parseFloat(value);
@@ -314,7 +314,6 @@ function plotDetailCard(actCode, plot) {
         return;
       }
       
-      // Normal validation
       if (value && !value.endsWith('.')) {
         const numValue = parseFloat(value);
         if (!isNaN(numValue)) {
@@ -330,7 +329,6 @@ function plotDetailCard(actCode, plot) {
         value = 0;
       }
       
-      // PIAS: Max = luasplot
       const maxLuas = this.isPiasActivity ? 
         parseFloat(this.plotInfo.luasplot) : 
         parseFloat(this.plotInfo.luassisa);
@@ -350,7 +348,6 @@ function plotDetailCard(actCode, plot) {
     },
 
     validateAndUpdate(value, inputElement) {
-      // PIAS: Max = luasplot
       const maxLuas = this.isPiasActivity ? 
         parseFloat(this.plotInfo.luasplot) : 
         parseFloat(this.plotInfo.luassisa);
@@ -366,11 +363,28 @@ function plotDetailCard(actCode, plot) {
       }
     },
 
+    // ✅ FIX: Safe parent component access
     updateParentLuas(value) {
-      const wizardApp = Alpine.$data(document.querySelector('[x-data*="rkhWizardApp"]'));
-      if (wizardApp) {
-        const key = `${this.actCode}_${this.plot.blok}_${this.plot.plot}`;
-        wizardApp.luasConfirmed[key] = value;
+      try {
+        // Method 1: Try $root (most reliable)
+        const wizardApp = this.$root;
+        if (wizardApp && wizardApp.luasConfirmed) {
+          const key = `${this.actCode}_${this.plot.blok}_${this.plot.plot}`;
+          wizardApp.luasConfirmed[key] = value;
+          return;
+        }
+        
+        // Method 2: Fallback to querySelector
+        const wizardEl = document.querySelector('[x-data*="rkhEditWizardApp"], [x-data*="rkhWizardApp"]');
+        if (wizardEl) {
+          const app = Alpine.$data(wizardEl);
+          if (app && app.luasConfirmed) {
+            const key = `${this.actCode}_${this.plot.blok}_${this.plot.plot}`;
+            app.luasConfirmed[key] = value;
+          }
+        }
+      } catch (error) {
+        console.warn('Could not update parent luas, parent component not found:', error);
       }
     },
 
@@ -388,13 +402,11 @@ function plotDetailCard(actCode, plot) {
     formatDateDMY(dateString) {
       if (!dateString) return '-';
       
-      // Check if already formatted as dd/mm/yyyy
       if (dateString.includes('/')) {
         const parts = dateString.split('/');
         return `${parts[0]}-${parts[1]}-${parts[2].slice(-2)}`;
       }
       
-      // Parse from ISO date
       const date = new Date(dateString);
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
