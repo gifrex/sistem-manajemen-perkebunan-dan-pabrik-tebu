@@ -189,60 +189,100 @@
                                         
                                     @elseif($rkh->approvalstatus == '1' && $rkh->non_empty_lkh_count == 0)
                                         <button @click="showCancelModal = true; cancelRkhno = '{{ $rkh->rkhno }}'; cancelAlasan = ''"
-                                                class="text-red-600 hover:text-red-800 px-2 py-1" title="Batalkan RKH">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                                                class="text-red-600 hover:text-red-800 px-2 py-1 group" title="Batalkan RKH">
+                                            <svg class="w-5 h-5 text-red-600 group-hover:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-cancel-outline"/>
+                                            </svg>
+                                            <svg class="w-5 h-5 text-red-600 hidden group-hover:block" fill="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-cancel-solid"/>
                                             </svg>
                                         </button>
                                         <div class="text-gray-400 px-2 py-1 cursor-not-allowed" title="Tidak dapat diedit (sudah approved)">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-edit-outline"/>
                                             </svg>
                                         </div>
                                         
                                     @elseif($rkh->approvalstatus == '1' && $rkh->non_empty_lkh_count > 0)
                                         <div class="text-gray-400 px-2 py-1 cursor-not-allowed" title="Tidak dapat dibatalkan (LKH sudah dikerjakan)">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-cancel-outline"/>
                                             </svg>
                                         </div>
                                         <div class="text-gray-400 px-2 py-1 cursor-not-allowed" title="Tidak dapat diedit (sudah approved)">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-edit-outline"/>
                                             </svg>
                                         </div>
                                         
                                     @elseif($rkh->approvalstatus == '0')
-                                        <span class="text-xs text-gray-400 italic">Ditolak</span>
+                                        <button onclick="window.location.href='{{ route('transaction.rencanakerjaharian.edit', $rkh->rkhno) }}'"
+                                                class="text-blue-600 hover:text-blue-800 px-2 py-1 group" title="Edit RKH (Submit Ulang)">
+                                            <svg class="w-5 h-5 text-blue-600 group-hover:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-edit-outline"/>
+                                            </svg>
+                                            <svg class="w-5 h-5 text-blue-600 hidden group-hover:block" fill="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-edit-solid"/>
+                                            </svg>
+                                        </button>
+                                        <button onclick="deleteRKH('{{ $rkh->rkhno }}')"
+                                                class="text-red-600 hover:text-red-800 px-2 py-1 group" title="Hapus RKH">
+                                            <svg class="w-5 h-5 text-red-600 group-hover:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-trash-outline"/>
+                                            </svg>
+                                            <svg class="w-5 h-5 text-red-600 hidden group-hover:block" fill="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-trash-solid"/>
+                                            </svg>
+                                        </button>
                                         
                                     @else
-                                        {{-- Partial approval atau belum ada approval --}}
                                         @if($rkh->approval1flag == '1' || $rkh->approval2flag == '1' || $rkh->approval3flag == '1')
                                             <div class="text-gray-400 px-2 py-1 cursor-not-allowed" title="Tidak dapat diedit (sudah ada approval)">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-edit-outline"/>
                                                 </svg>
                                             </div>
                                             <div class="text-gray-400 px-2 py-1 cursor-not-allowed" title="Tidak dapat dihapus (sudah ada approval)">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-trash-outline"/>
                                                 </svg>
                                             </div>
                                         @elseif($rkh->approval1flag == '0' || $rkh->approval2flag == '0' || $rkh->approval3flag == '0')
-                                            <span class="text-xs text-gray-400 italic">Ditolak</span>
-                                        @else
                                             <button onclick="window.location.href='{{ route('transaction.rencanakerjaharian.edit', $rkh->rkhno) }}'"
-                                                    class="text-blue-600 hover:text-blue-800 px-2 py-1" title="Edit RKH">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                    class="text-blue-600 hover:text-blue-800 px-2 py-1 group" title="Edit RKH (Submit Ulang)">
+                                                <svg class="w-5 h-5 text-blue-600 group-hover:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-edit-outline"/>
+                                                </svg>
+                                                <svg class="w-5 h-5 text-blue-600 hidden group-hover:block" fill="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-edit-solid"/>
                                                 </svg>
                                             </button>
                                             <button onclick="deleteRKH('{{ $rkh->rkhno }}')"
-                                                    class="text-red-600 hover:text-red-800 px-2 py-1" title="Hapus RKH">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                    class="text-red-600 hover:text-red-800 px-2 py-1 group" title="Hapus RKH">
+                                                <svg class="w-5 h-5 text-red-600 group-hover:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-trash-outline"/>
+                                                </svg>
+                                                <svg class="w-5 h-5 text-red-600 hidden group-hover:block" fill="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-trash-solid"/>
+                                                </svg>
+                                            </button>
+                                        @else
+                                            <button onclick="window.location.href='{{ route('transaction.rencanakerjaharian.edit', $rkh->rkhno) }}'"
+                                                    class="text-blue-600 hover:text-blue-800 px-2 py-1 group" title="Edit RKH">
+                                                <svg class="w-5 h-5 text-blue-600 group-hover:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-edit-outline"/>
+                                                </svg>
+                                                <svg class="w-5 h-5 text-blue-600 hidden group-hover:block" fill="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-edit-solid"/>
+                                                </svg>
+                                            </button>
+                                            <button onclick="deleteRKH('{{ $rkh->rkhno }}')"
+                                                    class="text-red-600 hover:text-red-800 px-2 py-1 group" title="Hapus RKH">
+                                                <svg class="w-5 h-5 text-red-600 group-hover:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-trash-outline"/>
+                                                </svg>
+                                                <svg class="w-5 h-5 text-red-600 hidden group-hover:block" fill="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-trash-solid"/>
                                                 </svg>
                                             </button>
                                         @endif
