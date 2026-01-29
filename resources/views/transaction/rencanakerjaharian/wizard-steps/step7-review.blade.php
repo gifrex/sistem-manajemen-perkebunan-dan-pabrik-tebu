@@ -16,11 +16,23 @@
       <div class="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
         <div class="flex">
           <span class="font-semibold text-gray-700 w-32">Mandor:</span>
-          <span class="text-gray-900">{{ $selectedMandor->name ?? '-' }}</span>
+          <span class="text-gray-900">
+            {{-- ✅ Support both Create & Edit mode --}}
+            {{ $selectedMandor->name ?? $rkhHeader->mandor_nama ?? '-' }}
+          </span>
         </div>
         <div class="flex">
           <span class="font-semibold text-gray-700 w-32">Tanggal:</span>
-          <span class="text-gray-900">{{ \Carbon\Carbon::parse($selectedDate)->format('d F Y') }}</span>
+          <span class="text-gray-900">
+            {{-- ✅ Support both Create & Edit mode --}}
+            @if(isset($selectedDate))
+              {{ \Carbon\Carbon::parse($selectedDate)->format('d F Y') }}
+            @elseif(isset($rkhHeader))
+              {{ \Carbon\Carbon::parse($rkhHeader->rkhdate)->format('d F Y') }}
+            @else
+              -
+            @endif
+          </span>
         </div>
         <div class="flex">
           <span class="font-semibold text-gray-700 w-32">Total Aktivitas:</span>

@@ -226,6 +226,29 @@ class RkhController extends Controller
         }
     }
 
+    public function editV2($rkhno)
+    {
+        try {
+            $companycode = Session::get('companycode');
+            
+            $data = $this->rkhService->getEditPageData($rkhno, $companycode);
+
+            return view('transaction.rencanakerjaharian.rkh-edit-v2', array_merge($data, [
+                'title' => 'Edit RKH (Modern Wizard)',
+                'navbar' => 'Transaction',
+                'nav' => 'Rencana Kerja Harian',
+            ]));
+
+        } catch (\Exception $e) {
+            \Log::error('RKH Edit V2 Error', [
+                'rkhno' => $rkhno,
+                'message' => $e->getMessage()
+            ]);
+
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
     /**
      * Store new RKH
      */
