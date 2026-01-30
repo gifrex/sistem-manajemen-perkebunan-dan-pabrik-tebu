@@ -5,7 +5,9 @@
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\TimelineController;
 use App\Http\Controllers\Dashboard\MapsController;
+use App\Http\Controllers\Dashboard\DashboardPanenController;
 use App\Http\Controllers\Pabrik\DashboardPanenPabrikController;
+
 
 Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(function () {
 
@@ -44,6 +46,14 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
         Route::match(['GET', 'POST'], 'maps/upload', [MapsController::class, 'upload'])->name('maps.upload');
     });
 
+    // ============================================================================
+    // PANEN DASHBOARD
+    // ============================================================================
+    Route::middleware('permission:dashboard.panen.view')->group(function () {
+        Route::get('panen', [DashboardPanenController::class, 'index'])->name('panen');
+        Route::get('panen/data', [DashboardPanenController::class, 'getData'])->name('panen.data');
+    });
+
 });
 
 // ============================================================================
@@ -53,3 +63,4 @@ Route::middleware(['auth', 'permission:pabrik.panenpabrik.view'])->group(functio
     Route::get('pabrik/panen-pabrik', [DashboardPanenPabrikController::class, 'index'])->name('pabrik.panen-pabrik.index');
     Route::get('pabrik/panen-pabrik/data', [DashboardPanenPabrikController::class, 'getData'])->name('pabrik.panen-pabrik.data');
 });
+

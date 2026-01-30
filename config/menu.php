@@ -278,6 +278,11 @@ return [
         'permission' => 'dashboard.menu.view',
         'children' => [
             [
+                'name' => 'Panen',
+                'route' => 'dashboard.panen',
+                'permission' => 'dashboard.panen.view',
+            ],
+            [
                 'name' => 'Agronomi',
                 'route' => 'dashboard.agronomi',
                 'permission' => 'dashboard.agronomi.view',
