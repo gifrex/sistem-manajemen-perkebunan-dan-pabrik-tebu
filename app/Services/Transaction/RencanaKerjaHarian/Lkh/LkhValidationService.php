@@ -32,22 +32,25 @@ class LkhValidationService
     {
         $request->validate([
             'keterangan' => 'nullable|string|max:500',
+            
             'plots' => 'nullable|array',
             'plots.*.blok' => 'required_with:plots|string',
             'plots.*.plot' => 'required_with:plots|string',
             'plots.*.luasrkh' => 'required_with:plots|numeric|min:0',
             'plots.*.luashasil' => 'required_with:plots|numeric|min:0',
             'plots.*.luassisa' => 'required_with:plots|numeric|min:0',
+            
             'workers' => 'nullable|array',
             'workers.*.tenagakerjaid' => 'required_with:workers|string',
-            'workers.*.jammasuk' => 'nullable|date_format:H:i',
-            'workers.*.jamselesai' => 'nullable|date_format:H:i',
+            'workers.*.jammasuk' => 'nullable|date_format:H:i:s', // FIXED: Changed from H:i to H:i:s
+            'workers.*.jamselesai' => 'nullable|date_format:H:i:s', // FIXED: Changed from H:i to H:i:s
             'workers.*.totaljamkerja' => 'nullable|numeric|min:0',
             'workers.*.overtimehours' => 'nullable|numeric|min:0',
             'workers.*.premi' => 'nullable|numeric|min:0',
             'workers.*.upahharian' => 'nullable|numeric|min:0',
             'workers.*.upahborongan' => 'nullable|numeric|min:0',
             'workers.*.totalupah' => 'nullable|numeric|min:0',
+            
             'materials' => 'nullable|array',
             'materials.*.itemcode' => 'required_with:materials|string',
             'materials.*.qtyditerima' => 'required_with:materials|numeric|min:0',

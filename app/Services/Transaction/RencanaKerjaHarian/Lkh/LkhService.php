@@ -172,11 +172,22 @@ class LkhService
         // Get master data for form
         $formData = $this->loadLkhEditFormData($companycode);
 
+        // FIX: Add boronganRate if jenistenagakerja = 2 (Borongan)
+        $boronganRate = 0;
+        if ($lkhData->jenistenagakerja == 2) {
+            $boronganRate = $this->masterDataRepo->getBoronganRate(
+                $companycode,
+                $lkhData->activitycode,
+                $lkhData->lkhdate
+            ) ?? 0;
+        }
+
         return array_merge([
             'lkhData' => $lkhData,
             'lkhPlotDetails' => $lkhPlotDetails,
             'lkhWorkerDetails' => $lkhWorkerDetails,
             'lkhMaterialDetails' => $lkhMaterialDetails,
+            'boronganRate' => $boronganRate,
         ], $formData);
     }
 
@@ -205,6 +216,12 @@ class LkhService
                 throw new \Exception('LKH sudah disubmit dan tidak dapat diedit');
             }
 
+            // Prepend "Alasan Edit: " to keterangan
+            $keterangan = $dto['keterangan'] ?? null;
+            if ($keterangan) {
+                $keterangan = "Alasan Edit: " . trim($keterangan);
+            }
+
             // Calculate totals
             $totalWorkers = count($dto['workers'] ?? []);
             $totalHasil = collect($dto['plots'] ?? [])->sum('luashasil');
@@ -224,13 +241,16 @@ class LkhService
                 $totalUpah = $this->calculateTotalUpah($dto['workers'] ?? [], $fullLkhData);
             }
 
-            // Update header
+            // Update header with edit tracking
             $headerData = [
                 'totalworkers' => $totalWorkers,
                 'totalhasil' => $totalHasil,
                 'totalsisa' => $totalSisa,
                 'totalupahall' => $totalUpah,
-                'keterangan' => $dto['keterangan'] ?? null,
+                'keterangan' => $keterangan,
+                'isedit' => 1,
+                'editedby' => $currentUser->userid,
+                'editedat' => now(),
                 'updateby' => $currentUser->userid,
                 'updatedat' => now()
             ];
@@ -249,11 +269,7 @@ class LkhService
                 $this->lkhRepo->replaceWorkerDetails($companycode, $lkhno, $workerDetails);
             }
 
-            // Update material details
-            if (!empty($dto['materials'])) {
-                $materialDetails = $this->buildLkhMaterialDetails($dto['materials'], $lkhno, $companycode, $currentUser->userid);
-                $this->lkhRepo->replaceMaterialDetails($companycode, $lkhno, $materialDetails);
-            }
+            // Materials are READ-ONLY
         });
     }
 
@@ -590,17 +606,50 @@ class LkhService
     {
         $details = [];
         
+        // Get lkhhdrid from header
+        $lkhhdrid = DB::table('lkhhdr')
+            ->where('companycode', $companycode)
+            ->where('lkhno', $lkhno)
+            ->value('id');
+        
         foreach ($plots as $plot) {
+            // Lookup batchno & batchid dari masterlist (seperti di Generator)
+            $batchid = null;
+            $batchno = $plot['batchno'] ?? null;
+            
+            if (!$batchno && isset($plot['plot'])) {
+                // Get from masterlist if not provided
+                $masterlist = DB::table('masterlist')
+                    ->where('companycode', $companycode)
+                    ->where('plot', $plot['plot'])
+                    ->where('isactive', 1)
+                    ->first();
+                
+                if ($masterlist && $masterlist->activebatchno) {
+                    $batchno = $masterlist->activebatchno;
+                }
+            }
+            
+            // Get batchid from batch table
+            if ($batchno) {
+                $batch = DB::table('batch')
+                    ->where('batchno', $batchno)
+                    ->where('companycode', $companycode)
+                    ->first();
+                $batchid = $batch ? $batch->id : null;
+            }
+            
             $details[] = [
                 'companycode' => $companycode,
                 'lkhno' => $lkhno,
+                'lkhhdrid' => $lkhhdrid,
                 'blok' => $plot['blok'],
                 'plot' => $plot['plot'],
                 'luasrkh' => $plot['luasrkh'] ?? 0,
                 'luashasil' => $plot['luashasil'] ?? 0,
                 'luassisa' => $plot['luassisa'] ?? 0,
-                'batchno' => $plot['batchno'] ?? null,
-                'batchid' => $plot['batchid'] ?? null,
+                'batchno' => $batchno,
+                'batchid' => $batchid,
                 'createdat' => now()
             ];
         }
@@ -612,10 +661,16 @@ class LkhService
     {
         $details = [];
         
+        $lkhhdrid = DB::table('lkhhdr')
+            ->where('companycode', $companycode)
+            ->where('lkhno', $lkhno)
+            ->value('id');
+        
         foreach ($workers as $index => $worker) {
             $details[] = [
                 'companycode' => $companycode,
                 'lkhno' => $lkhno,
+                'lkhhdrid' => $lkhhdrid,
                 'tenagakerjaid' => $worker['tenagakerjaid'],
                 'tenagakerjaurutan' => $index + 1,
                 'jammasuk' => $worker['jammasuk'] ?? null,

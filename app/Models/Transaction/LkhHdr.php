@@ -48,9 +48,7 @@ class LkhHdr extends Model
         'createdat',
         'updateby',
         'updatedat',
-        'mobilecreatedat',
         'mobileupdatedat',
-        'webreceivedat',
         'mobile_status',
     ];
 
@@ -73,9 +71,7 @@ class LkhHdr extends Model
         'submitat' => 'datetime',
         'createdat' => 'datetime',
         'updatedat' => 'datetime',
-        'mobilecreatedat' => 'datetime',
         'mobileupdatedat' => 'datetime',
-        'webreceivedat' => 'datetime',
     ];
 
     protected function serializeDate(\DateTimeInterface $date)
