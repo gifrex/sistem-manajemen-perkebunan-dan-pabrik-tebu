@@ -402,7 +402,7 @@
                                 <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
                                     <div class="flex items-center justify-between">
                                         <div>
-                                            <h3 class="text-lg font-semibold text-gray-900">{{ $approval->transactionnumber }}</h3>
+                                            <a href="{{ route('transaction.gudang.detail', ['rkhno' => $approval->transactionnumber]) }}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline font-semibold">{{ $approval->transactionnumber }} (Click Saya)</a>
                                             <p class="text-sm text-gray-600 mt-1">
                                                 {{ $approval->formatted_date ?? '-' }} • {{ $approval->category }}
                                             </p>
@@ -421,28 +421,75 @@
                                     </div>
                                     @if( isset($otherDetail[$approval->approvalno]) )
                                         @if( $approval->category == "Use Material" )
-                                              <div class="text-sm font-medium text-gray-900 mt-1">
-                                                <table width = "100%">
-                                                  <tr>
-                                                    <td colspan="2">BEFORE</td>
-                                                    <td></td>
-                                                    <td colspan="2">AFTER</td>
-                                                  </tr>
+                                            <div class="text-sm font-medium text-gray-900 mt-1">
+                                            <table width="100%" class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+                                                @php $detail= $otherDetail[$approval->approvalno][0]; @endphp
+
+                                                <tr class="bg-gray-50">
+                                                <td colspan="2" class="px-3 py-2 font-semibold">
+                                                    Luas:
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                                                    {{ $detail->totalluas }} HA
+                                                    </span>
+                                                </td>
+                                                <td colspan="2" class="px-3 py-2 font-semibold">
+                                                    Mandor:
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                                                    {{ $detail->name }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-2 py-2"></td>
+                                                <td colspan="2" class="px-3 py-2"></td>
+                                                </tr>
+
+                                                
+                                                <tr class="text-xs font-semibold text-gray-500">
+                                                <td class="px-3 py-2">PLOT</td>
+                                                <td colspan="2" class="px-3 py-2">BEFORE</td>
+                                                <td class="px-2 py-2 text-center"></td>
+                                                <td colspan="2" class="px-3 py-2">AFTER</td>
+                                                </tr>
+
                                                 @foreach($otherDetail[$approval->approvalno] as $item)
-                                                  @if( $item->old_qty - $item->new_qty != 0 )
-                                                    <tr>
-                                                      <td>{{ $item->old_itemcode }} <br>{{ $item->old_itemname }}</td>
-                                                      <td>{{ $item->old_qty }} {{ $item->old_measure }}</td>
-                                                      <td>-></td>
-                                                      <td>{{ $item->new_itemcode }} <br>{{ $item->new_itemname }}</td>
-                                                      <td>{{ $item->new_qty }} {{ $item->new_measure }}</td>
+                                                @if( $item->old_qty - $item->new_qty != 0 )
+                                                    <tr class="border-t border-gray-100 hover:bg-gray-50">
+                                                    <td class="px-3 py-2 align-top whitespace-nowrap">
+                                                        <span class="font-semibold px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">{{ $item->plot }}</span>
+                                                    </td>
+
+                                                    <td class="px-3 py-2 align-top">
+                                                        <span class="font-semibold">{{ $item->old_itemcode }}</span><br>
+                                                        <span class="text-xs text-gray-500">{{ $item->old_itemname }}</span>
+                                                    </td>
+
+                                                    <td class="px-3 py-2 align-top whitespace-nowrap">
+                                                        <span class="font-semibold">{{ $item->old_qty }}</span>
+                                                        <span class="text-gray-500">{{ $item->old_measure }}</span>
+                                                    </td>
+
+                                                    <td class="px-2 py-2 text-center align-middle">
+                                                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-gray-600 font-bold">
+                                                        →
+                                                        </span>
+                                                    </td>
+
+                                                    <td class="px-3 py-2 align-top">
+                                                        <span class="font-semibold">{{ $item->new_itemcode }}</span><br>
+                                                        <span class="text-xs text-gray-500">{{ $item->new_itemname }}</span>
+                                                    </td>
+
+                                                    <td class="px-3 py-2 align-top whitespace-nowrap">
+                                                        <span class="font-semibold">{{ $item->new_qty }}</span>
+                                                        <span class="text-gray-500">{{ $item->new_measure }}</span>
+                                                    </td>
                                                     </tr>
-                                                    @endif
+                                                @endif
                                                 @endforeach
-                                              </table>
-                                              </div>
+                                            </table>
+                                            </div>
                                         @endif
                                     @endif
+
                                 </div>
 
                                 <div class="px-6 py-4">

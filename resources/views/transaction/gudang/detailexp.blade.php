@@ -97,7 +97,7 @@
                                     <div class="grid grid-cols-3 gap-4">
                                         <span class="text-left"><b>Mandor:</b> {{ $details[0]->name }}</span>
                                         <span class="text-center"><b>USE:</b> {{ $details[0]->nouse }}</span>
-                                        <span class="text-right"></span> <!-- Empty but maintains alignment -->
+                                        <span class="text-center"><b>Status:</b> {{str_replace('_', ' ', $details[0]->flagstatus)}}</span> <!-- Empty but maintains alignment -->
                                     </div>
                                 </div>
                             </th>
@@ -142,9 +142,82 @@
             <!-- Form -->
             <form action="{{ route('transaction.gudang.submit', ['rkhno' => $details[0]->rkhno]) }}" method="POST">
                 @csrf
+                  
+                @if (strtoupper($details[0]->flagstatus ?? '') === 'WAIT_APPROVAL' && !empty($usematerialapproval))
+                    {{-- TABLE KHUSUS WAIT_APPROVAL (simple, minimal) --}}
+                    @php
+                    // old (usemateriallst) map untuk compare
+                    $oldMap = collect($detailmaterial)->keyBy(fn($x)=> trim($x->lkhno).'|'.trim($x->plot).'|'.trim($x->itemcode));
+                    @endphp
+
+                    <table class="min-w-full p-2 bg-white shadow rounded text-xs no-print">
+                    <thead class="text-gray-700">
+                    <tr>
+                        <th class="py-2 px-2 border-b text-left">Item</th>
+                        <th class="py-2 px-2 border-b text-center">Plot</th>
+                        <th class="py-2 px-2 border-b text-right">Luas</th>
+                        <th class="py-2 px-2 border-b text-right">Dosage</th>
+                        <th class="py-2 px-2 border-b text-right">Qty</th>
+                        <th class="py-2 px-2 border-b text-center">LKH</th>
+                    </tr>
+                    </thead>
+
+                    <tbody class="text-gray-600">
+                    @foreach ($usematerialapproval as $k => $ap)
+                        @php
+                        $old = $oldMap[$k] ?? null;
+
+                        $oldDos = (float)($old->dosageperha ?? 0);
+                        $newDos = (float)($ap->dosageperha ?? 0);
+
+                        $oldQty = (float)($old->qty ?? 0);
+                        $newQty = (float)($ap->qty ?? 0);
+
+                        $dosChanged = abs($oldDos - $newDos) > 0.00001;
+                        $qtyChanged = abs($oldQty - $newQty) > 0.00001;
+
+                        // luas untuk submit (qty/dosage) supaya sesuai snapshot
+                        $luasSubmit = $newDos > 0 ? ($newQty / $newDos) : 0;
+                        @endphp
+
+                        <tr class="border-b hover:bg-gray-50">
+                        <td class="py-2 px-2">
+                            <b>{{ $ap->itemcode }}</b> — {{ $ap->itemname ?? '' }}
+                        </td>
+
+                        <td class="py-2 px-2 text-center">{{ $ap->plot }}</td>
+
+                        <td class="py-2 px-2 text-right">
+                            {{ $old->luasrkh ?? '-' }}
+                        </td>
+
+                        <td class="py-2 px-2 text-right">
+                            @if($dosChanged)
+                            {{ number_format($oldDos, 2, '.', '') }} → {{ number_format($newDos, 2, '.', '') }}
+                            @else
+                            {{ number_format($newDos, 2, '.', '') }}
+                            @endif
+                        </td>
+
+                        <td class="py-2 px-2 text-right">
+                            @if($qtyChanged)
+                            {{ number_format($oldQty, 2, '.', '') }} → {{ number_format($newQty, 2, '.', '') }}
+                            @else
+                            {{ number_format($newQty, 2, '.', '') }}
+                            @endif
+                        </td>
+
+                        <td class="py-2 px-2 text-center">{{ $ap->lkhno }}</td>
+                        </tr>
+
+                     @endforeach
+                    </tbody>
+                    </table>
+
                 
-    
-    
+                @else
+
+                
                 <table class='min-w-full md:w-1/3 p-2 bg-white shadow rounded text-xs no-print'>
                     <thead class="text-gray-700">
                         <tr>
@@ -159,135 +232,138 @@
                         </tr>
                     </thead>
                     <tbody class="text-gray-600">
-        @php
-        $stdDosage = collect($itemlist)->mapWithKeys(fn($x)=>[
-            ($x->itemcode.'|'.$x->activitycode) => (float)$x->dosageperha
-        ]);
-        @endphp
-        @foreach ($detailmaterial as $d)
-        @php
-            // Hitung total luas semua blok untuk lkhno ini
-            $plotsInLkh = $plots->where('lkhno', $d->lkhno);
-            $totalLuas = $plotsInLkh->sum('luasrkh');
-            
-            // Hitung total qty = dosage × total luas semua blok
-            $totalQty = $d->dosageperha * $totalLuas;
-        @endphp
-    
-        <tr class="border-b hover:bg-gray-50">
-            <td class="py-2 px-2">
-                @php
-                // Ambil activitycode dari $plots jika $d->activitycode kosong
-                if (empty($d->activitycode)) {
-                    $plotData = $plots->where('lkhno', $d->lkhno)
-                                      ->where('plot', $d->plot)
-                                      ->first();
-                    $activitycode = $plotData->activitycode ?? null;
-                } else {
-                    $activitycode = $d->activitycode;
-                }
-                @endphp
-                
-                <select
-                    @if (strtoupper($details[0]->flagstatus) != 'ACTIVE') disabled @endif
-                    name="itemcode[{{ $d->lkhno }}][{{ $d->itemcode }}][{{ $d->plot }}]"
-                    class="item-select w-full border-none bg-yellow-100 text-xs"
-                    data-luas="{{ $totalLuas }}"
-                    data-lkhno="{{ $d->lkhno }}"
-                > 
-                    @foreach ($itemlist as $item) 
-                    <option value="{{ $item->itemcode }}" 
-                        {{ $item->itemcode == (
-                            (strtoupper($details[0]->flagstatus ?? '') === 'WAIT_APPROVAL' && isset($usematerialapproval))
-                                ? (collect($usematerialapproval)->where('lkhno', $d->lkhno)->where('plot', $d->plot)->first()->itemcode ?? $d->itemcode)
-                                : $d->itemcode
-                        ) ? 'selected' : '' }}
-                        data-dosage="{{$item->dosageperha}}" 
-                        data-measure="{{ $item->measure }}" 
-                        data-itemname="{{ $item->itemname }}"
-                        data-rounddosage="{{ $item->rounddosage ?? 1 }}">
-                        {{$item->activitycode}} • {{ $item->itemcode }} • {{ $item->itemname }} • {{$item->dosageperha}} ({{$item->measure}})
-                    </option>
+                        @php
+                        $stdDosage = collect($itemlist)->mapWithKeys(fn($x)=>[
+                            ($x->itemcode.'|'.$x->activitycode) => (float)$x->dosageperha
+                        ]);
+                        @endphp
+                        @foreach ($detailmaterial as $d)
+                        @php
+                            // Hitung total luas semua blok untuk lkhno ini
+                            $plotsInLkh = $plots->where('lkhno', $d->lkhno);
+                            $totalLuas = $plotsInLkh->sum('luasrkh');
+                            
+                            // Hitung total qty = dosage × total luas semua blok
+                            $totalQty = $d->dosageperha * $totalLuas;
+                        @endphp
+                    
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="py-2 px-2">
+                                @php
+                                // Ambil activitycode dari $plots jika $d->activitycode kosong
+                                if (empty($d->activitycode)) {
+                                    $plotData = $plots->where('lkhno', $d->lkhno)
+                                                    ->where('plot', $d->plot)
+                                                    ->first();
+                                    $activitycode = $plotData->activitycode ?? null;
+                                } else {
+                                    $activitycode = $d->activitycode;
+                                }
+
+                                @endphp
+                                
+                                <select
+                                    @if (strtoupper($details[0]->flagstatus) != 'ACTIVE') disabled @endif
+                                    name="itemcode[{{ $d->lkhno }}][{{ $d->itemcode }}][{{ $d->plot }}]"
+                                    class="item-select w-full border-none bg-yellow-100 text-xs"
+                                    data-luas="{{ $totalLuas }}"
+                                    data-lkhno="{{ $d->lkhno }}"
+                                > 
+                                    @foreach ($itemlist->where('herbisidagroupid', $d->herbisidagroupid); as $item) 
+                                    <option value="{{ $item->itemcode }}" 
+                                        {{ $item->itemcode == (
+                                            (strtoupper($details[0]->flagstatus ?? '') === 'WAIT_APPROVAL' && isset($usematerialapproval))
+                                                ? (collect($usematerialapproval)->where('lkhno', $d->lkhno)->where('plot', $d->plot)->first()->itemcode ?? $d->itemcode)
+                                                : $d->itemcode
+                                        ) ? 'selected' : '' }}
+                                        data-dosage="{{$item->dosageperha}}" 
+                                        data-measure="{{ $item->measure }}" 
+                                        data-itemname="{{ $item->itemname }}"
+                                        data-rounddosage="{{ $item->rounddosage ?? 1 }}">
+                                        {{$item->activitycode}} • {{ $item->itemcode }} • {{ $item->itemname }} • {{$item->dosageperha}} ({{$item->measure}})
+                                    </option>
+                                    @endforeach
+                                </select>
+                            
+                                <span class="print-label text-xs">
+                                    Herbisida {{ $d->herbisidagroupid }} - {{ $d->itemcode }} - {{ $d->itemname ?? '[Nama Item]' }} - {{ $d->dosageperha }} ({{ $d->unit }}) (Total: {{ $totalLuas }} HA)
+                                </span>
+                                <input type="hidden" name="unit[{{ $d->lkhno }}][{{ $d->itemcode }}][{{ $d->plot }}]"
+                                    class="selected-unit" value="{{ $d->unit }}">
+                                <input type="hidden" name="luas[{{ $d->lkhno }}][{{ $d->itemcode }}][{{ $d->plot }}]"
+                                        class="selected-luas" value="{{ $d->luasrkh }}">
+                                <input type="hidden" name="itemcodelist[{{ $d->lkhno }}][]"
+                                    class="selected-itemcode" value="{{ $d->itemcode }}">
+                            </td>
+                    
+                            <td class="py-2 px-2 text-center text-right">
+                                <span class="labelplot">{{ $d->plot }}</span>
+                            </td>
+                    
+                            <td class="py-2 px-2 text-center text-right">
+                                <span class="labelplot">{{ $d->luasrkh }}</span>
+                            </td>
+                    
+                            <td class="py-2 px-2">
+                                <div class="flex justify-end items-center">
+                                    <input type="text" name="dosage[{{ $d->lkhno }}][{{ $d->itemcode }}][{{ $d->plot }}]"
+                                    value="{{ number_format($d->dosageperha, 2) }}"
+                                    data-orig="{{ number_format($d->dosageperha, 2, '.', '') }}"
+                                    class="w-full selected-dosage border-none bg-yellow-100 text-xs text-right w-20">
+                                </div>
+                            </td>
+                    
+                            <td class="py-2 px-2 text-center text-right">
+                                @php
+                                // (ini hanya kalau kamu sudah punya $stdDosage & $activitycode)
+                                // tinggal panggil • ({{ number_format($exp, 2) }})
+                                $exp = (((float)($stdDosage[$d->itemcode.'|'.$activitycode] ?? 0) * (float)($d->luasrkh ?? 0)) > 0)
+                                    ? max(0.25, round((((float)($stdDosage[$d->itemcode.'|'.$activitycode] ?? 0) * (float)($d->luasrkh ?? 0)) / 0.25)) * 0.25)
+                                    : 0;
+                                $qty = (float)($d->qty ?? 0);
+                                $diff = $qty - $exp;
+                                @endphp
+                            
+                            <span class="ml-2 text-[10px] font-semibold
+                                {{ abs($diff) > 0.00001 ? ($diff > 0 ? 'text-orange-600' : 'text-green-600') : 'hidden' }}">
+                                • 
+                            </span>
+                            <span class="labelqty">{{ $d->qty }}</span>
+                                        
+                            </td>
+                    
+                            <td class="py-2 px-2 text-center text-right">
+                                {{ $d->qtyretur ?? 0 }}
+                            </td>
+                    
+                            <td class="py-2 px-2 text-center">
+                                {{ $d->lkhno }}
+                            </td>
+                    
+                            <td class="py-2 px-2 text-center">
+                                @if (empty($d->noretur) && $d->qtyretur>0 && strtoupper($details[0]->flagstatus) != 'ACTIVE')
+                                    <a href="{{ route('transaction.gudang.retur', [
+                                            'retur' => $d->qtyretur,
+                                            'itemcode' => $d->itemcode,
+                                            'rkhno' => $details[0]->rkhno,
+                                            'lkhno' => $d->lkhno,
+                                            'plot' => $d->plot
+                                        ]) }}"
+                                    class="inline-block bg-yellow-100 text-gray-800 hover:bg-blue-600 hover:text-white text-xs py-1 px-2 rounded shadow transition no-print"
+                                    onclick="return confirm('Proses Retur Barang ini ?')">
+                                        Retur ?
+                                    </a>
+                                @else
+                                    {{ $d->noretur ?? '-' }}
+                                @endif
+                            </td>
+                    
+                        </tr>
                     @endforeach
-                </select>
-            
-                <span class="print-label text-xs">
-                    Herbisida {{ $d->herbisidagroupid }} - {{ $d->itemcode }} - {{ $d->itemname ?? '[Nama Item]' }} - {{ $d->dosageperha }} ({{ $d->unit }}) (Total: {{ $totalLuas }} HA)
-                </span>
-                <input type="hidden" name="unit[{{ $d->lkhno }}][{{ $d->itemcode }}][{{ $d->plot }}]"
-                       class="selected-unit" value="{{ $d->unit }}">
-                <input type="hidden" name="luas[{{ $d->lkhno }}][{{ $d->itemcode }}][{{ $d->plot }}]"
-                        class="selected-luas" value="{{ $d->luasrkh }}">
-                <input type="hidden" name="itemcodelist[{{ $d->lkhno }}][]"
-                       class="selected-itemcode" value="{{ $d->itemcode }}">
-            </td>
-    
-            <td class="py-2 px-2 text-center text-right">
-                <span class="labelplot">{{ $d->plot }}</span>
-            </td>
-    
-            <td class="py-2 px-2 text-center text-right">
-                <span class="labelplot">{{ $d->luasrkh }}</span>
-            </td>
-    
-            <td class="py-2 px-2">
-                <div class="flex justify-end items-center">
-                    <input type="text" name="dosage[{{ $d->lkhno }}][{{ $d->itemcode }}][{{ $d->plot }}]"
-                    value="{{ number_format($d->dosageperha, 2) }}"
-                    data-orig="{{ number_format($d->dosageperha, 2, '.', '') }}"
-                    class="w-full selected-dosage border-none bg-yellow-100 text-xs text-right w-20">
-                </div>
-            </td>
-    
-            <td class="py-2 px-2 text-center text-right">
-                @php
-                // (ini hanya kalau kamu sudah punya $stdDosage & $activitycode)
-                // tinggal panggil • ({{ number_format($exp, 2) }})
-                $exp = (((float)($stdDosage[$d->itemcode.'|'.$activitycode] ?? 0) * (float)($d->luasrkh ?? 0)) > 0)
-                      ? max(0.25, round((((float)($stdDosage[$d->itemcode.'|'.$activitycode] ?? 0) * (float)($d->luasrkh ?? 0)) / 0.25)) * 0.25)
-                      : 0;
-                $qty = (float)($d->qty ?? 0);
-                $diff = $qty - $exp;
-                @endphp
-              
-              <span class="ml-2 text-[10px] font-semibold
-                {{ abs($diff) > 0.00001 ? ($diff > 0 ? 'text-orange-600' : 'text-green-600') : 'hidden' }}">
-                • 
-              </span>
-              <span class="labelqty">{{ $d->qty }}</span>
-                        
-            </td>
-    
-            <td class="py-2 px-2 text-center text-right">
-                {{ $d->qtyretur ?? 0 }}
-            </td>
-    
-            <td class="py-2 px-2 text-center">
-                {{ $d->lkhno }}
-            </td>
-    
-            <td class="py-2 px-2 text-center">
-                @if (empty($d->noretur) && $d->qtyretur>0 && strtoupper($details[0]->flagstatus) != 'ACTIVE')
-                    <a href="{{ route('transaction.gudang.retur', [
-                            'retur' => $d->qtyretur,
-                            'itemcode' => $d->itemcode,
-                            'rkhno' => $details[0]->rkhno,
-                            'lkhno' => $d->lkhno,
-                            'plot' => $d->plot
-                        ]) }}"
-                       class="inline-block bg-yellow-100 text-gray-800 hover:bg-blue-600 hover:text-white text-xs py-1 px-2 rounded shadow transition no-print"
-                       onclick="return confirm('Proses Retur Barang ini ?')">
-                        Retur ?
-                    </a>
-                @else
-                    {{ $d->noretur ?? '-' }}
-                @endif
-            </td>
-    
-        </tr>
-    @endforeach
-                        </tbody>
-                        
+                    </tbody>
+                     
+                    @endif
+
                 </table>
     
     
@@ -319,7 +395,7 @@
             @endphp
             
             
-            <table class="w-full md:w-2/3 mx-auto mt-6 bg-white shadow rounded text-xs border border-gray-200">
+            <table class="w-full md:w-2/3 mx-auto mt-6 bg-white shadow rounded text-xs border border-gray-200" @if(strtoupper($details[0]->flagstatus ?? '') === 'WAIT_APPROVAL') hidden @endif>
                 <thead class="bg-gray-100 text-gray-700 uppercase">
                     <tr>
                         <th class="py-2 px-3 border-b">Itemcode</th>
@@ -385,7 +461,7 @@
                    class="bg-white inline-block bg-gray-200 text-gray-800 hover:bg-gray-300 font-semibold py-2 px-4 rounded shadow transition no-print">
                     ← Kembali
                 </a>&nbsp;
-                @if(strtoupper($details[0]->flagstatus) != 'ACTIVE' )
+                @if(strtoupper($details[0]->flagstatus) != 'ACTIVE' && strtoupper($details[0]->flagstatus) != 'WAIT_APPROVAL')
                 <button type="button"
                     onclick="window.print()"
                     class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 rounded shadow no-print">

@@ -315,7 +315,7 @@ class OtherApprovalRepository
 
     public function getApprovalUseMaterialDetail( $companycode, $approvalno )
     {
-      $joinmaterial = DB::select('SELECT a.companycode,a.rkhno,a.itemseq,a.lkhno,a.plot,
+      $joinmaterial = DB::select('SELECT a.companycode,a.rkhno,a.itemseq,a.lkhno,a.plot,d.totalluas, u.name,
                a.itemcode AS old_itemcode,b.itemcode AS new_itemcode,
                c.itemname AS old_itemname, b.itemname AS new_itemname,
                a.qty AS old_qty,b.qty AS new_qty,
@@ -327,6 +327,9 @@ class OtherApprovalRepository
         FROM usemateriallst a
         INNER JOIN usematerialapproval b ON b.companycode=a.companycode AND b.rkhno=a.rkhno AND b.itemseq=a.itemseq
         LEFT JOIN herbisida c ON a.companycode = c.companycode AND a.itemcode = c.itemcode
+        LEFT JOIN usematerialhdr d ON a.companycode = d.companycode AND a.rkhno = d.rkhno
+        LEFT JOIN lkhhdr lh ON lh.companycode = a.companycode AND lh.lkhno = a.lkhno
+        LEFT JOIN user u ON u.userid = lh.mandorid
         WHERE a.companycode= ?  AND b.approvalno= ?
         ORDER BY a.itemseq',[ $companycode, $approvalno ]);
       return $joinmaterial;

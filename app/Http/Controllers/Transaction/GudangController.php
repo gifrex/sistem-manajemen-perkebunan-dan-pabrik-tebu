@@ -94,12 +94,26 @@ class GudangController extends Controller
                 });
             }
 
+            \Log::info('GUDANG HOME DEBUG:', [
+                'companycode' => session('companycode'),
+                'search' => $search,
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+                'perPage' => $perPage,
+                'sql' => $usehdr->toSql(),
+                'bindings' => $usehdr->getBindings()
+            ]);
 
             $usehdr = $usehdr->select('a.*', 'c.name', 'd.nouse', 'b.rkhdate')
                 ->orderBy('a.createdat', 'desc')
                 ->paginate($perPage)
                 ->appends($request->query());
 
+            \Log::info('GUDANG HOME RESULT:', [
+                'total' => $usehdr->total(),
+                'count' => $usehdr->count(),
+                'data' => $usehdr->items()
+            ]);
 
             return view('transaction.gudang.home')->with([
                 'title' => 'Gudang',
@@ -297,6 +311,21 @@ class GudangController extends Controller
         $details = collect($usematerialhdr->selectusematerial(session('companycode'), $request->rkhno, 1));
         $first = $details->first();
 
+        Log::info('SUBMIT DEBUG CONTEXT', [
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'session_companycode' => session('companycode'),
+            'req_rkhno' => $request->rkhno,
+            'req_approvalno' => $request->approvalno ?? null,
+            'req_costcenter' => $request->costcenter ?? null,
+            'host' => $request->getHost(),
+            'user_userid' => Auth::user()->userid ?? null,
+            'first_hdr_companycode' => $first->companycode ?? null,
+            'first_hdr_flagstatus' => $first->flagstatus ?? null,
+            'first_hdr_factoryinv' => $first->factoryinv ?? null,
+            'first_hdr_companyinv' => $first->companyinv ?? null,
+        ]);
+
         // $detailmaterial2 = collect($usemateriallst->where('rkhno', $request->rkhno)->where('companycode', session('companycode'))->orderBy('lkhno')->orderBy('plot')->get());
         $detailmaterial = collect($usemateriallst->select('usemateriallst.*', 'lkhdetailplot.luasrkh')
             ->leftJoin('lkhdetailplot', function ($join) {
@@ -305,18 +334,32 @@ class GudangController extends Controller
                     ->on('usemateriallst.companycode', '=', 'lkhdetailplot.companycode');
             })
             ->where('rkhno', $request->rkhno)->where('usemateriallst.companycode', session('companycode'))->orderBy('lkhno')->orderBy('plot')->get());
-            //group
-            $groupMap = $details->mapWithKeys(fn($x)=>[
-                $x->lkhno.'|'.$x->plot => $x->herbisidagroupid
-            ]);
+            //group (FIX: unique + trim supaya tidak ketiban & tidak miss karena spasi)
+            $plotsUnique = $details->unique(function($x){
+                return trim((string)$x->lkhno).'|'.trim((string)$x->plot);
+            });
+
+            $groupMap = $plotsUnique->mapWithKeys(function($x){
+                return [trim((string)$x->lkhno).'|'.trim((string)$x->plot) => $x->herbisidagroupid];
+            });
 
             $detailmaterial = $detailmaterial->map(function($d) use ($groupMap) {
-                $d->herbisidagroupid = $groupMap[$d->lkhno.'|'.$d->plot] ?? null;
+                $k = trim((string)$d->lkhno).'|'.trim((string)$d->plot);
+                $d->herbisidagroupid = $groupMap[$k] ?? null;
                 return $d;
             });
             //
         $groupIds = $details->pluck('herbisidagroupid')->unique();
-        $lst = usemateriallst::where('rkhno', $request->rkhno)->where('companycode', session('companycode'))->get();     
+        $lst = usemateriallst::where('rkhno', $request->rkhno)->where('companycode', session('companycode'))->get();
+
+        Log::info('DETAIL DEBUG USEMATERIALLST', [
+            'rkhno' => $request->rkhno,
+            'session_companycode' => session('companycode'),
+            'lst_count' => $lst->count(),
+            'lst_max_nouse' => $lst->max('nouse'),
+            'lst_nouse_sample' => $lst->pluck('nouse')->filter()->unique()->take(5)->values()->toArray(),
+            'lst_itemcodes_sample' => $lst->pluck('itemcode')->take(10)->values()->toArray(),
+        ]);        
 
         //api_costcenter
         $companyinv = company::where('companycode', session('companycode'))->first();
@@ -332,13 +375,20 @@ class GudangController extends Controller
         $costcenter = collect($response->json('costcenter'));
 
         
-
+        $usematerialapproval=null;
         if (strtoupper($details->first()->flagstatus ?? '') === 'WAIT_APPROVAL') {
+            $ap = DB::table('usematerialapproval')
+            ->where('companycode', session('companycode'))
+            ->where('rkhno', $request->rkhno);
+            $usematerialapproval = $ap->get();
             if($details[0]->costcenter == NULL){
-            $details[0]->costcenter = DB::table('usematerialapproval')
-                ->where('companycode', session('companycode'))
-                ->where('rkhno', $request->rkhno)
+            $details[0]->costcenter = $ap
                 ->value('costcenter');
+            }
+            if ($usematerialapproval) {
+                $usematerialapproval = $usematerialapproval->keyBy(function($r){
+                    return trim($r->lkhno).'|'.trim($r->plot).'|'.trim($r->itemcode);
+                });
             }
         }
 
@@ -351,7 +401,8 @@ class GudangController extends Controller
             'itemlist' => $itemlist,
             'costcenter' => $costcenter,
             'detailmaterial' => $detailmaterial,
-            'islokal' => $islokal
+            'islokal' => $islokal,
+            'usematerialapproval' => $usematerialapproval
         ]);
     }
 
@@ -575,11 +626,29 @@ public function submit(Request $request)
         return redirect()->back()->with('error', 'Sedang memproses request sebelumnya. Mohon tunggu...');
     }
     Cache::put($lockKey, true, 20);
+    //tambahan locked
+    $releaseLockAndBack = function(string $type, string $msg, int $step) use ($lockKey) {
+        Cache::forget($lockKey);
+        Log::warning('SUBMIT_EARLY_EXIT', [
+            'step' => $step,
+            'lockKey' => $lockKey,
+            'type' => $type,
+            'msg' => $msg,
+            'companycode' => session('companycode'),
+            'rkhno' => request()->rkhno ?? null,
+        ]);
+        return back()->with($type, $msg);
+    };
     
+    //
+
+
     // Validasi basic
     $details = collect((new usematerialhdr)->selectusematerial(session('companycode'), $request->rkhno, 1));
     $first = $details->first();
-
+    if (!$first) {
+        return $releaseLockAndBack('error', 'Header usematerial tidak ditemukan.', 1);
+    }
     Log::info('SUBMIT DEBUG FIRST:', [
         'session_company' => session('companycode'),
         'rkhno' => $request->rkhno,
@@ -597,47 +666,46 @@ public function submit(Request $request)
     ->where('companycode', session('companycode'))
     ->where('approvalno', $request->approvalno)
     ->where('rkhno', $request->rkhno)
-    ->where('approved', 1)
     ->exists();
     //
 
     if (!$isFromApproval && strtoupper($first->flagstatus) != 'ACTIVE') {
-        Cache::forget($lockKey);
-        throw new \Exception('Tidak Dapat Edit! Item Sudah Tidak Lagi ACTIVE');
+        return $releaseLockAndBack('error', 'Tidak Dapat Edit! Item Sudah Tidak Lagi ACTIVE'.$isFromApproval.' | '.strtoupper($first->flagstatus).'', 2);
     }
 
     // tambahan cek standar part 2 
     if ($isFromApproval && strtoupper($first->flagstatus) != 'WAIT_APPROVAL') {
-        Cache::forget($lockKey);
-        throw new \Exception('Execute approval hanya boleh saat status WAIT_APPROVAL');
-}
-
+        return $releaseLockAndBack('error', 'Execute approval hanya boleh saat status WAIT_APPROVAL', 3);
+    }    
 
     if ($details->whereNotNull('nouse')->count() >= 1) {
-        Cache::forget($lockKey);
-        throw new \Exception('Tidak Dapat Edit! Silahkan Retur');
+        return $releaseLockAndBack('error', 'Tidak Dapat Edit! Silahkan Retur', 4);
     }
-
+    
     $rkhdate = DB::table('rkhhdr')
     ->where('companycode', session('companycode'))
     ->where('rkhno', $request->rkhno)
     ->value('rkhdate');
 
     if (!$rkhdate) {
-        return back()->with('error', 'RKH Date tidak ditemukan.');
-    }
+        return $releaseLockAndBack('error', 'RKH Date tidak ditemukan.', 5);
+    }    
 
     //tambahan cek standar
-    // $stdMap = DB::table('herbisidadosage')
-    // ->where('companycode', session('companycode'))
-    // ->select('herbisidagroupid','itemcode','dosageperha')
-    // ->get()
-    // ->mapWithKeys(fn($r)=>[($r->herbisidagroupid.'|'.$r->itemcode) => (float)$r->dosageperha])
-    // ->all();
+    $isApproval = false;
+    $approvalReasons = [];
+    $EPS = 0.0001;
+    $stdMap = [];
+    
+    if (!$isFromApproval) {
+        $stdMap = DB::table('herbisidadosage')
+            ->where('companycode', session('companycode'))
+            ->select('herbisidagroupid','itemcode','dosageperha')
+            ->get()
+            ->mapWithKeys(fn($r)=>[($r->herbisidagroupid.'|'.$r->itemcode) => (float)$r->dosageperha])
+            ->all();
+    } 
 
-    // $EPS = 0.0001;
-    // $isApproval = false;
-    // $approvalReasons = [];
     //
 
     // Validasi duplikat: lkhno + plot + itemcode
@@ -668,20 +736,30 @@ public function submit(Request $request)
         });
 
     // Key details by lkhno untuk lookupa
-    $detailsByLkhno = $details->keyBy('lkhno');
+    $detailsByKey = $details->keyBy(function($x){
+        return trim((string)$x->lkhno).'|'.trim((string)$x->plot);
+    });
     $herbisidaItems = Herbisida::where('companycode', session('companycode'))->get()->keyBy('itemcode');
 
     $insertData = [];
     $apiPayload = [];
     $qtyByItemcode = [];
     $itemDetails = [];
-
+    $seq = 1;
+    
     // Process flat - langsung dari request
     foreach ($request->itemcode as $lkhno => $items) {
-        $detail = $detailsByLkhno[$lkhno];
-
         foreach ($items as $itemcode => $keys) {
+
+            // hilangin item newline spasi gajelas
+            $itemcode = preg_replace('/\s+/', '', trim($itemcode));
             foreach ($keys as $key => $val) {
+
+                $detail = $detailsByKey[trim((string)$lkhno).'|'.trim((string)$key)] ?? null;
+                if (!$detail) {
+                    Cache::forget($lockKey);
+                    throw new \Exception("Detail tidak ditemukan untuk $lkhno plot $key");
+                }
 
                 $dosage = floatval($request->dosage[$lkhno][$itemcode][$key] ?? 0);
                 $unit = $request->unit[$lkhno][$itemcode][$key] ?? null;
@@ -689,39 +767,61 @@ public function submit(Request $request)
                 $qtyraw = $luas * $dosage ?? 0;
 
                 //tambahan cek standar cek dosage standard 
-                // $groupId = $detail->herbisidagroupid ?? null;
-                // if ($groupId) {
-                //     $kstd = $groupId.'|'.$itemcode;
-                
-                //     // itemcode tidak ada di standar untuk group tsb
-                //     if (!isset($stdMap[$kstd])) {
-                //         $isApproval = true;
-                //         $approvalReasons[] = [
-                //             'type' => 'INVALID_ITEMCODE',
-                //             'lkhno' => $lkhno,
-                //             'plot' => $key,
-                //             'group' => $groupId,
-                //             'itemcode' => $itemcode,
-                //             'dosage_input' => $dosage,
-                //         ];
-                //     } else {
-                //         // dosage berbeda dari standar
-                //         $stdDos = (float)$stdMap[$kstd];
-                //         if (abs($dosage - $stdDos) > $EPS) {
-                //             $isApproval = true;
-                //             $approvalReasons[] = [
-                //                 'type' => 'DOSAGE_CHANGED',
-                //                 'lkhno' => $lkhno,
-                //                 'plot' => $key,
-                //                 'group' => $groupId,
-                //                 'itemcode' => $itemcode,
-                //                 'dosage_input' => $dosage,
-                //                 'dosage_std' => $stdDos,
-                //             ];
-                //         }
-                //     }
-                // }
-                //
+                if (!$isFromApproval) {
+                    $groupId = $detail->herbisidagroupid ?? null;
+                    if ($groupId) {
+                        $kstd = $groupId.'|'.$itemcode;
+
+                        // itemcode tidak ada di standar untuk group tsb
+                        if (!isset($stdMap[$kstd])) {
+                            $isApproval = true;
+                            $approvalReasons[] = [
+                                'type' => 'INVALID_ITEMCODE',
+                                'lkhno' => $lkhno,
+                                'plot' => $key,
+                                'group' => $groupId,
+                                'itemcode' => $itemcode,
+                                'dosage_input' => $dosage,
+                            ];
+                            Log::info('APPROVAL_INVALID_ITEMCODE', [
+                                'rkhno' => $request->rkhno,
+                                'lkhno' => $lkhno,
+                                'plot' => $key,
+                                'group' => $groupId,
+                                'itemcode' => $itemcode,
+                                'dosage_input' => $dosage,
+                                'kstd' => $kstd,
+                            ]);
+                        } else {
+                            // dosage berbeda dari standar
+                            $stdDos = (float)$stdMap[$kstd];
+                            if (abs($dosage - $stdDos) > $EPS) {
+                                $isApproval = true;
+                                $approvalReasons[] = [
+                                    'type' => 'DOSAGE_CHANGED',
+                                    'lkhno' => $lkhno,
+                                    'plot' => $key,
+                                    'group' => $groupId,
+                                    'itemcode' => $itemcode,
+                                    'dosage_input' => $dosage,
+                                    'dosage_std' => $stdDos,
+                                ];
+                                Log::info('APPROVAL_DOSAGE_CHANGED', [
+                                    'rkhno' => $request->rkhno,
+                                    'lkhno' => $lkhno,
+                                    'plot' => $key,
+                                    'group' => $groupId,
+                                    'itemcode' => $itemcode,
+                                    'dosage_input' => $dosage,
+                                    'dosage_std' => $stdDos,
+                                    'diff' => abs($dosage - $stdDos),
+                                    'kstd' => $kstd,
+                                ]);
+                            }
+                        }
+                    }
+                } 
+                // <-- ini closing bungkus cek standar
 
                 // ambil group & flag rounding
                 $groupId     = $detail->herbisidagroupid ?? null;
@@ -741,7 +841,7 @@ public function submit(Request $request)
 
                 $existingKey = $lkhno . '-' . $itemcode . '-' . $key;
                 $existing = $existingData->get($existingKey);
-
+                
                 $insertData[] = [
                     'companycode' => session('companycode'),
                     'rkhno' => $request->rkhno,
@@ -753,7 +853,8 @@ public function submit(Request $request)
                     'itemname' => $herbisidaItems[$itemcode]->itemname ?? '',
                     'dosageperha' => $dosage,
                     'nouse' => $existing?->nouse ?? null,
-                    'plot' => $key
+                    'plot' => $key,
+                    'itemseq' => $seq++,
                 ];
 
                 // Jumlahkan qty per itemcode
@@ -775,98 +876,103 @@ public function submit(Request $request)
     // STOP & CREATE APPROVAL DOC
     // =====================================
 
-    // if ($isApproval) {
-    //     try {
-    //         $companycode = session('companycode');
+    if (!$isFromApproval && $isApproval) {
+        try {
+            $companycode = session('companycode');
 
-    //         // ambil master approval
-    //         $approvalMaster = DB::table('approval')
-    //             ->where('companycode', $companycode)
-    //             ->where('category', 'Use Material') // pastikan sama persis
-    //             ->first();
+            // ambil master approval
+            $approvalMaster = DB::table('approval')
+                ->where('companycode', $companycode)
+                ->where('category', 'Use Material') // pastikan sama persis
+                ->first();
 
-    //         if (!$approvalMaster) {
-    //             Cache::forget($lockKey);
-    //             return back()->with('error', 'Approval master "Use Material" belum di-setup');
-    //         }
+            if (!$approvalMaster) {
+                Cache::forget($lockKey);
+                return back()->with('error', 'Approval master "Use Material" belum di-setup');
+            }
 
-    //         $approvalNo = $request->rkhno; // approvalno = rkhno
+            $approvalNo = $request->rkhno; // approvalno = rkhno
             
-    //         DB::beginTransaction();
+            DB::beginTransaction();
 
-                // $exists = DB::table('approvaltransaction')
-                // ->where('companycode', $companycode)
-                // ->where('transactionnumber', $request->rkhno)
-                // ->exists();
+                $exists = DB::table('approvaltransaction')
+                ->where('companycode', $companycode)
+                ->where('transactionnumber', $request->rkhno)
+                ->exists();
 
-                // if ($exists) {
-                //     DB::rollBack();
-                //     Cache::forget($lockKey);
-                //     return back()->with('warning', "RKH {$request->rkhno} sudah punya approval. Tidak boleh buat lagi.");
-                // }
+                if ($exists) {
+                    DB::rollBack();
+                    Cache::forget($lockKey);
+                    return back()->with('warning', "RKH {$request->rkhno} sudah punya approval. Tidak boleh buat lagi.");
+                }
 
 
 
-    //         // 1) insert approvaltransaction (workflow)
-    //         DB::table('approvaltransaction')->insert([
-    //             'approvalno' => $approvalNo,
-    //             'companycode' => $companycode,
-    //             'approvalcategoryid' => $approvalMaster->id,
-    //             'transactionnumber' => $request->rkhno, // tampil di approval center
-    //             'jumlahapproval' => $approvalMaster->jumlahapproval,
-    //             'approval1idjabatan' => $approvalMaster->idjabatanapproval1,
-    //             'approval2idjabatan' => $approvalMaster->idjabatanapproval2,
-    //             'approval3idjabatan' => $approvalMaster->idjabatanapproval3,
-    //             'approvalstatus' => null,
-    //             'inputby' => Auth::user()->userid,
-    //             'createdat' => now(),
-    //         ]);
+            // 1) insert approvaltransaction (workflow)
+            DB::table('approvaltransaction')->insert([
+                'approvalno' => $companycode.$approvalNo,
+                'companycode' => $companycode,
+                'approvalcategoryid' => $approvalMaster->id,
+                'transactionnumber' => $request->rkhno, // tampil di approval center
+                'jumlahapproval' => $approvalMaster->jumlahapproval,
+                'approval1idjabatan' => $approvalMaster->idjabatanapproval1,
+                'approval2idjabatan' => $approvalMaster->idjabatanapproval2,
+                'approval3idjabatan' => $approvalMaster->idjabatanapproval3,
+                'approvalstatus' => null,
+                'inputby' => Auth::user()->userid,
+                'createdat' => now(),
+            ]);
             
 
-    //         // 2) insert snapshot ke usematerialapproval (detail-only)
-    //         $rows = [];
-    //         foreach ($insertData as $row) {
-    //             $rows[] = [
-    //                 'companycode' => $companycode,
-    //                 'approvalno' => $approvalNo,
-    //                 'rkhno' => $request->rkhno,
-    //                 'lkhno' => $row['lkhno'],
-    //                 'plot' => $row['plot'],
-    //                 'itemcode' => $row['itemcode'],
-    //                 'dosageperha' => $row['dosageperha'],
-    //                 'unit' => $row['unit'],
-    //                 'qty' => $row['qty'],
-    //                 'flagstatus' => 'WAIT_APPROVAL',
-    //                 'costcenter' => $request->costcenter,
-    //                 'createdat' => now(),
-    //             ];
-    //         }
-    //         DB::table('usematerialapproval')->insert($rows);
+            // 2) insert snapshot ke usematerialapproval (detail-only)
+            $rows = []; $seq = 1;
+            foreach ($insertData as $row) {
+                $rows[] = [
+                    'companycode' => $companycode,
+                    'approvalno' => $companycode.$approvalNo,
+                    'rkhno' => $request->rkhno,
+                    'lkhno' => $row['lkhno'],
+                    'plot' => $row['plot'],
+                    'itemcode' => $row['itemcode'],
+                    'itemname' => $row['itemname'] ?? null,
+                    'dosageperha' => $row['dosageperha'],
+                    'unit' => $row['unit'],
+                    'qty' => $row['qty'],
+                    'flagstatus' => 'WAIT_APPROVAL',
+                    'costcenter' => $request->costcenter,
+                    'createdat' => now(),
+                    'itemseq'     => $seq++,
+                ];
+            }
+            DB::table('usematerialapproval')->insert($rows);
 
-    //         usematerialhdr::where('companycode', $companycode)
-    //         ->where('rkhno', $request->rkhno)
-    //         ->update([
-    //             'flagstatus' => 'WAIT_APPROVAL',
-    //             'updatedat' => now(),
-    //             'updateby' => Auth::user()->userid
-    //         ]);
+            usematerialhdr::where('companycode', $companycode)
+            ->where('rkhno', $request->rkhno)
+            ->update([
+                'flagstatus' => 'WAIT_APPROVAL',
+                'updatedat' => now(),
+                'updateby' => Auth::user()->userid
+            ]);
 
-    //         DB::commit();
-    //         Cache::forget($lockKey);
+            DB::commit();
+            Cache::forget($lockKey);
 
-    //         // optional: tampilkan alasan ringkas
-    //         $msg = "Butuh approval. ApprovalNo: {$approvalNo}";
-    //         return back()->with('warning', $msg);
+            // optional: tampilkan alasan ringkas
+            $msg = "Butuh approval. ApprovalNo: {$approvalNo}";
+            return back()->with('warning', $msg);
 
-    //     } catch (\Exception $e) {
-    //         DB::rollBack();
-    //         Cache::forget($lockKey);
-    //         Log::error('Create approval failed', ['error' => $e->getMessage(),'trace' => $e->getTraceAsString(),]);
-    //         return back()->with('error', 'Gagal membuat approval: ' . $e->getMessage());
-    //     }
-    // }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Cache::forget($lockKey);
+            Log::error('Create approval failed', ['error' => $e->getMessage(),'trace' => $e->getTraceAsString(),]);
+            return back()->with('error', 'Gagal membuat approval: ' . $e->getMessage());
+        }
+    }
     //
-
+    Log::info('GUDANG_TERIMA_QTY', [
+        'rkhno' => $request->rkhno,
+        'qtyByItemcode' => $qtyByItemcode,
+    ]);
     foreach ($qtyByItemcode as $itemcode => $totalQty) {
         $detail = $itemDetails[$itemcode]['detail'];
         $unit = $itemDetails[$itemcode]['unit'];
@@ -883,7 +989,7 @@ public function submit(Request $request)
             'qtybpb' => round($totalQty, 3),
             'Keterangan' => $detail->herbisidagroupname . ' - ' . $detail->name. ' | rkhno:' . $request->rkhno . ' company:' . session('companycode'),
             'vehiclenumber' => '',
-            'flagstatus' => $detail->flagstatus,
+            'flagstatus' => $isFromApproval ? 'ACTIVE' : $detail->flagstatus,
             'qtydigunakan' => $detail->qtydigunakan
         ];
     }
@@ -902,10 +1008,53 @@ public function submit(Request $request)
             ->where('companycode', session('companycode'))
             ->delete();
         
+            //tambahan cio
+            // DEBUG FK herbisida mismatch (lihat itemcode sebenarnya)
+            $debugItems = collect($insertData)->take(10)->map(function($r){
+                $ic = (string)($r['itemcode'] ?? '');
+                return [
+                    'companycode' => $r['companycode'] ?? null,
+                    'itemcode_raw' => $ic,
+                    'itemcode_hex' => bin2hex($ic),
+                    'itemcode_trim' => rtrim($ic),
+                    'itemcode_trim_hex' => bin2hex(rtrim($ic)),
+                    'itemname_from_lookup' => $r['itemname'] ?? null,
+                ];
+            })->toArray();
+
+            Log::warning('DEBUG_BEFORE_INSERT_USEMATERIALLST', [
+                'rkhno' => $request->rkhno,
+                'companycode' => session('companycode'),
+                'sample' => $debugItems,
+            ]);
+            
+            $missing = [];
+            foreach ($insertData as $r) {
+                $ic = (string)($r['itemcode'] ?? '');
+                $exists = DB::table('herbisida')
+                    ->where('companycode', $r['companycode'])
+                    ->where('itemcode', $ic)
+                    ->exists();
+
+                if (!$exists) {
+                    $missing[] = [
+                        'companycode' => $r['companycode'],
+                        'itemcode_raw' => $ic,
+                        'itemcode_hex' => bin2hex($ic),
+                    ];
+                }
+            }
+
+            Log::warning('DEBUG_HERBISIDA_MASTER_CHECK', [
+                'rkhno' => $request->rkhno,
+                'missing_count' => count($missing),
+                'missing_sample' => array_slice($missing, 0, 10),
+            ]);
+
+
+            //
         // Bulk insert
         usemateriallst::insert($insertData);
-
-
 
         // ✅ COMMIT - Semua operasi DB sudah selesai
         DB::commit();
@@ -1018,7 +1167,6 @@ public function submit(Request $request)
             }
 
             // Update nouse & itemprice
-            $unaffected=0;
             foreach ($itemPriceMap as $itemcode => $val) {
 
                 Log::info("Before DB update:", [
@@ -1041,52 +1189,73 @@ public function submit(Request $request)
                         'tgluse'    => now()
                     ]);
 
-                if ($affected === 0) { $unaffected++;
+                // Cek hasil di database
+                $saved = usemateriallst::where('rkhno', $request->rkhno)
+                    ->where('companycode', session('companycode'))
+                    ->where('itemcode', $itemcode)
+                    ->value('itemprice');
+
+                Log::info("After DB update:", [
+                    'itemcode' => $itemcode,
+                    'itemprice_saved' => $saved,
+                    'affected_rows' => $affected,
+                    'type' => gettype($saved)
+                ]);
+
+                if ($affected === 0) {
                     Log::warning('usemateriallst not updated (possible itemcode mismatch)', [
                         'rkhno' => $request->rkhno,
                         'companycode' => session('companycode'),
                         'itemcode' => $itemcode,
                         'noUse' => $responseData['noUse'] ?? null
                     ]);
-
-                    $dbRows = usemateriallst::where('rkhno', $request->rkhno)
-                    ->where('companycode', session('companycode'))
-                    ->whereRaw('TRIM(itemcode) = ?', [$itemcode])
-                    ->select([
-                        'lkhno', 'plot', 'itemcode',
-                        DB::raw('HEX(itemcode) as itemcode_hex'),
-                        DB::raw('LENGTH(itemcode) as len'),
-                    ])
-                    ->get()
-                    ->toArray();
-            
-                    Log::warning('USEMATERIALLST_UPDATE_MISS', [
-                        'rkhno' => $request->rkhno,
-                        'companycode' => session('companycode'),
-                
-                        // item yang sedang di-loop (yang gagal update)
-                        'api_itemcode' => (string)$itemcode,
-                        'api_itemcode_hex' => bin2hex((string)$itemcode),
-                        'api_has_whitespace' => (bool)preg_match('/\s/', (string)$itemcode),
-                
-                        // “padanan” item di DB untuk item yang sama (kalau ada, berarti beda whitespace/CRLF)
-                        'db_rows_trim_match' => $dbRows,   // ini bukan sample, ini semua row yang match TRIM
-                        'db_rows_count' => count($dbRows),
-                
-                        'noUse' => $responseData['noUse'] ?? null,
-                        'costcenter' => $request->costcenter ?? null,
-                    ]);
                 }
             }
-            
-            // Update header status
+
+            Log::info('SUBMIT AFTER UPDATE USEMATERIALLST', [
+                'rkhno' => $request->rkhno,
+                'session_companycode' => session('companycode'),
+                'db_lst_max_nouse' => usemateriallst::where('rkhno', $request->rkhno)
+                    ->where('companycode', session('companycode'))
+                    ->max('nouse'),
+                'db_lst_nouse_distinct' => usemateriallst::where('rkhno', $request->rkhno)
+                    ->where('companycode', session('companycode'))
+                    ->whereNotNull('nouse')
+                    ->distinct()
+                    ->pluck('nouse')
+                    ->take(5)
+                    ->toArray(),
+                'db_lst_notnull_nouse_count' => usemateriallst::where('rkhno', $request->rkhno)
+                    ->where('companycode', session('companycode'))
+                    ->whereNotNull('nouse')
+                    ->count(),
+            ]);
+
             usematerialhdr::where('rkhno', $request->rkhno)
             ->where('companycode', session('companycode'))
             ->update([
                 'flagstatus' => 'DISPATCHED',
-                'updatedat' => date("Y-m-d H:i:s"),
+                'updatedat' => now(),
                 'updateby' => Auth::user()->userid
             ]);
+
+            // ✅ Update approval snapshot - DI SINI setelah API sukses!
+            if ($isFromApproval) {
+                DB::table('usematerialapproval')
+                    ->where('companycode', session('companycode'))
+                    ->where('rkhno', $request->rkhno)
+                    ->update([
+                        'approved' => 1,                    
+                        'approvedat' => now(),              
+                        'approvedby' => Auth::user()->userid, 
+                        'flagstatus' => 'DISPATCHED',
+                    ]);
+                
+                Log::info('APPROVAL_FINALIZED_AFTER_API_SUCCESS', [
+                    'rkhno' => $request->rkhno,
+                    'approvalno' => $request->approvalno ?? $request->rkhno,
+                ]);
+            }
             
             Cache::forget($lockKey);
             return redirect()->back()->with('success1', 'Data updated successfully');
