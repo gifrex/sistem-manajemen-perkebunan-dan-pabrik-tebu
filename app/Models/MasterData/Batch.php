@@ -74,7 +74,7 @@ class Batch extends Model
 
     public function masterlist()
     {
-        return $this->belongsTo(Masterlist::class, 'plot', 'plot')
+        return $this->belongsTo(MasterList::class, 'plot', 'plot')
                     ->where('companycode', $this->companycode);
     }
 

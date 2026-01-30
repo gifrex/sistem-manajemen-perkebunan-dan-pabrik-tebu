@@ -4,7 +4,7 @@ namespace App\Models\MasterData;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Masterlist extends Model
+class MasterList extends Model
 {
     protected $table = 'masterlist';
     public $incrementing = false;

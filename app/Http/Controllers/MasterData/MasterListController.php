@@ -7,7 +7,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 
-use App\Models\MasterData\Masterlist;
+use App\Models\MasterData\MasterList;
 use App\Models\MasterData\Batch;
 
 class MasterListController extends Controller
@@ -19,7 +19,7 @@ class MasterListController extends Controller
         $search  = $request->input('search');
         $companycode = Session::get('companycode');
     
-        $query = Masterlist::where('companycode', $companycode)
+        $query = MasterList::where('companycode', $companycode)
             ->with('activeBatch'); // Eager load active batch relationship
     
         if ($search) {
@@ -58,7 +58,7 @@ class MasterListController extends Controller
             'activebatchno' => 'nullable|string|max:20',
         ]);
 
-        $exists = Masterlist::where('companycode', $companycode)
+        $exists = MasterList::where('companycode', $companycode)
             ->where('plot', $request->plot)
             ->exists();
             
@@ -85,7 +85,7 @@ class MasterListController extends Controller
             }
         }
 
-        Masterlist::create([
+        MasterList::create([
             'companycode' => $companycode,
             'plot' => $request->input('plot'),
             'blok' => $request->input('blok'),
@@ -105,7 +105,7 @@ class MasterListController extends Controller
             abort(403, 'Unauthorized access to company data');
         }
         
-        $masterlist = Masterlist::where([
+        $masterlist = MasterList::where([
             ['companycode', $companycode],
             ['plot', $plot]
         ])->firstOrFail();
@@ -119,7 +119,7 @@ class MasterListController extends Controller
         
         // Check duplicate if plot changed
         if ($request->plot !== $masterlist->plot) {
-            $exists = Masterlist::where('companycode', $companycode)
+            $exists = MasterList::where('companycode', $companycode)
                 ->where('plot', $request->plot)
                 ->exists();
     
@@ -148,7 +148,7 @@ class MasterListController extends Controller
             }
         }
         
-        Masterlist::where('companycode', $companycode)
+        MasterList::where('companycode', $companycode)
              ->where('plot', $plot)
              ->update([
                 'plot' => $validated['plot'],
@@ -169,7 +169,7 @@ class MasterListController extends Controller
             abort(403, 'Unauthorized access to company data');
         }
 
-        Masterlist::where([
+        MasterList::where([
             ['companycode', $companycode],
             ['plot', $plot]
         ])->delete();

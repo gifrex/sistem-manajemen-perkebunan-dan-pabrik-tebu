@@ -9,14 +9,33 @@ use Illuminate\Support\Facades\Log;
 use App\Services\PermissionService;
 
 /**
- * Navigation Composer
+ * Navigation Composer (OPTIMIZED)
  * 
  * BEST PRACTICE: View composer for sidebar navigation
- * Reads menu from config/menu.php (not database)
- * Filters menu items based on user permissions
+ * - Reads menu from config/menu.php (not database)
+ * - Filters menu items based on user permissions
+ * - Uses static caching to prevent duplicate queries per request
+ * 
+ * OPTIMIZATION CHANGES:
+ * - Added static cache to prevent multiple queries in same request
+ * - Combined company name & period into single query
+ * - Use Auth::user() directly instead of re-querying user table
+ * - Removed duplicate queries in catch block
  */
 class NavigationComposer
 {
+    /**
+     * Static cache untuk mencegah query berulang dalam satu request
+     * @var array|null
+     */
+    private static ?array $cachedData = null;
+
+    /**
+     * Static cache untuk user companies
+     * @var array|null
+     */
+    private static ?array $cachedUserCompanies = null;
+
     /**
      * Bind data to the view
      *
@@ -25,39 +44,161 @@ class NavigationComposer
      */
     public function compose(View $view)
     {
-        if (Auth::check()) {
-            $user = Auth::user();
+        if (!Auth::check()) {
+            return;
+        }
 
-            try {
-                // Get menu structure from config file
-                $menuConfig = config('menu', []);
+        // Gunakan cached data jika sudah ada (dalam request yang sama)
+        if (self::$cachedData !== null) {
+            $view->with(self::$cachedData);
+            return;
+        }
 
-                // Filter menu based on permissions
-                $navigationMenus = $this->filterMenuByPermissions($menuConfig, $user);
+        $user = Auth::user();
 
-                $view->with([
-                    'navigationMenus' => collect($navigationMenus),
-                    'companyName' => $this->getCompanyName(),
-                    'user' => $this->getCurrentUserName(),
-                    'company' => $this->getUserCompanies(), // ✅ FIXED: Keep as 'company' for backward compatibility
-                    'period' => $this->getMonitoringPeriod(),
-                ]);
+        try {
+            // Get company code dari session
+            $companyCode = session('companycode');
+            
+            // Single query untuk company data (gabung name dan period)
+            $companyData = $this->getCompanyDataOnce($companyCode);
 
-            } catch (\Exception $e) {
-                Log::error('Navigation composer error', [
-                    'error' => $e->getMessage(),
-                    'user' => $user->userid
-                ]);
+            // Get menu structure from config file
+            $menuConfig = config('menu', []);
 
-                // Fallback: empty menu
-                $view->with([
-                    'navigationMenus' => collect([]),
-                    'companyName' => $this->getCompanyName(),
-                    'user' => $this->getCurrentUserName(),
-                    'company' => $this->getUserCompanies(), // ✅ FIXED
-                    'period' => $this->getMonitoringPeriod(),
-                ]);
+            // Filter menu based on permissions
+            $navigationMenus = $this->filterMenuByPermissions($menuConfig, $user);
+
+            // Build cached data
+            self::$cachedData = [
+                'navigationMenus' => collect($navigationMenus),
+                'companyName' => $this->resolveCompanyName($companyData, $companyCode),
+                'user' => $user->name ?? $user->userid ?? 'Guest',
+                'company' => $this->getUserCompaniesOnce($user->userid),
+                'period' => $this->formatPeriod($companyData?->companyperiod),
+            ];
+
+            // Update session jika company name tersedia
+            if ($companyData?->name) {
+                session(['companyname' => $companyData->name]);
             }
+
+            $view->with(self::$cachedData);
+
+        } catch (\Exception $e) {
+            Log::error('Navigation composer error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user' => $user->userid ?? 'unknown'
+            ]);
+
+            // Fallback: gunakan data minimal TANPA query tambahan
+            self::$cachedData = [
+                'navigationMenus' => collect([]),
+                'companyName' => session('companyname', session('companycode', 'Default Company')),
+                'user' => $user->name ?? $user->userid ?? 'Guest',
+                'company' => [],
+                'period' => null,
+            ];
+
+            $view->with(self::$cachedData);
+        }
+    }
+
+    /**
+     * Get company data (name & period) - dengan static cache
+     * 
+     * @param string|null $companyCode
+     * @return object|null
+     */
+    private function getCompanyDataOnce(?string $companyCode): ?object
+    {
+        static $companyData = null;
+        static $lastCompanyCode = null;
+
+        // Return cached jika company code sama
+        if ($companyData !== null && $lastCompanyCode === $companyCode) {
+            return $companyData;
+        }
+
+        if (!$companyCode) {
+            return null;
+        }
+
+        $lastCompanyCode = $companyCode;
+        $companyData = DB::table('company')
+            ->where('companycode', $companyCode)
+            ->select('name', 'companyperiod')
+            ->first();
+
+        return $companyData;
+    }
+
+    /**
+     * Get user companies - dengan static cache
+     * 
+     * @param string $userId
+     * @return array
+     */
+    private function getUserCompaniesOnce(string $userId): array
+    {
+        // Return cached jika sudah ada
+        if (self::$cachedUserCompanies !== null) {
+            return self::$cachedUserCompanies;
+        }
+
+        try {
+            self::$cachedUserCompanies = DB::table('usercompany')
+                ->where('userid', $userId)
+                ->where('isactive', 1)
+                ->pluck('companycode')
+                ->sort()
+                ->values()
+                ->toArray();
+        } catch (\Exception $e) {
+            Log::error('Error getting user companies: ' . $e->getMessage());
+            self::$cachedUserCompanies = [];
+        }
+
+        return self::$cachedUserCompanies;
+    }
+
+    /**
+     * Resolve company name dengan fallback
+     * 
+     * @param object|null $companyData
+     * @param string|null $companyCode
+     * @return string
+     */
+    private function resolveCompanyName(?object $companyData, ?string $companyCode): string
+    {
+        if ($companyData?->name) {
+            return $companyData->name;
+        }
+
+        if ($companyCode) {
+            return $companyCode;
+        }
+
+        return session('companyname', 'Default Company');
+    }
+
+    /**
+     * Format period untuk display
+     * 
+     * @param string|null $period
+     * @return string|null
+     */
+    private function formatPeriod(?string $period): ?string
+    {
+        if (!$period) {
+            return null;
+        }
+
+        try {
+            return \Carbon\Carbon::parse($period)->format('F Y');
+        } catch (\Exception $e) {
+            return null;
         }
     }
 
@@ -118,99 +259,15 @@ class NavigationComposer
     }
 
     /**
-     * Get company name for current session
-     *
-     * @return string
+     * Reset static cache
+     * Panggil method ini jika data berubah mid-request (jarang diperlukan)
+     * 
+     * @return void
      */
-    private function getCompanyName(): string
+    public static function resetCache(): void
     {
-        try {
-            if (session('companycode')) {
-                $companyName = DB::table('company')
-                    ->where('companycode', session('companycode'))
-                    ->value('name');
-
-                if ($companyName) {
-                    session(['companyname' => $companyName]);
-                    return $companyName;
-                }
-
-                return session('companycode');
-            }
-            return 'Default Company';
-        } catch (\Exception $e) {
-            Log::error('Error getting company name: ' . $e->getMessage());
-            return 'Default Company';
-        }
-    }
-
-    /**
-     * Get monitoring period for header display
-     *
-     * @return string|null
-     */
-    private function getMonitoringPeriod(): ?string
-    {
-        try {
-            if (session('companycode')) {
-                $period = DB::table('company')
-                    ->where('companycode', session('companycode'))
-                    ->value('companyperiod');
-
-                if ($period) {
-                    return \Carbon\Carbon::parse($period)->format('F Y');
-                }
-            }
-            return null;
-        } catch (\Exception $e) {
-            Log::error('Error getting monitoring period: ' . $e->getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Get current user name
-     *
-     * @return string
-     */
-    private function getCurrentUserName(): string
-    {
-        try {
-            if (Auth::check()) {
-                return DB::table('user')
-                    ->where('userid', Auth::user()->userid)
-                    ->value('name') ?? 'Guest';
-            }
-            return 'Guest';
-        } catch (\Exception $e) {
-            Log::error('Error getting current user name: ' . $e->getMessage());
-            return 'Guest';
-        }
-    }
-
-    /**
-     * Get user companies for current user
-     *
-     * @return array
-     */
-    private function getUserCompanies(): array
-    {
-        try {
-            if (Auth::check()) {
-                $companies = DB::table('usercompany')
-                    ->where('userid', Auth::user()->userid)
-                    ->where('isactive', 1)
-                    ->pluck('companycode')
-                    ->toArray();
-
-                sort($companies);
-                return $companies;
-            }
-            return [];
-        } catch (\Exception $e) {
-            Log::error('Error getting user companies: ' . $e->getMessage());
-            return [];
-        }
+        self::$cachedData = null;
+        self::$cachedUserCompanies = null;
     }
 
     /**
@@ -222,6 +279,7 @@ class NavigationComposer
      */
     public static function clearNavigationCache($user): void
     {
+        self::resetCache();
         PermissionService::clearUserCache($user);
     }
 
@@ -233,6 +291,8 @@ class NavigationComposer
      */
     public static function clearAllNavigationCaches(): void
     {
+        self::resetCache();
+        
         try {
             // Clear all permission caches
             if (config('cache.default') === 'redis') {

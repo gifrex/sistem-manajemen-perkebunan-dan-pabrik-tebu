@@ -18,7 +18,6 @@ class PerhitunganUpahApiMobile extends Controller
                 'tenagakerjaid' => 'required|string',
                 'tenagakerjaurutan' => 'required|integer',
                 'activitycode' => 'required|string',
-                'jenistenagakerja' => 'required|integer|in:1,2,3,4,5',
                 'lkhdate' => 'required|date',
                 'jammulai' => 'required|date_format:H:i:s',
                 'jamselesai' => 'required|date_format:H:i:s',
@@ -27,20 +26,43 @@ class PerhitunganUpahApiMobile extends Controller
                 'keterangan' => 'nullable|string|max:255',
             ]);
             
-            if (in_array($validated['jenistenagakerja'], [2, 3, 5])) {
+            // Get jenistenagakerja from activity table
+            $activity = DB::table('activity')
+                ->where('activitycode', $validated['activitycode'])
+                ->first(['jenistenagakerja', 'activitygroup']);
+            
+            if (!$activity) {
+                return response()->json([
+                    'status' => 0,
+                    'description' => "Activity code '{$validated['activitycode']}' tidak ditemukan"
+                ], 404);
+            }
+            
+            if (!$activity->jenistenagakerja) {
+                return response()->json([
+                    'status' => 0,
+                    'description' => "Jenis tenaga kerja untuk activity '{$validated['activitycode']}' belum diset"
+                ], 400);
+            }
+            
+            $jenistenagakerja = $activity->jenistenagakerja;
+            
+            // Validate jenis tenaga kerja
+            if (in_array($jenistenagakerja, [2, 3, 5])) {
                 return response()->json([
                     'status' => 0,
                     'description' => 'Jenis tenaga kerja ini tidak menggunakan API upah per pekerja'
                 ], 400);
             }
             
-            if ($validated['jenistenagakerja'] == 4) {
-                $validated['jenistenagakerja'] = 1;
+            // Convert jenistenagakerja 4 to 1
+            if ($jenistenagakerja == 4) {
+                $jenistenagakerja = 1;
             }
             
             $totalJamKerja = $this->calculateWorkHours($validated['jammulai'], $validated['jamselesai']);
             
-            $wageData = $this->calculateWage($validated, $totalJamKerja);
+            $wageData = $this->calculateWage($validated, $totalJamKerja, $activity->activitygroup);
             
             // Check if wage calculation returned error
             if (isset($wageData['error'])) {
@@ -266,9 +288,8 @@ class PerhitunganUpahApiMobile extends Controller
         }
     }
     
-    private function calculateWage($data, $totalJamKerja)
+    private function calculateWage($data, $totalJamKerja, $activityGroup)
     {
-        $activityGroup = $this->getActivityGroupFromCode($data['activitycode']);
         $dayType = $this->getDayType($data['lkhdate']);
         
         $wageData = [

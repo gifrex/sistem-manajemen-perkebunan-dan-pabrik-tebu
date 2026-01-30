@@ -32,13 +32,13 @@
                                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400">{{ $user }}</span>
                             </h1>
                             
-                            <!-- ✅ Hide on mobile (hidden md:block) -->
+                            <!--  Hide on mobile (hidden md:block) -->
                             <p class="hidden md:block text-xl text-emerald-100 mb-8 max-w-3xl leading-relaxed">
                                 Comprehensive sugarcane plantation management system for Sungai Budi. 
                                 Monitor growth, analyze data, and optimize operations with intelligent insights.
                             </p>
                             
-                            <!-- ✅ Action Buttons with Permission Checks -->
+                            <!--  Action Buttons with Permission Checks -->
                             <div class="flex flex-col sm:flex-row gap-4">
                                 {{-- Planning Button - Check permission --}}
                                 @can('transaction.rencanakerjaharian.view')
@@ -317,13 +317,10 @@
         </main>
     </div>
 
-    <!-- Include Company Modal -->
-    <x-company-modal :companies="$company" />
-
     <!-- Live Chat Component -->
     <x-live-chat />
 
-    <!-- ✅ REPORTS MODAL - Updated with Permission Checks -->
+    <!-- REPORTS MODAL - Updated with Permission Checks -->
     <div x-data="{ reportsModalOpen: false }" 
          @open-reports-modal.window="reportsModalOpen = true"
          @keydown.escape.window="reportsModalOpen = false">

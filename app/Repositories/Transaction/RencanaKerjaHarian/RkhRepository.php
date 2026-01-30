@@ -39,18 +39,17 @@ class RkhRepository
                 'app.idjabatanapproval1',
                 'app.idjabatanapproval2',
                 'app.idjabatanapproval3',
-                DB::raw('CASE 
+                DB::raw('
+                CASE 
+                    WHEN r.approval1flag = "0" THEN "Declined by Level 1"
+                    WHEN r.approval2flag = "0" THEN "Declined by Level 2"
+                    WHEN r.approval3flag = "0" THEN "Declined by Level 3"
+                    WHEN r.approvalstatus = "1" THEN "Approved"
                     WHEN app.jumlahapproval IS NULL OR app.jumlahapproval = 0 THEN "No Approval Required"
-                    WHEN r.approval1flag IS NULL AND app.idjabatanapproval1 IS NOT NULL THEN "Waiting Level 1"
-                    WHEN r.approval1flag = "0" THEN "Declined Level 1"
-                    WHEN r.approval1flag = "1" AND app.idjabatanapproval2 IS NOT NULL AND r.approval2flag IS NULL THEN "Waiting Level 2"
-                    WHEN r.approval2flag = "0" THEN "Declined Level 2"
-                    WHEN r.approval2flag = "1" AND app.idjabatanapproval3 IS NOT NULL AND r.approval3flag IS NULL THEN "Waiting Level 3"
-                    WHEN r.approval3flag = "0" THEN "Declined Level 3"
-                    WHEN (app.jumlahapproval = 1 AND r.approval1flag = "1") OR
-                        (app.jumlahapproval = 2 AND r.approval1flag = "1" AND r.approval2flag = "1") OR
-                        (app.jumlahapproval = 3 AND r.approval1flag = "1" AND r.approval2flag = "1" AND r.approval3flag = "1") THEN "Approved"
-                    ELSE "Waiting"
+                    WHEN r.approval1flag IS NULL AND app.idjabatanapproval1 IS NOT NULL THEN "Waiting for Approval"
+                    WHEN r.approval1flag = "1" AND app.idjabatanapproval2 IS NOT NULL AND r.approval2flag IS NULL THEN "Waiting for Approval"
+                    WHEN r.approval2flag = "1" AND app.idjabatanapproval3 IS NOT NULL AND r.approval3flag IS NULL THEN "Waiting for Approval"
+                    ELSE "Waiting for Approval"
                 END as approval_status'),
                 DB::raw('CASE 
                     WHEN r.status = "Completed" THEN "Completed"
@@ -182,6 +181,9 @@ class RkhRepository
                 'w.jumlahtenagakerja',
                 'hg.herbisidagroupname',
                 'a.activityname',
+                'a.usingvehicle',
+                'a.usingmaterial',
+                'a.isblokactivity',
                 'ag.groupname as activity_group_name',
                 'jtk.nama as jenistenagakerja_nama',
                 'a.jenistenagakerja',
@@ -343,17 +345,17 @@ class RkhRepository
                       AND lkhhdr.rkhno = r.rkhno 
                       AND lkhhdr.status != "EMPTY") as non_empty_lkh_count'),
 
-                DB::raw('CASE 
+                DB::raw('
+                CASE 
+                    WHEN r.approval1flag = "0" THEN "Declined by Level 1"
+                    WHEN r.approval2flag = "0" THEN "Declined by Level 2"
+                    WHEN r.approval3flag = "0" THEN "Declined by Level 3"
                     WHEN r.approvalstatus = "1" THEN "Approved"
-                    WHEN r.approvalstatus = "0" THEN "Rejected"
                     WHEN app.jumlahapproval IS NULL OR app.jumlahapproval = 0 THEN "No Approval Required"
-                    WHEN r.approval1flag IS NULL AND app.idjabatanapproval1 IS NOT NULL THEN "Waiting"
-                    WHEN r.approval1flag = "0" THEN "Declined"
-                    WHEN r.approval1flag = "1" AND app.idjabatanapproval2 IS NOT NULL AND r.approval2flag IS NULL THEN "Waiting"
-                    WHEN r.approval2flag = "0" THEN "Declined"
-                    WHEN r.approval2flag = "1" AND app.idjabatanapproval3 IS NOT NULL AND r.approval3flag IS NULL THEN "Waiting"
-                    WHEN r.approval3flag = "0" THEN "Declined"
-                    ELSE "Waiting"
+                    WHEN r.approval1flag IS NULL AND app.idjabatanapproval1 IS NOT NULL THEN "Waiting for Approval"
+                    WHEN r.approval1flag = "1" AND app.idjabatanapproval2 IS NOT NULL AND r.approval2flag IS NULL THEN "Waiting for Approval"
+                    WHEN r.approval2flag = "1" AND app.idjabatanapproval3 IS NOT NULL AND r.approval3flag IS NULL THEN "Waiting for Approval"
+                    ELSE "Waiting for Approval"
                 END as approval_status'),
                 
                 DB::raw('CASE 

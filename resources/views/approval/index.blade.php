@@ -13,20 +13,20 @@
                         <h1 class="text-2xl font-semibold text-gray-900">Approval Center</h1>
                         <p class="text-sm text-gray-600 mt-1">{{ $userInfo['jabatan_name'] }}</p>
                     </div>
-                    
+
                     <!-- Date Filter -->
                     <form action="{{ route('approval.index') }}" method="GET" id="filterForm" class="flex items-center gap-3">
-                        <input type="date" 
-                               name="filter_date" 
-                               value="{{ $filterDate }}" 
+                        <input type="date"
+                               name="filter_date"
+                               value="{{ $filterDate }}"
                                @change="document.getElementById('filterForm').submit()"
                                :disabled="allDateChecked"
                                class="text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100">
-                        
+
                         <label class="flex items-center text-sm text-gray-700 cursor-pointer">
-                            <input type="checkbox" 
-                                   name="all_date" 
-                                   value="1" 
+                            <input type="checkbox"
+                                   name="all_date"
+                                   value="1"
                                    x-model="allDateChecked"
                                    @change="document.getElementById('filterForm').submit()"
                                    {{ $allDate ? 'checked' : '' }}
@@ -77,7 +77,7 @@
                     <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
                         <nav class="p-2 space-y-1">
                             <!-- RKH -->
-                            <button @click="activeTab = 'rkh'" 
+                            <button @click="activeTab = 'rkh'"
                                     :class="activeTab === 'rkh' ? 'bg-blue-50 text-blue-700 border-blue-600' : 'text-gray-700 hover:bg-gray-50 border-transparent'"
                                     class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-md border-l-4 transition-colors">
                                 <span class="flex items-center">
@@ -86,13 +86,13 @@
                                     </svg>
                                     RKH Approval
                                 </span>
-                                <span x-show="rkhCount > 0" 
+                                <span x-show="rkhCount > 0"
                                       class="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-600"
                                       x-text="rkhCount"></span>
                             </button>
 
                             <!-- LKH -->
-                            <button @click="activeTab = 'lkh'" 
+                            <button @click="activeTab = 'lkh'"
                                     :class="activeTab === 'lkh' ? 'bg-blue-50 text-blue-700 border-blue-600' : 'text-gray-700 hover:bg-gray-50 border-transparent'"
                                     class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-md border-l-4 transition-colors">
                                 <span class="flex items-center">
@@ -101,13 +101,13 @@
                                     </svg>
                                     LKH Approval
                                 </span>
-                                <span x-show="lkhCount > 0" 
+                                <span x-show="lkhCount > 0"
                                       class="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-600"
                                       x-text="lkhCount"></span>
                             </button>
 
                             <!-- Absen -->
-                            <button @click="activeTab = 'absen'" 
+                            <button @click="activeTab = 'absen'"
                                     :class="activeTab === 'absen' ? 'bg-blue-50 text-blue-700 border-blue-600' : 'text-gray-700 hover:bg-gray-50 border-transparent'"
                                     class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-md border-l-4 transition-colors">
                                 <span class="flex items-center">
@@ -116,7 +116,7 @@
                                     </svg>
                                     Absen Approval
                                 </span>
-                                <span x-show="absenCount > 0" 
+                                <span x-show="absenCount > 0"
                                       class="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-600"
                                       x-text="absenCount"></span>
                             </button>
@@ -125,7 +125,7 @@
                             <div class="border-t border-gray-200 my-2"></div>
 
                             <!-- Other Approvals -->
-                            <button @click="activeTab = 'other'" 
+                            <button @click="activeTab = 'other'"
                                     :class="activeTab === 'other' ? 'bg-blue-50 text-blue-700 border-blue-600' : 'text-gray-700 hover:bg-gray-50 border-transparent'"
                                     class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-md border-l-4 transition-colors">
                                 <span class="flex items-center">
@@ -134,7 +134,7 @@
                                     </svg>
                                     Lainnya
                                 </span>
-                                <span x-show="otherCount > 0" 
+                                <span x-show="otherCount > 0"
                                       class="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-600"
                                       x-text="otherCount"></span>
                             </button>
@@ -161,7 +161,7 @@
                                 <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
                                     <div class="flex items-center justify-between">
                                         <div>
-                                            <a href="{{ route('transaction.rencanakerjaharian.show', $rkh->rkhno) }}" 
+                                            <a href="{{ route('transaction.rencanakerjaharian.show', $rkh->rkhno) }}"
                                                target="_blank"
                                                class="text-lg font-semibold text-blue-600 hover:text-blue-700">
                                                 {{ $rkh->rkhno }}
@@ -202,7 +202,7 @@
                                         <input type="hidden" name="rkhno" value="{{ $rkh->rkhno }}">
                                         <input type="hidden" name="action" value="approve">
                                         <input type="hidden" name="level" value="{{ $rkh->approval_level }}">
-                                        <button type="submit" 
+                                        <button type="submit"
                                                 onclick="return confirm('Approve RKH {{ $rkh->rkhno }}?')"
                                                 class="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition-colors">
                                             Approve
@@ -213,7 +213,7 @@
                                         <input type="hidden" name="rkhno" value="{{ $rkh->rkhno }}">
                                         <input type="hidden" name="action" value="decline">
                                         <input type="hidden" name="level" value="{{ $rkh->approval_level }}">
-                                        <button type="submit" 
+                                        <button type="submit"
                                                 onclick="return confirm('Decline RKH {{ $rkh->rkhno }}?')"
                                                 class="w-full py-2 px-4 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-md border border-gray-300 transition-colors">
                                             Decline
@@ -242,7 +242,7 @@
                                 <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
                                     <div class="flex items-center justify-between">
                                         <div>
-                                            <a href="{{ route('transaction.rencanakerjaharian.showLKH', $lkh->lkhno) }}" 
+                                            <a href="{{ route('transaction.rencanakerjaharian.showLKH', $lkh->lkhno) }}"
                                                target="_blank"
                                                class="text-lg font-semibold text-blue-600 hover:text-blue-700">
                                                 {{ $lkh->lkhno }}
@@ -285,7 +285,7 @@
                                         <input type="hidden" name="lkhno" value="{{ $lkh->lkhno }}">
                                         <input type="hidden" name="action" value="approve">
                                         <input type="hidden" name="level" value="{{ $lkh->approval_level }}">
-                                        <button type="submit" 
+                                        <button type="submit"
                                                 onclick="return confirm('Approve LKH {{ $lkh->lkhno }}?')"
                                                 class="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition-colors">
                                             Approve
@@ -296,7 +296,7 @@
                                         <input type="hidden" name="lkhno" value="{{ $lkh->lkhno }}">
                                         <input type="hidden" name="action" value="decline">
                                         <input type="hidden" name="level" value="{{ $lkh->approval_level }}">
-                                        <button type="submit" 
+                                        <button type="submit"
                                                 onclick="return confirm('Decline LKH {{ $lkh->lkhno }}?')"
                                                 class="w-full py-2 px-4 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-md border border-gray-300 transition-colors">
                                             Decline
@@ -325,7 +325,7 @@
                                 <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
                                     <div class="flex items-center justify-between">
                                         <div>
-                                            <a href="{{ route('report.absen.show', $absen->absenno) }}" 
+                                            <a href="{{ route('report.absen.show', $absen->absenno) }}"
                                             target="_blank"
                                             class="text-lg font-semibold text-blue-600 hover:text-blue-700 hover:underline">
                                                 {{ $absen->absenno }}
@@ -354,7 +354,7 @@
                                 </div>
 
                                 <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex gap-3">
-                                    <a href="{{ route('report.absen.show', $absen->absenno) }}" 
+                                    <a href="{{ route('report.absen.show', $absen->absenno) }}"
                                     target="_blank"
                                     class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors text-center">
                                         Lihat Detail
@@ -363,7 +363,7 @@
                                         @csrf
                                         <input type="hidden" name="absenno" value="{{ $absen->absenno }}">
                                         <input type="hidden" name="action" value="approve">
-                                        <button type="submit" 
+                                        <button type="submit"
                                                 onclick="return confirm('Approve Absen {{ $absen->absenno }}?')"
                                                 class="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition-colors">
                                             Approve
@@ -373,7 +373,7 @@
                                         @csrf
                                         <input type="hidden" name="absenno" value="{{ $absen->absenno }}">
                                         <input type="hidden" name="action" value="decline">
-                                        <button type="submit" 
+                                        <button type="submit"
                                                 onclick="return confirm('Decline Absen {{ $absen->absenno }}?')"
                                                 class="w-full py-2 px-4 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-md border border-gray-300 transition-colors">
                                             Decline
@@ -416,8 +416,33 @@
                                                 {{ $approval->transactiontype }}
                                             </span>
                                             @endif
+
                                         </div>
                                     </div>
+                                    @if( isset($otherDetail[$approval->approvalno]) )
+                                        @if( $approval->category == "Use Material" )
+                                              <div class="text-sm font-medium text-gray-900 mt-1">
+                                                <table width = "100%">
+                                                  <tr>
+                                                    <td colspan="2">BEFORE</td>
+                                                    <td></td>
+                                                    <td colspan="2">AFTER</td>
+                                                  </tr>
+                                                @foreach($otherDetail[$approval->approvalno] as $item)
+                                                  @if( $item->old_qty - $item->new_qty != 0 )
+                                                    <tr>
+                                                      <td>{{ $item->old_itemcode }} <br>{{ $item->old_itemname }}</td>
+                                                      <td>{{ $item->old_qty }} {{ $item->old_measure }}</td>
+                                                      <td>-></td>
+                                                      <td>{{ $item->new_itemcode }} <br>{{ $item->new_itemname }}</td>
+                                                      <td>{{ $item->new_qty }} {{ $item->new_measure }}</td>
+                                                    </tr>
+                                                    @endif
+                                                @endforeach
+                                              </table>
+                                              </div>
+                                        @endif
+                                    @endif
                                 </div>
 
                                 <div class="px-6 py-4">
@@ -474,7 +499,7 @@
                                         <input type="hidden" name="approvalno" value="{{ $approval->approvalno }}">
                                         <input type="hidden" name="action" value="approve">
                                         <input type="hidden" name="level" value="{{ $approval->approval_level }}">
-                                        <button type="submit" 
+                                        <button type="submit"
                                                 onclick="return confirm('Approve {{ $approval->category }}?')"
                                                 class="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition-colors">
                                             Approve
@@ -485,7 +510,7 @@
                                         <input type="hidden" name="approvalno" value="{{ $approval->approvalno }}">
                                         <input type="hidden" name="action" value="decline">
                                         <input type="hidden" name="level" value="{{ $approval->approval_level }}">
-                                        <button type="submit" 
+                                        <button type="submit"
                                                 onclick="return confirm('Decline {{ $approval->category }}?')"
                                                 class="w-full py-2 px-4 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-md border border-gray-300 transition-colors">
                                             Decline

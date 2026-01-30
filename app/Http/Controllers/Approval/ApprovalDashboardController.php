@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * ApprovalDashboardController
- * 
+ *
  * Unified dashboard untuk semua jenis approval (RKH, LKH, Others)
  * COPIED FROM: ApprovalController::index()
  */
@@ -40,7 +40,7 @@ class ApprovalDashboardController extends Controller
     /**
      * Show approval dashboard with date filter
      * GET /approval
-     * 
+     *
      * COPIED FROM: ApprovalController::index()
      * Logic 100% sama
      */
@@ -48,7 +48,7 @@ class ApprovalDashboardController extends Controller
     {
         $companycode = Session::get('companycode');
         $currentUser = Auth::user();
-        
+
         // Validate user for approval
         if (!$this->validateUserForApproval($currentUser)) {
             return redirect()->route('home')
@@ -68,8 +68,12 @@ class ApprovalDashboardController extends Controller
         // Get pending approvals from all repositories
         $pendingRKH = $this->getPendingRKHWithDetails($companycode, $currentUser, $filters);
         $pendingLKH = $this->getPendingLKHWithDetails($companycode, $currentUser, $filters);
-        $pendingOther = $this->getPendingOtherWithDetails($companycode, $currentUser, $filters);
         $pendingAbsen = $this->getPendingAbsenWithDetails($companycode, $currentUser, $filters);
+
+        $pendingOther = $this->getPendingOtherWithDetails($companycode, $currentUser, $filters);
+
+        $othersDetail = $this->setOtherDetail($pendingOther);
+
 
         return view('approval.index', [
             'title' => 'Approval Center',
@@ -81,13 +85,14 @@ class ApprovalDashboardController extends Controller
             'pendingAbsen' => $pendingAbsen,
             'userInfo' => $this->getUserInfo($currentUser),
             'filterDate' => $filterDate,
-            'allDate' => $allDate
+            'allDate' => $allDate,
+            'otherDetail'=>$othersDetail
         ]);
     }
 
     /**
      * Get pending RKH approvals with additional details
-     * 
+     *
      * @param string $companycode
      * @param object $currentUser
      * @param array $filters
@@ -106,14 +111,14 @@ class ApprovalDashboardController extends Controller
             $rkh->activities_list = $this->rkhRepository->getActivitiesSummary($companycode, $rkh->rkhno);
             $rkh->has_material = $this->rkhRepository->hasMaterial($companycode, $rkh->rkhno);
             $rkh->has_kendaraan = $this->rkhRepository->hasKendaraan($companycode, $rkh->rkhno);
-            
+
             return $rkh;
         });
     }
 
     /**
      * Get pending LKH approvals with additional details
-     * 
+     *
      * @param string $companycode
      * @param object $currentUser
      * @param array $filters
@@ -131,14 +136,14 @@ class ApprovalDashboardController extends Controller
         return $pendingLKH->map(function($lkh) use ($companycode) {
             $lkh->has_material = $this->lkhRepository->hasMaterial($companycode, $lkh->lkhno);
             $lkh->has_kendaraan = $this->lkhRepository->hasKendaraan($companycode, $lkh->lkhno);
-            
+
             return $lkh;
         });
     }
 
     /**
      * Get pending other approvals with additional details
-     * 
+     *
      * @param string $companycode
      * @param object $currentUser
      * @param array $filters
@@ -163,7 +168,7 @@ class ApprovalDashboardController extends Controller
             }
             if ($approval->sourcebatches) {
                 $approval->sourcebatches_array = json_decode($approval->sourcebatches, true);
-                
+
                 // Fetch REAL batch area dari database
                 $batchAreas = [];
                 foreach ($approval->sourcebatches_array as $batchno) {
@@ -172,7 +177,7 @@ class ApprovalDashboardController extends Controller
                         ->where('batchno', $batchno)
                         ->select('plot', 'batcharea')
                         ->first();
-                    
+
                     if ($batch) {
                         $batchAreas[$batch->plot] = $batch->batcharea;
                     }
@@ -185,7 +190,7 @@ class ApprovalDashboardController extends Controller
             if ($approval->areamap) {
                 $approval->areamap_array = json_decode($approval->areamap, true);
             }
-            
+
             // Decode JSON for Open Rework
             if ($approval->rework_plots) {
                 $approval->plots_array = json_decode($approval->rework_plots, true);
@@ -193,14 +198,14 @@ class ApprovalDashboardController extends Controller
             if ($approval->rework_activities) {
                 $approval->activities_array = json_decode($approval->rework_activities, true);
             }
-            
+
             return $approval;
         });
     }
 
     /**
      * Validate user for approval
-     * 
+     *
      * @param object $currentUser
      * @return bool
      */
@@ -211,7 +216,7 @@ class ApprovalDashboardController extends Controller
 
     /**
      * Get user info with jabatan
-     * 
+     *
      * @param object $currentUser
      * @return array
      */
@@ -220,7 +225,7 @@ class ApprovalDashboardController extends Controller
         $jabatan = DB::table('jabatan')
             ->where('idjabatan', $currentUser->idjabatan)
             ->first();
-        
+
         return [
             'userid' => $currentUser->userid,
             'name' => $currentUser->name,
@@ -228,10 +233,10 @@ class ApprovalDashboardController extends Controller
             'jabatan_name' => $jabatan ? $jabatan->namajabatan : 'Unknown'
         ];
     }
-    
+
     /**
      * Get pending absen approvals with additional details
-     * 
+     *
      * @param string $companycode
      * @param object $currentUser
      * @param array $filters
@@ -244,5 +249,20 @@ class ApprovalDashboardController extends Controller
             $currentUser->idjabatan,
             $filters
         );
+    }
+
+    private function setOtherDetail( $otherDetail )
+    {
+      $detail = array();
+      if( count($otherDetail) > 0 ){
+          foreach( $otherDetail as $item ){
+
+              if ( $item->category == "Use Material" ){
+                  $detail[$item->approvalno] = $this->otherRepository->getApprovalUseMaterialDetail($item->companycode, $item->approvalno);
+              }
+
+          }
+      }
+      return $detail;
     }
 }
