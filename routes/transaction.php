@@ -144,6 +144,7 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
                 Route::put('/lkh/{lkhno}', 'updateLKH')->name('updateLKH');
                 Route::post('/lkh/submit', 'submitLKH')->name('submitLKH');
                 Route::post('/{rkhno}/generate-lkh', 'manualGenerateLkh')->name('manualGenerateLkh');
+                Route::post('/lkh/recalculate-wages', 'recalculateWages')->name('recalculateWages');
             });
 
             // ============================================================

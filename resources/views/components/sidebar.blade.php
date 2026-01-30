@@ -108,7 +108,7 @@ $getIconPath = function($icon) use ($iconPaths) {
             @endphp
             
             <div 
-                x-data="{ open: {{ $menuHasActiveChild ? 'true' : ($sectionIdx === 0 ? 'true' : 'false') }} }"
+                x-data="{ open: {{ $menuHasActiveChild ? 'true' : 'false' }} }"
                 x-show="filterSection('{{ addslashes($menu['name']) }}', {{ $sectionIdx }})"
                 class="mb-1"
             >

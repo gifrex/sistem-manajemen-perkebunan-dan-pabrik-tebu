@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Transaction\RencanaKerjaHarian;
 use App\Http\Controllers\Controller;
 use App\Services\Transaction\RencanaKerjaHarian\Lkh\LkhService;
 use App\Services\Transaction\RencanaKerjaHarian\Lkh\LkhValidationService;
+use App\Services\Transaction\RencanaKerjaHarian\Lkh\LkhWageCalculationService;
 use App\Services\Transaction\RencanaKerjaHarian\Generator\LkhGeneratorService;
 use App\Repositories\Transaction\RencanaKerjaHarian\Shared\MasterDataRepository;
 use Illuminate\Http\Request;
@@ -137,7 +138,7 @@ class LkhController extends Controller
                     ->with('error', 'Data LKH tidak ditemukan');
             }
 
-            return view('transaction.rencanakerjaharian.lkh-edit', array_merge([
+            return view('transaction.rencanakerjaharian.lkh-edit-v2', array_merge([
                 'title' => 'Edit LKH',
                 'navbar' => 'Input',
                 'nav' => 'Rencana Kerja Harian',
@@ -168,22 +169,28 @@ class LkhController extends Controller
                 'keterangan' => $request->input('keterangan'),
                 'plots' => $request->input('plots'),
                 'workers' => $request->input('workers'),
-                'materials' => $request->input('materials'),
+                // materials tidak dikirim (read-only)
             ];
 
             // Update LKH
             $companycode = Session::get('companycode');
             $this->lkhService->updateLkh($lkhno, $dto, $companycode);
 
-            return redirect()->route('transaction.rencanakerjaharian.showLKH', $lkhno)
-                ->with('success', 'LKH berhasil diupdate');
+            // FIX: Return JSON instead of redirect
+            return response()->json([
+                'success' => true,
+                'message' => 'LKH berhasil diupdate',
+                'lkhno' => $lkhno
+            ]);
 
         } catch (\Exception $e) {
             \Log::error("Error updating LKH: " . $e->getMessage());
             
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Terjadi kesalahan saat mengupdate LKH: ' . $e->getMessage());
+            // FIX: Return JSON error instead of redirect
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -245,6 +252,107 @@ class LkhController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal generate LKH: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Recalculate wages for LKH edit
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function recalculateWages(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'companycode' => 'required|string|max:4',
+                'lkhno' => 'required|string',
+                'activitycode' => 'required|string',
+                'lkhdate' => 'required|date',
+                'jenistenagakerja' => 'required|integer',
+                'workers' => 'required_if:jenistenagakerja,1|array',
+                'workers.*.tenagakerjaid' => 'required_with:workers|string',
+                'workers.*.jammasuk' => 'required_with:workers',
+                'workers.*.jamselesai' => 'required_with:workers',
+                'workers.*.overtimehours' => 'nullable|numeric',
+                'plots' => 'required_if:jenistenagakerja,2|array',
+                'plots.*.luashasil' => 'required_with:plots|numeric',
+            ]);
+
+            $wageService = new LkhWageCalculationService($this->masterDataRepo);
+
+            // TENAGA HARIAN
+            if ($validated['jenistenagakerja'] == 1) {
+                $results = $wageService->calculateHarianWages(
+                    $validated['workers'],
+                    $validated['companycode'],
+                    $validated['activitycode'],
+                    $validated['lkhdate']
+                );
+
+                // Check for errors
+                if (isset($results['error'])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $results['error']
+                    ], 404);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'type' => 'harian',
+                    'wages' => $results,
+                ]);
+            }
+
+            // TENAGA BORONGAN
+            if ($validated['jenistenagakerja'] == 2) {
+                $result = $wageService->calculateBoronganWage(
+                    $validated['plots'],
+                    $validated['companycode'],
+                    $validated['activitycode'],
+                    $validated['lkhdate']
+                );
+
+                // Check for errors
+                if (isset($result['error'])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $result['error']
+                    ], 404);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'type' => 'borongan',
+                    'total_luas' => $result['total_luas'],
+                    'rate_per_ha' => $result['rate_per_ha'],
+                    'total_upah' => $result['total_upah'],
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid jenistenagakerja'
+            ], 400);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            \Log::error('LKH recalculate wages error', [
+                'error' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Calculation failed: ' . $e->getMessage()
             ], 500);
         }
     }
