@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
  * Business logic untuk generic approval workflow
  * Handles: Split/Merge, Purchase Request, Open Rework, etc.
  */
-class OtherApprovalServicee
+class OtherApprovalService
 {
     protected $repository;
 
@@ -379,104 +379,134 @@ class OtherApprovalServicee
 //cio
 private function finalizeUseMaterialAndSubmit(string $approvalno, string $companycode, $currentUser): void
 {
-    Log::info('USE_MATERIAL_FINALIZE_HIT', [
-        'approvalno' => $approvalno,
-        'companycode' => $companycode,
-        'user' => $currentUser->userid ?? null,
-        'file' => __FILE__,
-    ]);
 
-    $approval = $this->repository->findByApprovalno($companycode, $approvalno);
-    if (!$approval) {
-        throw new \Exception('Approval tidak ditemukan.');
-    }
+        Log::info('USE_MATERIAL_FINALIZE_HIT', [
+            'approvalno' => $approvalno,
+            'companycode' => $companycode,
+            'user' => $currentUser->userid ?? null,
+            'file' => __FILE__,
+        ]);
 
-    $rkhno = trim((string) $approval->transactionnumber);
-
-    $snap = DB::table('usematerialapproval')
-        ->where('companycode', $companycode)
-        ->where('approvalno', $approvalno)
-        ->where('rkhno', $rkhno)
-        ->get();
-
-    if ($snap->isEmpty()) {
-        throw new \Exception('Snapshot usematerialapproval kosong.');
-    }
-
-    // build request format yg dipakai GudangController::submit
-    $itemcode = [];
-    $dosage   = [];
-    $unit     = [];
-    $luas     = [];
-
-    foreach ($snap as $row) {
-        $lkhno   = trim((string) $row->lkhno);
-        $plotKey = trim((string) $row->plot);
-        $ic = preg_replace('/\s+/', '', trim((string) $row->itemcode));
+        $approval = $this->repository->findByApprovalno($companycode, $approvalno);
+        if (!$approval) {
+            throw new \Exception('Approval tidak ditemukan.');
+        }
     
-        $itemcode[$lkhno][$ic][$plotKey] = $ic;
-        $dosage[$lkhno][$ic][$plotKey]   = (float) ($row->dosageperha ?? 0);
-        $unit[$lkhno][$ic][$plotKey]     = $row->unit ?? null;
-    
-        // submit: qty = luas * dosage
-        // supaya qty hasilnya sesuai snapshot: luas = qty/dosage
-        $d = (float) ($row->dosageperha ?? 0);
-        $q = (float) ($row->qty ?? 0);
-        $luas[$lkhno][$ic][$plotKey] = $d > 0 ? ($q / $d) : 0;
-    }
+    try{    
+        $rkhno = trim((string) $approval->transactionnumber);
 
-    // ✅ TAMBAH LOG INI (setelah loop):
-    Log::info('APPROVAL_KIRIM_REQUEST', [
-        'rkhno' => $rkhno,
-        'itemcode_sample' => array_slice($itemcode, 0, 1, true),
-        'dosage_sample' => array_slice($dosage, 0, 1, true),
-    ]);
+        $snap = DB::table('usematerialapproval')
+            ->where('companycode', $companycode)
+            ->where('approvalno', $approvalno)
+            ->where('rkhno', $rkhno)
+            ->get();
 
-    // pastikan session companycode ada (GudangController masih pakai session)
-    session(['companycode' => $companycode]);
+        if ($snap->isEmpty()) {
+            throw new \Exception('Snapshot usematerialapproval kosong.');
+        }
 
-    $req = new \Illuminate\Http\Request([
-        'rkhno'      => $rkhno,
-        'costcenter' => $snap->first()->costcenter ?? null,
-        'approvalno' => $approvalno,
-        'itemcode'   => $itemcode,
-        'dosage'     => $dosage,
-        'unit'       => $unit,
-        'luas'       => $luas,
-    ]);
+        // build request format yg dipakai GudangController::submit
+        $itemcode = [];
+        $dosage   = [];
+        $unit     = [];
+        $luas     = [];
 
-    Log::info('USE_MATERIAL_CALL_SUBMIT', [
-        'approvalno' => $approvalno,
-        'companycode' => $companycode,
-        'rkhno' => $rkhno,
-        'snap_count' => $snap->count(),
-        'costcenter' => $snap->first()->costcenter ?? null,
-    ]);
-
-    // ✅ Panggil GudangController submit
-    app(\App\Http\Controllers\Transaction\GudangController::class)->submit($req);
-
-    // ✅ Check apakah submit berhasil
-    $sessionError = session()->get('error');
-    $sessionWarning = session()->get('warning');
-
-    if ($sessionError || $sessionWarning) {
-        $errorMessage = $sessionError ?? $sessionWarning;
+        foreach ($snap as $row) {
+            $lkhno   = trim((string) $row->lkhno);
+            $plotKey = trim((string) $row->plot);
+            $ic = preg_replace('/\s+/', '', trim((string) $row->itemcode));
         
-        Log::error('USE_MATERIAL_SUBMIT_FAILED', [
+            $itemcode[$lkhno][$ic][$plotKey] = $ic;
+            $dosage[$lkhno][$ic][$plotKey]   = (float) ($row->dosageperha ?? 0);
+            $unit[$lkhno][$ic][$plotKey]     = $row->unit ?? null;
+        
+            // submit: qty = luas * dosage
+            // supaya qty hasilnya sesuai snapshot: luas = qty/dosage
+            $d = (float) ($row->dosageperha ?? 0);
+            $q = (float) ($row->qty ?? 0);
+            $luas[$lkhno][$ic][$plotKey] = $d > 0 ? ($q / $d) : 0;
+        }
+
+        // ✅ TAMBAH LOG INI (setelah loop):
+        Log::info('APPROVAL_KIRIM_REQUEST', [
+            'rkhno' => $rkhno,
+            'itemcode_sample' => array_slice($itemcode, 0, 1, true),
+            'dosage_sample' => array_slice($dosage, 0, 1, true),
+        ]);
+
+        // pastikan session companycode ada (GudangController masih pakai session)
+        session(['companycode' => $companycode]);
+
+        $req = new \Illuminate\Http\Request([
+            'rkhno'      => $rkhno,
+            'costcenter' => $snap->first()->costcenter ?? null,
+            'approvalno' => $approvalno,
+            'itemcode'   => $itemcode,
+            'dosage'     => $dosage,
+            'unit'       => $unit,
+            'luas'       => $luas,
+        ]);
+
+        Log::info('USE_MATERIAL_CALL_SUBMIT', [
+            'approvalno' => $approvalno,
+            'companycode' => $companycode,
+            'rkhno' => $rkhno,
+            'snap_count' => $snap->count(),
+            'costcenter' => $snap->first()->costcenter ?? null,
+        ]);
+
+        // ✅ Panggil GudangController submit
+        app(\App\Http\Controllers\Transaction\GudangController::class)->submit($req);
+
+        // ✅ Check apakah submit berhasil
+        $sessionError = session()->get('error');
+        $sessionWarning = session()->get('warning');
+
+        if ($sessionError || $sessionWarning) {
+            $errorMessage = $sessionError ?? $sessionWarning;
+            
+            Log::error('USE_MATERIAL_SUBMIT_FAILED', [
+                'approvalno' => $approvalno,
+                'rkhno' => $rkhno,
+                'error' => $errorMessage,
+            ]);
+            
+            // ✅ Throw exception - approval gagal
+            throw new \Exception('Submit gagal: ' . $errorMessage);
+        }
+
+        Log::info('USE_MATERIAL_SUBMIT_SUCCESS', [
             'approvalno' => $approvalno,
             'rkhno' => $rkhno,
-            'error' => $errorMessage,
         ]);
-        
-        // ✅ Throw exception - approval gagal
-        throw new \Exception('Submit gagal: ' . $errorMessage);
+
+
+
+    } catch (\Throwable $e) {
+
+        $lastLevel = (int)($approval->jumlahapproval ?? 1);
+        if ($lastLevel < 1) $lastLevel = 1;
+        if ($lastLevel > 3) $lastLevel = 3;
+
+        DB::table('approvaltransaction')
+            ->where('companycode', $companycode)
+            ->where('approvalno', $approval->approvalno)
+            ->update([
+                "approval{$lastLevel}flag" => null,
+                "approval{$lastLevel}date" => null,
+                "approvalstatus" => null,
+            ]);
+
+        Log::warning('USE_MATERIAL_ROLLBACK_LAST_APPROVAL', [
+            'approvalno' => $approval->approvalno,
+            'companycode' => $companycode,
+            'lastLevel' => $lastLevel,
+            'error' => $e->getMessage(),
+        ]);
+
+        throw $e;
     }
 
-    Log::info('USE_MATERIAL_SUBMIT_SUCCESS', [
-        'approvalno' => $approvalno,
-        'rkhno' => $rkhno,
-    ]);
 
 
 }

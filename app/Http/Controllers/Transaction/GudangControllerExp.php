@@ -17,7 +17,7 @@ use App\Models\usemateriallst;
 use App\Models\MasterData\HerbisidaDosage;
 use App\Models\MasterData\Herbisida;
 
-class GudangControllerr extends Controller
+class GudangController extends Controller
 {
 
     public function __construct()
@@ -334,13 +334,18 @@ class GudangControllerr extends Controller
                     ->on('usemateriallst.companycode', '=', 'lkhdetailplot.companycode');
             })
             ->where('rkhno', $request->rkhno)->where('usemateriallst.companycode', session('companycode'))->orderBy('lkhno')->orderBy('plot')->get());
-            //group
-            $groupMap = $details->mapWithKeys(fn($x)=>[
-                $x->lkhno.'|'.$x->plot => $x->herbisidagroupid
-            ]);
+            //group (FIX: unique + trim supaya tidak ketiban & tidak miss karena spasi)
+            $plotsUnique = $details->unique(function($x){
+                return trim((string)$x->lkhno).'|'.trim((string)$x->plot);
+            });
+
+            $groupMap = $plotsUnique->mapWithKeys(function($x){
+                return [trim((string)$x->lkhno).'|'.trim((string)$x->plot) => $x->herbisidagroupid];
+            });
 
             $detailmaterial = $detailmaterial->map(function($d) use ($groupMap) {
-                $d->herbisidagroupid = $groupMap[$d->lkhno.'|'.$d->plot] ?? null;
+                $k = trim((string)$d->lkhno).'|'.trim((string)$d->plot);
+                $d->herbisidagroupid = $groupMap[$k] ?? null;
                 return $d;
             });
             //
@@ -379,6 +384,11 @@ class GudangControllerr extends Controller
             if($details[0]->costcenter == NULL){
             $details[0]->costcenter = $ap
                 ->value('costcenter');
+            }
+            if ($usematerialapproval) {
+                $usematerialapproval = $usematerialapproval->keyBy(function($r){
+                    return trim($r->lkhno).'|'.trim($r->plot).'|'.trim($r->itemcode);
+                });
             }
         }
 
@@ -726,7 +736,9 @@ public function submit(Request $request)
         });
 
     // Key details by lkhno untuk lookupa
-    $detailsByLkhno = $details->keyBy('lkhno');
+    $detailsByKey = $details->keyBy(function($x){
+        return trim((string)$x->lkhno).'|'.trim((string)$x->plot);
+    });
     $herbisidaItems = Herbisida::where('companycode', session('companycode'))->get()->keyBy('itemcode');
 
     $insertData = [];
@@ -737,12 +749,17 @@ public function submit(Request $request)
     
     // Process flat - langsung dari request
     foreach ($request->itemcode as $lkhno => $items) {
-        $detail = $detailsByLkhno[$lkhno];
-
         foreach ($items as $itemcode => $keys) {
+
             // hilangin item newline spasi gajelas
             $itemcode = preg_replace('/\s+/', '', trim($itemcode));
             foreach ($keys as $key => $val) {
+
+                $detail = $detailsByKey[trim((string)$lkhno).'|'.trim((string)$key)] ?? null;
+                if (!$detail) {
+                    Cache::forget($lockKey);
+                    throw new \Exception("Detail tidak ditemukan untuk $lkhno plot $key");
+                }
 
                 $dosage = floatval($request->dosage[$lkhno][$itemcode][$key] ?? 0);
                 $unit = $request->unit[$lkhno][$itemcode][$key] ?? null;
@@ -766,6 +783,15 @@ public function submit(Request $request)
                                 'itemcode' => $itemcode,
                                 'dosage_input' => $dosage,
                             ];
+                            Log::info('APPROVAL_INVALID_ITEMCODE', [
+                                'rkhno' => $request->rkhno,
+                                'lkhno' => $lkhno,
+                                'plot' => $key,
+                                'group' => $groupId,
+                                'itemcode' => $itemcode,
+                                'dosage_input' => $dosage,
+                                'kstd' => $kstd,
+                            ]);
                         } else {
                             // dosage berbeda dari standar
                             $stdDos = (float)$stdMap[$kstd];
@@ -780,6 +806,17 @@ public function submit(Request $request)
                                     'dosage_input' => $dosage,
                                     'dosage_std' => $stdDos,
                                 ];
+                                Log::info('APPROVAL_DOSAGE_CHANGED', [
+                                    'rkhno' => $request->rkhno,
+                                    'lkhno' => $lkhno,
+                                    'plot' => $key,
+                                    'group' => $groupId,
+                                    'itemcode' => $itemcode,
+                                    'dosage_input' => $dosage,
+                                    'dosage_std' => $stdDos,
+                                    'diff' => abs($dosage - $stdDos),
+                                    'kstd' => $kstd,
+                                ]);
                             }
                         }
                     }
