@@ -266,6 +266,11 @@ return [
                 'route' => 'report.track-pias.index',
                 'permission' => 'report.track-pias.view',
             ],
+            [
+                'name' => 'Biaya Per Plot',
+                'route' => 'report.biaya-per-plot.index',
+                'permission' => 'report.biayaperplot.view',
+            ],
         ],
     ],
 
