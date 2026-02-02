@@ -15,6 +15,7 @@ use App\Http\Controllers\Report\PanenTrackPlotReportController;
 use App\Http\Controllers\Report\SaldoPanenReportController;
 use App\Http\Controllers\Report\AbsenReportController;
 use App\Http\Controllers\Report\TrackPiasReportController;
+use App\Http\Controllers\Report\BiayaPerPlotController;
 
 Route::middleware('auth')->prefix('report')->name('report.')->group(function () {
 
@@ -138,6 +139,16 @@ Route::middleware('auth')->prefix('report')->name('report.')->group(function () 
     Route::middleware('permission:report.track-pias.view')->group(function () {
         Route::get('track-pias', [TrackPiasReportController::class, 'index'])->name('track-pias.index');
         Route::post('track-pias/data', [TrackPiasReportController::class, 'getData'])->name('track-pias.data');
+    });
+
+    // ============================================================================
+    // BIAYA PER PLOT
+    // ============================================================================
+    Route::middleware('permission:report.biayaperplot.view')->group(function () {
+        Route::get('biaya-per-plot', [BiayaPerPlotController::class, 'index'])->name('biaya-per-plot.index');
+        Route::post('biaya-per-plot/data', [BiayaPerPlotController::class, 'getData'])->name('biaya-per-plot.data');
+        Route::get('biaya-per-plot/{batchno}', [BiayaPerPlotController::class, 'show'])->name('biaya-per-plot.show');
+        Route::get('biaya-per-plot/{batchno}/detail', [BiayaPerPlotController::class, 'getDetail'])->name('biaya-per-plot.detail');
     });
 
 });
