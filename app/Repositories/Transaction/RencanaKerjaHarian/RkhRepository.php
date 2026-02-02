@@ -668,7 +668,7 @@ class RkhRepository
     }
 
     /**
-     * Cancel RKH (set status to Batal)
+     * Cancel RKH (set status to Batal) and update material status to CANCEL
      * 
      * @param string $companycode
      * @param string $rkhno
@@ -678,17 +678,54 @@ class RkhRepository
      */
     public function cancelRkh($companycode, $rkhno, $userid, $alasan)
     {
-        return DB::table('rkhhdr')
-            ->where('companycode', $companycode)
-            ->where('rkhno', $rkhno)
-            ->update([
-                'status' => 'Batal',
-                'batalat' => now(),
-                'batalby' => $userid,
-                'batalalasan' => $alasan,
-                'updateby' => $userid,
-                'updatedat' => now()
+        DB::beginTransaction();
+        try {
+            // 1. Update RKH status to Batal
+            DB::table('rkhhdr')
+                ->where('companycode', $companycode)
+                ->where('rkhno', $rkhno)
+                ->update([
+                    'status' => 'Batal',
+                    'batalat' => now(),
+                    'batalby' => $userid,
+                    'batalalasan' => $alasan,
+                    'updateby' => $userid,
+                    'updatedat' => now()
+                ]);
+
+            // 2. Update Material status to CANCEL (only if ACTIVE)
+            $materialUpdated = DB::table('usematerialhdr')
+                ->where('companycode', $companycode)
+                ->where('rkhno', $rkhno)
+                ->where('flagstatus', 'ACTIVE')
+                ->update([
+                    'flagstatus' => 'CANCEL',
+                    'updateby' => $userid,
+                    'updatedat' => now()
+                ]);
+
+            DB::commit();
+            
+            \Log::info('RKH Cancelled Successfully', [
+                'rkhno' => $rkhno,
+                'companycode' => $companycode,
+                'material_updated' => $materialUpdated > 0 ? 'YES' : 'NO'
             ]);
+            
+            return 1;
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            \Log::error('Cancel RKH Failed', [
+                'rkhno' => $rkhno,
+                'companycode' => $companycode,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            throw $e;
+        }
     }
 
     /**
@@ -697,6 +734,7 @@ class RkhRepository
      * - approvalstatus = '1' (fully approved)
      * - status not Completed/Batal
      * - All LKH must be EMPTY (no work done yet)
+     * - Material status must NOT be DISPATCHED
      * 
      * @param string $companycode
      * @param string $rkhno
@@ -737,6 +775,16 @@ class RkhRepository
         
         if ($nonEmptyLkhCount > 0) {
             return ['can_cancel' => false, 'reason' => 'Tidak dapat membatalkan RKH. Ada LKH yang sudah dikerjakan (status bukan EMPTY).'];
+        }
+        
+        // Check if material already DISPATCHED
+        $material = DB::table('usematerialhdr')
+            ->where('companycode', $companycode)
+            ->where('rkhno', $rkhno)
+            ->first(['flagstatus']);
+        
+        if ($material && $material->flagstatus === 'DISPATCHED') {
+            return ['can_cancel' => false, 'reason' => 'Tidak dapat membatalkan RKH. Material sudah diserahkan (DISPATCHED). Silakan gunakan proses retur material.'];
         }
         
         return ['can_cancel' => true, 'reason' => null];
