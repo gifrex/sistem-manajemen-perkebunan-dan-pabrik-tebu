@@ -6,15 +6,28 @@
     <div x-data="detailBiaya()" x-init="loadData()" class="space-y-4">
 
         <!-- Back Button & Header -->
-        <div class="flex items-center gap-4">
-            <a href="{{ route('report.biaya-per-plot.index') }}" class="p-2 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors">
-                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                </svg>
-            </a>
-            <div>
-                <h1 class="text-xl font-bold text-gray-800">Detail Biaya Plot {{ $batch->plot }}</h1>
-                <p class="text-sm text-gray-500">Batch: {{ $batch->batchno }}</p>
+        <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <a href="{{ route('report.biaya-per-plot.index') }}" class="p-2 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors">
+                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </a>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-800">Detail Biaya Plot {{ $batch->plot }}</h1>
+                    <p class="text-sm text-gray-500">Batch: {{ $batch->batchno }}</p>
+                </div>
+            </div>
+
+            <!-- Cycle Selector -->
+            <div class="flex items-center gap-2">
+                <label class="text-sm font-medium text-gray-700">Lihat Cycle:</label>
+                <select x-model="selectedCycle" @change="reloadWithCycle()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="0">Current Cycle</option>
+                    <option value="-1">Cycle -1</option>
+                    <option value="-2">Cycle -2</option>
+                    <option value="-3">Cycle -3</option>
+                </select>
             </div>
         </div>
 
@@ -63,6 +76,30 @@
                 </div>
             </div>
 
+            <!-- Cycle Comparison Chart -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold text-gray-800">Perbandingan Biaya Antar Cycle</h3>
+                    <button @click="toggleChart()" 
+                            class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        <span x-text="showChart ? 'Sembunyikan Chart' : 'Tampilkan Chart'"></span>
+                    </button>
+                </div>
+                
+                <div x-show="showChart" x-transition class="space-y-4">
+                    <div class="h-96">
+                        <canvas id="cycleComparisonChart"></canvas>
+                    </div>
+                </div>
+
+                <div x-show="!showChart" class="text-center py-8 text-gray-400">
+                    Klik tombol "Tampilkan Chart" untuk melihat perbandingan biaya antar cycle
+                </div>
+            </div>
+
             <!-- Summary Card -->
             <div class="bg-slate-800 rounded-lg shadow-md p-4">
                 <h3 class="text-white font-semibold mb-3">Ringkasan Biaya</h3>
@@ -76,7 +113,7 @@
                         <p class="text-white text-lg font-bold" x-text="formatRupiah(summary.biaya_material)"></p>
                     </div>
                     <div class="bg-slate-700 rounded-lg p-3 text-center">
-                        <p class="text-slate-400 text-xs uppercase">Biaya Kontraktor</p>
+                        <p class="text-slate-400 text-xs uppercase">Biaya Panen</p>
                         <p class="text-white text-lg font-bold" x-text="formatRupiah(summary.biaya_kontraktor)"></p>
                     </div>
                     <div class="bg-emerald-600 rounded-lg p-3 text-center">
@@ -109,7 +146,7 @@
                         <button @click="activeTab = 'kontraktor'" 
                                 :class="activeTab === 'kontraktor' ? 'border-blue-500 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
                                 class="px-6 py-3 border-b-2 font-medium text-sm transition-colors">
-                            Kontraktor (Panen)
+                            Panen
                             <span class="ml-1 px-2 py-0.5 text-xs rounded-full"
                                   :class="activeTab === 'kontraktor' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'"
                                   x-text="kontraktorDetails.length"></span>
@@ -139,7 +176,12 @@
                                 <template x-for="item in lkhDetails" :key="item.lkhno">
                                     <tr class="hover:bg-gray-50">
                                         <td class="px-3 py-2 text-sm text-gray-600" x-text="formatDate(item.lkhdate)"></td>
-                                        <td class="px-3 py-2 text-sm font-medium text-blue-600" x-text="item.lkhno"></td>
+                                        <td class="px-3 py-2 text-sm font-medium">
+                                            <a :href="`{{ url('transaction/kerjaharian/rencanakerjaharian/lkh') }}/${item.lkhno}/show`" 
+                                               target="_blank"
+                                               class="text-blue-600 hover:text-blue-800 underline"
+                                               x-text="item.lkhno"></a>
+                                        </td>
                                         <td class="px-3 py-2 text-sm text-gray-800">
                                             <span x-text="item.activitycode"></span>
                                             <span class="text-gray-500 text-xs block" x-text="item.activityname"></span>
@@ -190,7 +232,12 @@
                                 <template x-for="(item, idx) in materialDetails" :key="idx">
                                     <tr class="hover:bg-gray-50">
                                         <td class="px-3 py-2 text-sm text-gray-600" x-text="formatDate(item.lkhdate)"></td>
-                                        <td class="px-3 py-2 text-sm font-medium text-blue-600" x-text="item.lkhno"></td>
+                                        <td class="px-3 py-2 text-sm font-medium">
+                                            <a :href="`{{ url('transaction/kerjaharian/rencanakerjaharian/lkh') }}/${item.lkhno}/show`" 
+                                               target="_blank"
+                                               class="text-blue-600 hover:text-blue-800 underline"
+                                               x-text="item.lkhno"></a>
+                                        </td>
                                         <td class="px-3 py-2 text-sm text-gray-800" x-text="item.itemcode"></td>
                                         <td class="px-3 py-2 text-sm text-gray-600" x-text="item.itemname"></td>
                                         <td class="px-3 py-2 text-sm text-right text-gray-800" x-text="item.qtydigunakan + ' ' + (item.measure || '')"></td>
@@ -214,57 +261,8 @@
 
                 <!-- Tab: Kontraktor -->
                 <div x-show="activeTab === 'kontraktor'" class="p-4">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Surat Jalan</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Kontraktor</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supir</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nopol</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Jenis</th>
-                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Berat (Ton)</th>
-                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Total Biaya</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <template x-for="(item, idx) in kontraktorDetails" :key="idx">
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-3 py-2 text-sm text-gray-600" x-text="formatDate(item.tanggalangkut)"></td>
-                                        <td class="px-3 py-2 text-sm font-medium text-blue-600" x-text="item.suratjalanno"></td>
-                                        <td class="px-3 py-2 text-sm text-gray-800">
-                                            <span x-text="item.namakontraktor || '-'"></span>
-                                            <span class="text-gray-500 text-xs block" x-text="item.namasubkontraktor"></span>
-                                        </td>
-                                        <td class="px-3 py-2 text-sm text-gray-600" x-text="item.namasupir || '-'"></td>
-                                        <td class="px-3 py-2 text-sm text-gray-600" x-text="item.nomorpolisi || '-'"></td>
-                                        <td class="px-3 py-2">
-                                            <span class="px-2 py-0.5 text-xs rounded-full"
-                                                  :class="{
-                                                      'bg-green-100 text-green-700': item.jenis === 'Manual',
-                                                      'bg-blue-100 text-blue-700': item.jenis === 'GL Kebun',
-                                                      'bg-purple-100 text-purple-700': item.jenis === 'GL Kontraktor'
-                                                  }"
-                                                  x-text="item.jenis"></span>
-                                            <span x-show="item.tebusulit" class="ml-1 px-1 py-0.5 text-xs bg-red-100 text-red-600 rounded">Sulit</span>
-                                            <span x-show="item.langsir" class="ml-1 px-1 py-0.5 text-xs bg-yellow-100 text-yellow-600 rounded">Langsir</span>
-                                        </td>
-                                        <td class="px-3 py-2 text-sm text-right text-gray-800" x-text="item.berat_ton"></td>
-                                        <td class="px-3 py-2 text-sm text-right font-semibold text-green-600" x-text="formatRupiah(item.total_biaya)"></td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                            <tfoot class="bg-gray-100">
-                                <tr>
-                                    <td colspan="7" class="px-3 py-2 text-sm font-semibold text-gray-700">Total Biaya Kontraktor</td>
-                                    <td class="px-3 py-2 text-sm text-right font-bold text-green-600" x-text="formatRupiah(summary.biaya_kontraktor)"></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                    <div x-show="kontraktorDetails.length === 0" class="text-center py-8 text-gray-500">
-                        Tidak ada data panen/kontraktor untuk plot ini
+                    <div class="text-center py-8 text-gray-500">
+                        Data biaya panen belum tersedia
                     </div>
                 </div>
 
@@ -275,10 +273,17 @@
     </div>
 
     <script>
+    let cycleChart = null;
+
     function detailBiaya() {
         return {
             loading: true,
             activeTab: 'tk',
+            showChart: false,
+            selectedCycle: '{{ $cycle ?? "0" }}',
+            cyclesData: [],
+            currentBatchno: '{{ $batch->batchno }}',
+            currentPlot: '{{ $batch->plot }}',
             batch: @json($batch),
             lkhDetails: [],
             materialDetails: [],
@@ -288,6 +293,36 @@
                 biaya_material: 0,
                 biaya_kontraktor: 0,
                 total: 0
+            },
+
+            reloadWithCycle() {
+                const cycle = parseInt(this.selectedCycle);
+                
+                if (cycle === 0) {
+                    window.location.href = `{{ route('report.biaya-per-plot.show', $batch->batchno) }}?cycle=0`;
+                } else {
+                    this.fetchBatchByCycle(cycle);
+                }
+            },
+
+            async fetchBatchByCycle(cycle) {
+                try {
+                    const response = await fetch(`{{ route('report.biaya-per-plot.cycle-comparison', $batch->batchno) }}`);
+                    const result = await response.json();
+                    
+                    if (result.success && result.data.length > 0) {
+                        const cycleIndex = Math.abs(cycle);
+                        if (result.data[cycleIndex]) {
+                            const targetBatchno = result.data[cycleIndex].batchno;
+                            window.location.href = `{{ url('report/biaya-per-plot') }}/${targetBatchno}?cycle=${cycle}`;
+                        } else {
+                            alert('Cycle tidak ditemukan');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Gagal mengambil data cycle');
+                }
             },
 
             async loadData() {
@@ -302,11 +337,151 @@
                         this.kontraktorDetails = result.data.kontraktor_details;
                         this.summary = result.data.summary;
                     }
+
+                    await this.loadCycleComparison();
                 } catch (error) {
                     console.error('Load error:', error);
                 } finally {
                     this.loading = false;
                 }
+            },
+
+            async loadCycleComparison() {
+                try {
+                    const response = await fetch(`{{ route('report.biaya-per-plot.cycle-comparison', $batch->batchno) }}`);
+                    const result = await response.json();
+                    
+                    console.log('Cycle comparison data:', result);
+                    
+                    if (result.success && result.data.length > 0) {
+                        this.cyclesData = result.data.reverse();
+                        console.log('Cycles data loaded:', this.cyclesData);
+                    } else {
+                        console.error('No cycle data available');
+                    }
+                } catch (error) {
+                    console.error('Chart error:', error);
+                }
+            },
+
+            // ✅ FIX: Trigger chart saat button diklik
+            toggleChart() {
+                this.showChart = !this.showChart;
+                
+                if (this.showChart && this.cyclesData.length > 0) {
+                    // Tunggu DOM update
+                    setTimeout(() => {
+                        this.renderChart();
+                    }, 100);
+                }
+            },
+
+            renderChart() {
+                const ctx = document.getElementById('cycleComparisonChart');
+                if (!ctx) {
+                    console.error('Canvas not found');
+                    return;
+                }
+
+                console.log('Rendering chart with data:', this.cyclesData);
+
+                if (cycleChart) {
+                    cycleChart.destroy();
+                }
+
+                const labels = this.cyclesData.map(c => c.label);
+                const totalBiaya = this.cyclesData.map(c => c.total_biaya);
+
+                console.log('Chart labels:', labels);
+                console.log('Chart data:', totalBiaya);
+
+                cycleChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Total Biaya',
+                                data: totalBiaya,
+                                borderColor: 'rgb(239, 68, 68)',
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                borderWidth: 3,
+                                tension: 0.3,
+                                fill: true,
+                                pointRadius: 6,
+                                pointHoverRadius: 8,
+                                pointBackgroundColor: 'rgb(239, 68, 68)',
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                titleFont: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                bodyFont: {
+                                    size: 13
+                                },
+                                callbacks: {
+                                    title: function(context) {
+                                        return context[0].label;
+                                    },
+                                    label: function(context) {
+                                        const dataIndex = context.dataIndex;
+                                        const cycle = this.cyclesData[dataIndex];
+                                        
+                                        return [
+                                            'Total Biaya: Rp ' + Math.round(cycle.total_biaya).toLocaleString('id-ID'),
+                                            '─────────────────────',
+                                            'Biaya TK: Rp ' + Math.round(cycle.biaya_tk).toLocaleString('id-ID'),
+                                            'Biaya Material: Rp ' + Math.round(cycle.biaya_material).toLocaleString('id-ID'),
+                                            '─────────────────────',
+                                            'Total Panen: ' + cycle.total_ton.toFixed(2) + ' ton',
+                                            'YPH: ' + cycle.yph.toFixed(2) + ' ton/ha'
+                                        ];
+                                    }.bind(this)
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Total Biaya (Rp)',
+                                    font: {
+                                        size: 13,
+                                        weight: 'bold'
+                                    }
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return 'Rp ' + value.toLocaleString('id-ID');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                console.log('Chart rendered successfully');
             },
 
             formatRupiah(value) {
