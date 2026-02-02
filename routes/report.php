@@ -149,6 +149,12 @@ Route::middleware('auth')->prefix('report')->name('report.')->group(function () 
         Route::post('biaya-per-plot/data', [BiayaPerPlotController::class, 'getData'])->name('biaya-per-plot.data');
         Route::get('biaya-per-plot/{batchno}', [BiayaPerPlotController::class, 'show'])->name('biaya-per-plot.show');
         Route::get('biaya-per-plot/{batchno}/detail', [BiayaPerPlotController::class, 'getDetail'])->name('biaya-per-plot.detail');
+        
+        // NEW: Cycle comparison for chart
+        Route::get('biaya-per-plot/{batchno}/cycle-comparison', [BiayaPerPlotController::class, 'getCycleComparison'])->name('biaya-per-plot.cycle-comparison');
+        
+        // Export routes
+        Route::post('biaya-per-plot/export-excel', [BiayaPerPlotController::class, 'exportExcel'])->name('biaya-per-plot.export-excel');
+        Route::post('biaya-per-plot/export-pdf', [BiayaPerPlotController::class, 'exportPdf'])->name('biaya-per-plot.export-pdf');
     });
-
 });
