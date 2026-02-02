@@ -656,26 +656,39 @@ class RkhService
         }
         
         // Execute cancel
-        $updated = $this->rkhRepo->cancelRkh($companycode, $rkhno, $userid, trim($alasan));
-        
-        if ($updated) {
-            \Log::info('RKH Cancelled', [
+        try {
+            $updated = $this->rkhRepo->cancelRkh($companycode, $rkhno, $userid, trim($alasan));
+            
+            if ($updated) {
+                \Log::info('RKH Cancelled', [
+                    'rkhno' => $rkhno,
+                    'companycode' => $companycode,
+                    'cancelled_by' => $userid,
+                    'reason' => $alasan
+                ]);
+                
+                return [
+                    'success' => true,
+                    'message' => 'RKH berhasil dibatalkan. Material (jika ada dengan status ACTIVE) telah diupdate menjadi CANCEL.'
+                ];
+            }
+            
+            return [
+                'success' => false,
+                'message' => 'Gagal membatalkan RKH'
+            ];
+            
+        } catch (\Exception $e) {
+            \Log::error('Cancel RKH Service Error', [
                 'rkhno' => $rkhno,
-                'companycode' => $companycode,
-                'cancelled_by' => $userid,
-                'reason' => $alasan
+                'error' => $e->getMessage()
             ]);
             
             return [
-                'success' => true,
-                'message' => 'RKH berhasil dibatalkan'
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat membatalkan RKH: ' . $e->getMessage()
             ];
         }
-        
-        return [
-            'success' => false,
-            'message' => 'Gagal membatalkan RKH'
-        ];
     }
 
     /**
