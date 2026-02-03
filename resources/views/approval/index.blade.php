@@ -552,6 +552,7 @@
                                             Approve
                                         </button>
                                     </form>
+                                    @if( $approval->category != "Use Material" )
                                     <form action="{{ route('approval.other.process') }}" method="POST" class="flex-1">
                                         @csrf
                                         <input type="hidden" name="approvalno" value="{{ $approval->approvalno }}">
@@ -563,6 +564,7 @@
                                             Decline
                                         </button>
                                     </form>
+                                    @endif
                                 </div>
                             </div>
                             @endforeach

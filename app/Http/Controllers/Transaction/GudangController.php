@@ -522,6 +522,7 @@ class GudangController extends Controller
         
         $companyinv = company::where('companycode', session('companycode'))->first();
         if( request()->getHost() == 'sugarcane.sblampung.com' ){$koneksi = '172.17.1.39';}else{$koneksi = 'TESTING';}
+        if( session('companycode') == 'TBL4' ){$koneksi = 'TESTING';}
         Log::info('RETUR API PAYLOAD SUMMARY', [
             'connection' => $koneksi ?? null,
             'company_inventory' => $companyinv->companyinventory ?? null,
@@ -1073,6 +1074,7 @@ public function submit(Request $request)
     try {
         $companyinv = company::where('companycode', session('companycode'))->first();
         if( request()->getHost() == 'sugarcane.sblampung.com' ){$koneksi = '172.17.1.39';}else{$koneksi = 'TESTING';}
+        if( session('companycode') == 'TBL4' ){$koneksi = 'TESTING';}
         Log::info('SUBMIT API PAYLOAD SUMMARY', [
             'connection' => $koneksi ?? null,
             'company_inventory' => $companyinv->companyinventory ?? null,
