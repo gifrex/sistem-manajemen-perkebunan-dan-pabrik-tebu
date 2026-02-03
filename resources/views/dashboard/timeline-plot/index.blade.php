@@ -449,35 +449,20 @@
     let map, markers = [], polygons = [];
 
     // 🔑 Tentukan warna plot berdasarkan umur, ZPK, dan panen
-    function getPlotColor(d) {
-    const stage = parseFloat(d.stage_percentage ?? 0);
+function getPlotColor(d) {
+  // 1) kalau tidak ada activity sama sekali → cream
+  const hasAnyActivity = Array.isArray(d.activities) && d.activities.length > 0;
+  if (!hasAnyActivity) return '#fef3c7';
 
-    // Deteksi ada activity atau tidak (buat cream)
-    const hasAnyActivity = Array.isArray(d.activities) && d.activities.length > 0;
+  // 2) kalau SEMUA activity sudah 100% → hijau tua
+  const allDone = d.activities.every(a => (parseFloat(a.percentage || 0) >= 100));
+  if (allDone) return '#0f766e';
 
-    // --- ZPK logic (tetap) ---
-    let hasZpk = false;
-    let daysSinceZpk = null;
-
-    if (Array.isArray(d.activities)) {
-        const zpkAct = d.activities.find(a => a.code === '4.2.1');
-        if (zpkAct && zpkAct.tanggal) {
-            hasZpk = true;
-            const zpkDate = new Date(zpkAct.tanggal);
-            const today   = new Date();
-            const diffMs  = today - zpkDate;
-            daysSinceZpk  = diffMs / (1000 * 60 * 60 * 24);
-        }
-    }
-
-    // --- aturan utama dulu: selesai/ada/belum ada ---
-    if (!hasAnyActivity) return '#fef3c7';   // cream (belum ada activity)
-    if (stage >= 100) return '#0f766e';      // hijau tua (semua stage selesai)
-
-    // --- override ZPK (kalau sudah ada activity tapi belum selesai) ---
-    // default progress (belum selesai) → hijau muda
-    return '#86efac';
+  // 3) selain itu → hijau muda
+  return '#86efac';
 }
+
+
 
 function getRingColor(d) {
   const umurHari  = d.umur_hari || 0;
@@ -512,7 +497,7 @@ function getRingColor(d) {
             
         map = new google.maps.Map(document.getElementById('map'), {
             center: { lat: parseFloat(plotHeaders[0]?.centerlatitude || -4.12893), lng: parseFloat(plotHeaders[0]?.centerlongitude || 105.2971) },
-            zoom: 14
+            zoom: 14.5
         });
             
         createMapContent();
@@ -555,7 +540,7 @@ function getRingColor(d) {
                 // },
                 icon: {
                 path: google.maps.SymbolPath.CIRCLE,
-                scale: 30,
+                scale: 20,
                 fillOpacity: 0,
                 strokeOpacity: 0
                 },
