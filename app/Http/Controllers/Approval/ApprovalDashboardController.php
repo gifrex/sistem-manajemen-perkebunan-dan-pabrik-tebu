@@ -253,16 +253,22 @@ class ApprovalDashboardController extends Controller
 
     private function setOtherDetail( $otherDetail )
     {
-      $detail = array();
-      if( count($otherDetail) > 0 ){
-          foreach( $otherDetail as $item ){
-
-              if ( $item->category == "Use Material" ){
-                  $detail[$item->approvalno] = $this->otherRepository->getApprovalUseMaterialDetail($item->companycode, $item->approvalno);
-              }
-
-          }
-      }
-      return $detail;
+        $detail = array();
+        if( count($otherDetail) > 0 ){
+            foreach( $otherDetail as $item ){
+                if ( $item->category == "Use Material" ){
+                    $materialDetail = $this->otherRepository->getApprovalUseMaterialDetail(
+                        $item->companycode, 
+                        $item->approvalno
+                    );
+                    
+                    // HANYA SIMPAN JIKA ADA ISI
+                    if (!empty($materialDetail)) {
+                        $detail[$item->approvalno] = $materialDetail;
+                    }
+                }
+            }
+        }
+        return $detail;
     }
 }
