@@ -78,7 +78,6 @@
                     <div class="bg-blue-100 text-yellow-800 px-3 py-1 rounded shadow text-sm no-print">
                         <i class="bi bi-check-all me-1"></i>Dokumen RKH Herbisida Telah Dibatalkan
                     </div>
-                @endif
                 @else
                     <div class="bg-blue-100 text-blue-800 px-3 py-1 rounded shadow text-sm no-print">
                         <i class="bi bi-check-all me-1"></i>Dokumen RKH Herbisida Telah Diselesaikan
