@@ -40,7 +40,7 @@
         .total-row .sticky-h.blok{background:#0f766e;}
         
         tbody td{background:#fff;}
-        #map{height:600px;width:100%;}
+        #map{height:720px;width:100%;}
         @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
     </style>
     <div class="mx-auto px-6" x-data="{activeTab:'{{ request('tab','table') }}',map:null,markers:[],polygons:[]}">
@@ -512,14 +512,14 @@ function getRingColor(d) {
             
         map = new google.maps.Map(document.getElementById('map'), {
             center: { lat: parseFloat(plotHeaders[0]?.centerlatitude || -4.12893), lng: parseFloat(plotHeaders[0]?.centerlongitude || 105.2971) },
-            zoom: 13
+            zoom: 14
         });
             
         createMapContent();
         window.mapInitialized = true;
     }
 
-        
+        let activeInfoWindow = null;
         function createMapContent() {
             // Markers
             plotHeaders.forEach(h => {
@@ -545,13 +545,19 @@ function getRingColor(d) {
                 const marker = new google.maps.Marker({
                 position: {lat: parseFloat(h.centerlatitude), lng: parseFloat(h.centerlongitude)},
                 map: map,
+                // icon: {
+                //     path: google.maps.SymbolPath.CIRCLE,
+                //     scale: 25,
+                //     fillColor: color,
+                //     fillOpacity: opacity,
+                //     strokeColor: '#ffffff',
+                //     strokeWeight: 3
+                // },
                 icon: {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: 25,
-                    fillColor: color,
-                    fillOpacity: opacity,
-                    strokeColor: '#ffffff',
-                    strokeWeight: 3
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 30,
+                fillOpacity: 0,
+                strokeOpacity: 0
                 },
                 label: {text: h.plot, color: '#000', fontSize: '11px', fontWeight: 'bold'}
                 });
@@ -628,7 +634,12 @@ function getRingColor(d) {
                     </div>`
                 });
                 
-                marker.addListener('click', () => info.open(map, marker));
+                marker.addListener('click', () => {
+                if (activeInfoWindow) activeInfoWindow.close();  // tutup yang lama kalau ada
+                info.open(map, marker);                           // buka yang baru
+                activeInfoWindow = info;                          // simpan yang aktif
+                });
+
                 markers.push(marker);
             });
             
@@ -652,47 +663,25 @@ function getRingColor(d) {
                 const isMatch = (activityFilter === 'all') ? true : (d.is_match === 1 || d.is_match === true);
                 const color = isMatch ? baseColor : '#000000';
 
-                const hasZpkWarning = (zpkColor !== '#ffffff'); 
-                const fillColor = !isMatch ? '#000000' : (hasZpkWarning ? zpkColor : baseColor);
-
+                const hasZpkWarning = (zpkColor !== '#ffffff');
+                // ✅ fill hanya status (cream/hijau muda/hijau tua)
+                const fillColor = !isMatch ? '#000000' : baseColor;
+                // ✅ stroke hanya ring warning (orange/kuning/merah), tanpa warning pakai abu
+                const strokeColor = !isMatch ? '#000000' : (hasZpkWarning ? zpkColor : '#374151');
                 polygons.push(new google.maps.Polygon({
                 paths: pts.map(p => ({lat: parseFloat(p.latitude), lng: parseFloat(p.longitude)})),
-                strokeColor: isMatch ? (hasZpkWarning ? zpkColor : '#374151') : '#000000',
-                strokeOpacity: isMatch ? 0.8 : 0.35,
+                strokeColor: strokeColor,
+                strokeOpacity: isMatch ? 0.9 : 0.25,
                 strokeWeight: 2,
-                fillColor: fillColor, // <-- PAKAI fillColor (bukan "color")
-                fillOpacity: isMatch ? 0.18 : 0.06,
+                fillColor: fillColor,
+                fillOpacity: isMatch ? 0.45 : 0.10,
                 map: map
                 }));
 
 
+
             });
             
-            
-        // ✅ Zoom fokus ke area plot
-        const bounds = new google.maps.LatLngBounds();
-        plotHeaders.forEach(h => {
-            bounds.extend(new google.maps.LatLng(parseFloat(h.centerlatitude), parseFloat(h.centerlongitude)));
-        });
-
-        if (plotHeaders.length > 0) {
-            map.fitBounds(bounds);
-
-            // ✅ TAMBAHAN: map sering salah hitung kalau sebelumnya hidden (tab x-show)
-            setTimeout(() => {
-                google.maps.event.trigger(map, "resize");
-                map.fitBounds(bounds); // hitung ulang setelah resize
-            }, 80);
-
-            // ✅ Limit zoom level agar tidak terlalu dekat/jauh
-            google.maps.event.addListenerOnce(map, 'bounds_changed', () => {
-                const z = map.getZoom();
-                if (z > 15) map.setZoom(16);  // Tidak terlalu dekat
-
-                // ✅ GANTI: jangan paksa 14, cukup "floor" lebih wajar
-                if (z < 12) map.setZoom(15);  // Tidak terlalu jauh
-            });
-        }
 
 
 
