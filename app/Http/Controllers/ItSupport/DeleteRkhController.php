@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/ItSupport/DeleteRkhController.php
 
 namespace App\Http\Controllers\ItSupport;
 
@@ -36,7 +37,7 @@ class DeleteRkhController extends Controller
 
         try {
             $companycode = Session::get('companycode');
-            $rkhno = $request->rkhno;
+            $rkhno = strtoupper(trim($request->rkhno));
             
             // Get RKH basic info
             $rkhInfo = DB::table('rkhhdr')
@@ -147,6 +148,12 @@ class DeleteRkhController extends Controller
                     ->count(),
             ];
             
+            // Check material status - CRITICAL SAFETY CHECK
+            $materialStatus = $this->checkMaterialStatus($companycode, $rkhno);
+            
+            // Check if deletion is allowed
+            $canDelete = $this->canDeleteRkh($rkhInfo, $materialStatus, $impact);
+            
             // Check critical impacts
             $hasCriticalImpact = (
                 $impact['usematerialhdr'] > 0 || 
@@ -164,6 +171,9 @@ class DeleteRkhController extends Controller
                 'data' => [
                     'rkhInfo' => $rkhInfo,
                     'impact' => $impact,
+                    'materialStatus' => $materialStatus,
+                    'canDelete' => $canDelete['allowed'],
+                    'blockReason' => $canDelete['reason'] ?? null,
                     'hasCriticalImpact' => $hasCriticalImpact,
                     'hasmaterialimpact' => ($impact['usematerialhdr'] > 0 || $impact['usemateriallst'] > 0) ? 1 : 0,
                     'hassuratjalanimpact' => $impact['suratjalanpos'] > 0 ? 1 : 0,
@@ -208,109 +218,34 @@ class DeleteRkhController extends Controller
             
             $data = $searchData->data;
             
+            // CRITICAL: Check if deletion is allowed
+            if (!$data->canDelete) {
+                throw new \Exception($data->blockReason);
+            }
+            
+            // Get material used summary BEFORE deletion (with nouse)
+            $materialUsedSummary = $this->getMaterialUsedSummary($companycode, $rkhno);
+            
             // Insert audit log BEFORE deletion
             DB::table('rkhauditlog')->insert([
                 'companycode' => $companycode,
                 'rkhno' => $rkhno,
+                'actiontype' => 'DELETE',
                 'rkhdate' => $data->rkhInfo->rkhdate,
+                'olddate' => null,
+                'newdate' => null,
                 'affectedtablessummary' => json_encode($data->impact),
                 'hasmaterialimpact' => $data->hasmaterialimpact,
                 'hassuratjalanimpact' => $data->hassuratjalanimpact,
                 'hastimbanganimpact' => $data->hastimbanganimpact,
-                'deletionreason' => $request->deletionreason,
-                'deletedby' => $userid,
-                'deletedat' => now(),
+                'materialusedsummary' => $materialUsedSummary ? json_encode($materialUsedSummary) : null,
+                'actionreason' => $request->deletionreason,
+                'actionby' => $userid,
+                'actionat' => now(),
             ]);
             
             // Execute deletion
-            $lkhPattern = str_replace('RKH', 'LKH', $rkhno) . '-%';
-            
-            // 1. Timbangan payload
-            DB::table('timbanganpayload')
-                ->where('companycode', $companycode)
-                ->where('suratjalanno', 'like', "SJ-%-{$lkhPattern}")
-                ->delete();
-            
-            // 2. Surat jalan pos
-            DB::table('suratjalanpos')
-                ->where('companycode', $companycode)
-                ->where('suratjalanno', 'like', "SJ-%-{$lkhPattern}")
-                ->delete();
-            
-            // 3. Use material lst
-            $lkhNos = DB::table('lkhhdr')
-                ->where('companycode', $companycode)
-                ->where('rkhno', $rkhno)
-                ->pluck('lkhno');
-            
-            if ($lkhNos->isNotEmpty()) {
-                DB::table('usemateriallst')
-                    ->where('companycode', $companycode)
-                    ->whereIn('lkhno', $lkhNos)
-                    ->delete();
-            }
-            
-            // 4. Use material hdr
-            DB::table('usematerialhdr')
-                ->where('companycode', $companycode)
-                ->where('rkhno', $rkhno)
-                ->delete();
-            
-            // 5-9. LKH detail tables
-            if ($lkhNos->isNotEmpty()) {
-                DB::table('lkhdetailbsm')
-                    ->where('companycode', $companycode)
-                    ->whereIn('lkhno', $lkhNos)
-                    ->delete();
-                
-                DB::table('lkhdetailmaterial')
-                    ->where('companycode', $companycode)
-                    ->whereIn('lkhno', $lkhNos)
-                    ->delete();
-                
-                DB::table('lkhdetailkendaraan')
-                    ->where('companycode', $companycode)
-                    ->whereIn('lkhno', $lkhNos)
-                    ->delete();
-                
-                DB::table('lkhdetailworker')
-                    ->where('companycode', $companycode)
-                    ->whereIn('lkhno', $lkhNos)
-                    ->delete();
-                
-                DB::table('lkhdetailplot')
-                    ->where('companycode', $companycode)
-                    ->whereIn('lkhno', $lkhNos)
-                    ->delete();
-            }
-            
-            // 10. LKH hdr
-            DB::table('lkhhdr')
-                ->where('companycode', $companycode)
-                ->where('rkhno', $rkhno)
-                ->delete();
-            
-            // 11-13. RKH detail tables
-            DB::table('rkhlstkendaraan')
-                ->where('companycode', $companycode)
-                ->where('rkhno', $rkhno)
-                ->delete();
-            
-            DB::table('rkhlstworker')
-                ->where('companycode', $companycode)
-                ->where('rkhno', $rkhno)
-                ->delete();
-            
-            DB::table('rkhlst')
-                ->where('companycode', $companycode)
-                ->where('rkhno', $rkhno)
-                ->delete();
-            
-            // 14. RKH hdr
-            DB::table('rkhhdr')
-                ->where('companycode', $companycode)
-                ->where('rkhno', $rkhno)
-                ->delete();
+            $this->executeRkhDeletion($companycode, $rkhno);
             
             DB::commit();
             
@@ -328,5 +263,228 @@ class DeleteRkhController extends Controller
                 'message' => 'Gagal menghapus RKH: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Check material status
+     */
+    private function checkMaterialStatus($companycode, $rkhno)
+    {
+        $material = DB::table('usematerialhdr')
+            ->where('companycode', $companycode)
+            ->where('rkhno', $rkhno)
+            ->first();
+        
+        if (!$material) {
+            return [
+                'exists' => false,
+                'status' => null,
+                'can_delete' => true,
+                'message' => 'Tidak ada material'
+            ];
+        }
+        
+        // CRITICAL: Block deletion if DISPATCHED
+        $canDelete = ($material->flagstatus !== 'DISPATCHED');
+        
+        return [
+            'exists' => true,
+            'status' => $material->flagstatus,
+            'can_delete' => $canDelete,
+            'message' => $canDelete 
+                ? "Material berstatus {$material->flagstatus} (dapat dihapus)"
+                : "Material berstatus DISPATCHED (TIDAK DAPAT DIHAPUS)"
+        ];
+    }
+
+    /**
+     * Determine if RKH can be deleted
+     */
+    private function canDeleteRkh($rkhInfo, $materialStatus, $impact)
+    {
+        // Block if RKH is Completed
+        if ($rkhInfo->status === 'Completed') {
+            return [
+                'allowed' => false,
+                'reason' => 'RKH sudah Completed. Gunakan fitur "Uncomplete" terlebih dahulu.'
+            ];
+        }
+        
+        // CRITICAL: Block if material is DISPATCHED
+        if ($materialStatus['exists'] && !$materialStatus['can_delete']) {
+            return [
+                'allowed' => false,
+                'reason' => 'Material sudah DISPATCHED. Tidak dapat dihapus karena sudah diserahkan ke gudang. Gunakan proses retur material jika diperlukan.'
+            ];
+        }
+        
+        // Warn if has external dependencies (but still allow if not DISPATCHED)
+        if ($impact['suratjalanpos'] > 0 || $impact['timbanganpayload'] > 0) {
+            return [
+                'allowed' => true,
+                'warning' => "PERINGATAN: RKH ini memiliki data eksternal (Surat Jalan/Timbangan). Pastikan data di aplikasi lain sudah dikoordinasikan."
+            ];
+        }
+        
+        return ['allowed' => true];
+    }
+
+    /**
+     * Get material used summary with nouse
+     */
+    private function getMaterialUsedSummary($companycode, $rkhno)
+    {
+        $materials = DB::table('usemateriallst')
+            ->where('companycode', $companycode)
+            ->where('rkhno', $rkhno)
+            ->select([
+                'lkhno',
+                'plot',
+                'itemcode',
+                'itemname',
+                'qty',
+                'qtydigunakan',
+                'qtyretur',
+                'unit',
+                'nouse',
+                'noretur',
+                'dosageperha',
+                'returby',
+                'tglretur',
+                'tglterimaretur',  // ✅ FIXED: Nama kolom yang benar
+                'terimareturby',
+                'mobiledate',
+                'itemprice',
+                'costcenter',
+                'startstock',
+                'endstock',
+                'tgluse'
+            ])
+            ->get();
+        
+        if ($materials->isEmpty()) {
+            return null;
+        }
+        
+        return $materials->map(function($material) {
+            return [
+                'lkhno' => $material->lkhno,
+                'plot' => $material->plot,
+                'itemcode' => $material->itemcode,
+                'itemname' => $material->itemname,
+                'qty' => $material->qty,
+                'qtydigunakan' => $material->qtydigunakan,
+                'qtyretur' => $material->qtyretur,
+                'unit' => $material->unit,
+                'nouse' => $material->nouse,
+                'noretur' => $material->noretur,
+                'dosageperha' => $material->dosageperha,
+                'returby' => $material->returby,
+                'tglretur' => $material->tglretur,
+                'tglterimaretur' => $material->tglterimaretur,  // ✅ FIXED
+                'terimareturby' => $material->terimareturby,
+                'mobiledate' => $material->mobiledate,
+                'itemprice' => $material->itemprice,
+                'costcenter' => $material->costcenter,
+                'startstock' => $material->startstock,
+                'endstock' => $material->endstock,
+                'tgluse' => $material->tgluse,
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Execute RKH deletion in correct order
+     */
+    private function executeRkhDeletion($companycode, $rkhno)
+    {
+        $lkhPattern = str_replace('RKH', 'LKH', $rkhno) . '-%';
+        
+        // 1. Timbangan payload
+        DB::table('timbanganpayload')
+            ->where('companycode', $companycode)
+            ->where('suratjalanno', 'like', "SJ-%-{$lkhPattern}")
+            ->delete();
+        
+        // 2. Surat jalan pos
+        DB::table('suratjalanpos')
+            ->where('companycode', $companycode)
+            ->where('suratjalanno', 'like', "SJ-%-{$lkhPattern}")
+            ->delete();
+        
+        // 3. Use material lst
+        $lkhNos = DB::table('lkhhdr')
+            ->where('companycode', $companycode)
+            ->where('rkhno', $rkhno)
+            ->pluck('lkhno');
+        
+        if ($lkhNos->isNotEmpty()) {
+            DB::table('usemateriallst')
+                ->where('companycode', $companycode)
+                ->whereIn('lkhno', $lkhNos)
+                ->delete();
+        }
+        
+        // 4. Use material hdr
+        DB::table('usematerialhdr')
+            ->where('companycode', $companycode)
+            ->where('rkhno', $rkhno)
+            ->delete();
+        
+        // 5-9. LKH detail tables
+        if ($lkhNos->isNotEmpty()) {
+            DB::table('lkhdetailbsm')
+                ->where('companycode', $companycode)
+                ->whereIn('lkhno', $lkhNos)
+                ->delete();
+            
+            DB::table('lkhdetailmaterial')
+                ->where('companycode', $companycode)
+                ->whereIn('lkhno', $lkhNos)
+                ->delete();
+            
+            DB::table('lkhdetailkendaraan')
+                ->where('companycode', $companycode)
+                ->whereIn('lkhno', $lkhNos)
+                ->delete();
+            
+            DB::table('lkhdetailworker')
+                ->where('companycode', $companycode)
+                ->whereIn('lkhno', $lkhNos)
+                ->delete();
+            
+            DB::table('lkhdetailplot')
+                ->where('companycode', $companycode)
+                ->whereIn('lkhno', $lkhNos)
+                ->delete();
+        }
+        
+        // 10. LKH hdr
+        DB::table('lkhhdr')
+            ->where('companycode', $companycode)
+            ->where('rkhno', $rkhno)
+            ->delete();
+        
+        // 11-13. RKH detail tables
+        DB::table('rkhlstkendaraan')
+            ->where('companycode', $companycode)
+            ->where('rkhno', $rkhno)
+            ->delete();
+        
+        DB::table('rkhlstworker')
+            ->where('companycode', $companycode)
+            ->where('rkhno', $rkhno)
+            ->delete();
+        
+        DB::table('rkhlst')
+            ->where('companycode', $companycode)
+            ->where('rkhno', $rkhno)
+            ->delete();
+        
+        // 14. RKH hdr (last)
+        DB::table('rkhhdr')
+            ->where('companycode', $companycode)
+            ->where('rkhno', $rkhno)
+            ->delete();
     }
 }
