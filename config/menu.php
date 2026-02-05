@@ -431,6 +431,11 @@ return [
                 'route' => 'it-support.delete-rkh.index',
                 'permission' => 'it-support.delete-rkh.view',
             ],
+            [
+                'name' => 'Ganti Tanggal RKH',
+                'route' => 'it-support.change-date-rkh.index',
+                'permission' => 'it-support.change-date-rkh.view',
+            ],
         ],
     ],
 

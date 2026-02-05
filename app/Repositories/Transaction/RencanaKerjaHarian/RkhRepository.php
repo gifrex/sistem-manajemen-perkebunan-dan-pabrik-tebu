@@ -538,7 +538,6 @@ class RkhRepository
 
         return DB::table('rkhhdr')
             ->where('companycode', $companycode)
-            ->whereDate('rkhdate', $carbonDate->format('Y-m-d'))
             ->where('rkhno', 'like', "RKH{$day}{$month}%{$year}")
             ->lockForUpdate()
             ->orderBy(DB::raw('CAST(SUBSTRING(rkhno, 8, 2) AS UNSIGNED)'), 'desc')
