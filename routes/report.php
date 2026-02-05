@@ -74,6 +74,9 @@ Route::middleware('auth')->prefix('report')->name('report.')->group(function () 
     Route::middleware('permission:report.panentebu.view')->group(function () {
         Route::match(['GET', 'POST'], 'panen-tebu-report', [PanenTebuController::class, 'index'])->name('panen-tebu-report.index');
         Route::post('panen-tebu-report/proses', [PanenTebuController::class, 'proses'])->name('panen-tebu-report.proses');
+        Route::get('panen-tebu-report/history-data', [PanenTebuController::class, 'getHistoryData'])->name('panen-tebu-report.history-data');
+        Route::get('panen-tebu-report/show/{nodoc}', [PanenTebuController::class, 'show'])->name('panen-tebu-report.show');
+        Route::delete('panen-tebu-report/{nodoc}', [PanenTebuController::class, 'destroy'])->name('panen-tebu-report.destroy');
     });
 
     // ============================================================================
