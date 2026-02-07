@@ -376,7 +376,7 @@
   window.rkhDate = '{{ $selectedDate }}';
   window.mandorId = '{{ $selectedMandor->userid ?? '' }}';
   window.PANEN_ACTIVITIES = ['4.3.3', '4.4.3', '4.5.2'];
-  window.PIAS_ACTIVITIES = ['5.2.1'];
+  window.PIAS_ACTIVITIES = ['5.2.1','5.2.3a'];
   window.PLOT_INFO_BASE_URL = "{{ url('transaction/kerjaharian/rencanakerjaharian/plot-info') }}";
   window.RKH_SUBMISSION_LOCK = false;
 
