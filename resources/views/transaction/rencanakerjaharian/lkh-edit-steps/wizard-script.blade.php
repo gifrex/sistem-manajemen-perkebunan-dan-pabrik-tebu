@@ -22,14 +22,14 @@ document.addEventListener('alpine:init', () => {
     showValidationModal: false,
     showRecalculateModal: false,
     validationErrors: [],
-    isDirty: false, // Track if worker data has been modified
-    lastRecalculateHash: null, // Hash of worker data when last recalculated
+    isDirty: false,
+    lastRecalculateHash: null,
 
     // Data from server
     lkhData: @json($lkhData),
     tenagaKerja: @json($tenagaKerja ?? []),
     workers: @json($lkhWorkerDetails->toArray()),
-    materials: @json($lkhMaterialDetails->toArray()), // READ-ONLY (tidak akan diubah)
+    materials: @json($lkhMaterialDetails->toArray()),
     keterangan: '{{ old('keterangan', $lkhData->keterangan) }}',
     jenistenagakerja: {{ $lkhData->jenistenagakerja }},
     boronganRate: {{ $boronganRate ?? 0 }},
@@ -44,34 +44,25 @@ document.addEventListener('alpine:init', () => {
     init() {
       console.log('🚀 LKH Edit Wizard initialized');
       
-      // Build available bloks from masterlist
       this.buildAvailableBloks();
       
-      // Set default selected blok
       if (this.availableBloks.length > 0) {
         this.selectedBlok = this.availableBloks[0];
       }
       
-      // Calculate luassisa for existing plots
       this.plots.forEach((p, i) => this.calculateLuasSisa(i));
       
-      // FIX: Normalize tenagaKerja options FIRST (convert to string)
       this.tenagaKerja = this.tenagaKerja.map(tk => ({
         ...tk,
         tenagakerjaid: String(tk.tenagakerjaid || '').trim()
       }));
       
-      // FIX: Then normalize workers and ensure they match available options
       this.workers = this.workers.map(w => {
         const normalizedId = String(w.tenagakerjaid || '').trim();
-        
-        // Check if this ID exists in tenagaKerja options
         const exists = this.tenagaKerja.some(tk => tk.tenagakerjaid === normalizedId);
-        
         if (!exists && normalizedId) {
           console.warn('⚠️ Worker ID not found in options:', normalizedId);
         }
-        
         return {
           ...w,
           tenagakerjaid: normalizedId,
@@ -79,39 +70,30 @@ document.addEventListener('alpine:init', () => {
           nama: w.nama || ''
         };
       });
+
+      this.materials = this.materials.map(m => ({
+        ...m,
+        id: parseInt(m.id),
+        plot: String(m.plot || ''),
+        itemcode: String(m.itemcode || ''),
+        itemname: String(m.itemname || ''),
+        qtyditerima: parseFloat(m.qtyditerima || 0),
+        qtysisa: parseFloat(m.qtysisa || 0),
+        qtydigunakan: parseFloat(m.qtydigunakan || 0),
+        satuan: String(m.satuan || ''),
+        keterangan: String(m.keterangan || '')
+      }));
       
-      // 🐛 DEBUG: Verify data after normalization
       console.group('📊 Data Verification');
       console.log('Total workers:', this.workers.length);
-      console.log('Total worker options:', this.tenagaKerja.length);
-      console.log('Total materials (read-only):', this.materials.length);
+      console.log('Total materials:', this.materials.length);
       console.log('Jenis Tenaga Kerja:', this.jenistenagakerja, '(1=Harian, 2=Borongan)');
       console.log('Borongan Rate:', this.boronganRate);
-      
-      if (this.workers.length > 0) {
-        const sample = this.workers[0];
-        console.log('Sample worker:', {
-          id: sample.tenagakerjaid,
-          type: typeof sample.tenagakerjaid,
-          length: sample.tenagakerjaid.length,
-          nik: sample.nik,
-          nama: sample.nama
-        });
-        
-        const matchFound = this.tenagaKerja.find(tk => tk.tenagakerjaid === sample.tenagakerjaid);
-        console.log('Match found:', matchFound ? 'YES' : '❌ NO');
-        
-        if (matchFound) {
-          console.log('Matched option:', matchFound);
-        }
-      }
       console.groupEnd();
       
-      // Force re-render selects after data loaded
       this.$nextTick(() => {
-        this.workers = [...this.workers]; // Trigger reactivity
-        
-        // Calculate initial hash for dirty tracking
+        this.workers = [...this.workers];
+        this.materials = [...this.materials];
         this.lastRecalculateHash = this.getWorkerDataHash();
         this.isDirty = false;
       });
@@ -160,7 +142,7 @@ document.addEventListener('alpine:init', () => {
           luasrkh: parseFloat(plot.batcharea) || 0,
           luashasil: parseFloat(plot.batcharea) || 0,
           luassisa: 0,
-          batchno: plot.activebatchno || '-', // FIX: Use activebatchno from backend
+          batchno: plot.activebatchno || '-',
           batchid: plot.batch_id || plot.id || null,
           lifecyclestatus: plot.lifecyclestatus || null
         });
@@ -200,7 +182,6 @@ document.addEventListener('alpine:init', () => {
     // NAVIGATION METHODS
     // =====================================
     nextStep() {
-      // Check if on step 2 (workers) and data is dirty for HARIAN only
       if (this.currentStep === 2 && this.jenistenagakerja == 1 && this.isDirty) {
         this.showRecalculateModal = true;
         return;
@@ -229,12 +210,17 @@ document.addEventListener('alpine:init', () => {
     canProceed() {
       switch(this.currentStep) {
         case 1: 
-          // Step 1: Require plots AND keterangan (Alasan Edit)
           return this.plots.length > 0 && this.keterangan.trim() !== '';
-        case 2: 
-          return this.workers.length > 0 && this.allWorkersHaveSelection();
+        case 2:
+          if (this.workers.length === 0) return false;
+          if (!this.allWorkersHaveSelection()) return false;
+          // ✅ NEW: For BORONGAN, check if rate exists
+          if (this.jenistenagakerja === 2 && !this.hasBoronganRate()) {
+            return false;
+          }
+          return true;
         case 3: 
-          return true; // Materials are read-only, always can proceed
+          return !this.hasMaterialValidationError();
         default: 
           return true;
       }
@@ -254,13 +240,13 @@ document.addEventListener('alpine:init', () => {
         totaljamkerja: 0, overtimehours: 0, premi: 0, upahharian: 0,
         upahperjam: 0, upahlembur: 0, upahborongan: 0, totalupah: 0, keterangan: ''
       });
-      this.markDirty(); // Mark as dirty when adding worker
+      this.markDirty();
     },
 
     removeWorker(i) {
       if (confirm('Remove this worker?')) {
         this.workers.splice(i, 1);
-        this.markDirty(); // Mark as dirty when removing worker
+        this.markDirty();
       }
     },
 
@@ -284,7 +270,7 @@ document.addEventListener('alpine:init', () => {
         console.warn('⚠️ Worker not found:', w.tenagakerjaid);
       }
       
-      this.markDirty(); // Mark as dirty when changing worker
+      this.markDirty();
     },
 
     getWorkerName(id) {
@@ -301,46 +287,37 @@ document.addEventListener('alpine:init', () => {
     // WAGE CALCULATION METHODS
     // =====================================
     
-    /**
-     * Get total wage (OLD METHOD - kept for backward compatibility)
-     * For HARIAN: Sum all worker wages
-     * For BORONGAN: Not applicable (use calculateTotalWage instead)
-     */
     getTotalUpah() {
       return this.calculateTotalWage();
     },
 
-    /**
-     * Calculate total wage (NEW METHOD - handles both HARIAN and BORONGAN)
-     * This is the main method used in Step 4 Review
-     */
     calculateTotalWage() {
       if (this.jenistenagakerja == 1) {
-        // HARIAN: Sum dari totalupah setiap worker
         return this.workers.reduce((sum, w) => sum + (parseFloat(w.totalupah) || 0), 0);
       } else {
-        // BORONGAN: Total Luas × Borongan Rate
         const totalLuas = parseFloat(this.getTotalLuas()) || 0;
         return totalLuas * (this.boronganRate || 0);
       }
     },
 
     /**
-     * Recalculate wages from API (for HARIAN only)
+     * ✅ NEW: Check if borongan rate is available
      */
+    hasBoronganRate() {
+      if (this.jenistenagakerja !== 2) return true;
+      return this.boronganRate > 0;
+    },
+
     async recalculateWages() {
       if (!confirm('Recalculate all wages?')) return;
       this.isCalculating = true;
 
       try {
-        // FIX: Normalize time format H:i -> H:i:s BEFORE sending
         const normalizedWorkers = this.workers.map(w => ({
           ...w,
           jammasuk: this.normalizeTime(w.jammasuk),
           jamselesai: this.normalizeTime(w.jamselesai),
         }));
-
-        console.log('📤 Sending recalculate request with normalized workers:', normalizedWorkers);
 
         const res = await fetch('{{ route("transaction.rencanakerjaharian.recalculateWages") }}', {
           method: 'POST',
@@ -355,17 +332,15 @@ document.addEventListener('alpine:init', () => {
             activitycode: this.lkhData.activitycode,
             lkhdate: this.lkhData.lkhdate,
             jenistenagakerja: this.jenistenagakerja,
-            workers: normalizedWorkers, // Use normalized workers
+            workers: normalizedWorkers,
             plots: this.plots,
           })
         });
 
         const result = await res.json();
-        console.log('📥 Recalculate response:', result);
         
         if (result.success) {
           if (result.type === 'harian') {
-            // Update worker wages with calculated values
             this.workers.forEach(w => {
               const wage = result.wages[w.tenagakerjaid];
               if (wage) {
@@ -378,8 +353,6 @@ document.addEventListener('alpine:init', () => {
               }
             });
             this.showToast('Wages recalculated successfully!', 'success');
-            
-            // Reset dirty flag after successful recalculation
             this.lastRecalculateHash = this.getWorkerDataHash();
             this.isDirty = false;
           }
@@ -395,23 +368,46 @@ document.addEventListener('alpine:init', () => {
     },
 
     // =====================================
-    // MATERIAL METHODS (READ-ONLY)
+    // MATERIAL METHODS
     // =====================================
-    // ❌ DISABLED: addMaterial() - Materials cannot be added
-    // ❌ DISABLED: removeMaterial(i) - Materials cannot be removed
-    // ❌ DISABLED: calculateMaterialUsage(i) - Materials are read-only
     
-    // KEEP: Read-only summary methods
+    validateMaterialUsed(material) {
+      const used = parseFloat(material.qtydigunakan || 0);
+      const received = parseFloat(material.qtyditerima || 0);
+      
+      if (used > received) {
+        console.warn(`⚠️ Material ${material.itemcode}: Used (${used}) exceeds Received (${received})`);
+      }
+      
+      material.qtysisa = received - used;
+    },
+    
+    hasMaterialValidationError() {
+      return this.materials.some(m => {
+        const used = parseFloat(m.qtydigunakan || 0);
+        const received = parseFloat(m.qtyditerima || 0);
+        return used > received;
+      });
+    },
+    
     getTotalReceived() {
-      return this.materials.reduce((s, m) => s + (parseFloat(m.qtyditerima) || 0), 0).toFixed(3);
+      return this.materials.reduce((sum, m) => {
+        return sum + parseFloat(m.qtyditerima || 0);
+      }, 0).toFixed(3);
     },
-
+    
     getTotalRemaining() {
-      return this.materials.reduce((s, m) => s + (parseFloat(m.qtysisa) || 0), 0).toFixed(3);
+      return this.materials.reduce((sum, m) => {
+        const received = parseFloat(m.qtyditerima || 0);
+        const used = parseFloat(m.qtydigunakan || 0);
+        return sum + (received - used);
+      }, 0).toFixed(3);
     },
-
+    
     getTotalUsed() {
-      return this.materials.reduce((s, m) => s + (parseFloat(m.qtydigunakan) || 0), 0).toFixed(3);
+      return this.materials.reduce((sum, m) => {
+        return sum + parseFloat(m.qtydigunakan || 0);
+      }, 0).toFixed(3);
     },
 
     // =====================================
@@ -420,7 +416,6 @@ document.addEventListener('alpine:init', () => {
     validateAndSubmit() {
       this.validationErrors = [];
 
-      // Validate keterangan (Alasan Edit) first - MANDATORY
       if (!this.keterangan || this.keterangan.trim() === '') {
         this.validationErrors.push('Alasan Edit wajib diisi');
       }
@@ -437,6 +432,10 @@ document.addEventListener('alpine:init', () => {
         });
       }
 
+      if (this.hasMaterialValidationError()) {
+        this.validationErrors.push('Some materials have invalid quantities (Used > Received)');
+      }
+
       if (this.validationErrors.length > 0) {
         this.showValidationModal = true;
         return;
@@ -449,7 +448,6 @@ document.addEventListener('alpine:init', () => {
       this.isSubmitting = true;
 
       try {
-        // Normalize time format to H:i:s before sending
         const normalizedWorkers = this.workers.map(w => ({
           ...w,
           jammasuk: this.normalizeTime(w.jammasuk),
@@ -462,8 +460,7 @@ document.addEventListener('alpine:init', () => {
           keterangan: this.keterangan,
           plots: this.plots,
           workers: normalizedWorkers,
-          // ❌ MATERIALS NOT SENT - Read-only, won't be updated
-          // materials: this.materials
+          materials: this.materials
         };
 
         console.log('📤 Submitting LKH data:', formData);
@@ -478,16 +475,14 @@ document.addEventListener('alpine:init', () => {
           body: JSON.stringify(formData)
         });
 
-        // DEBUG: Check response before parsing
         console.log('📥 Response status:', res.status);
         const responseText = await res.text();
         console.log('📥 Response text (first 500 chars):', responseText.substring(0, 500));
 
-        // Try parse JSON
         let result;
         try {
           result = JSON.parse(responseText);
-          console.log('Parsed JSON result:', result);
+          console.log('✅ Parsed JSON result:', result);
         } catch (parseError) {
           console.error('❌ JSON Parse Error:', parseError);
           console.error('📄 Full response:', responseText);
@@ -497,7 +492,7 @@ document.addEventListener('alpine:init', () => {
         }
 
         if (result.success) {
-          console.log('LKH update successful');
+          console.log('✅ LKH update successful');
           window.dispatchEvent(new CustomEvent('lkh-success', {
             detail: { lkhno: this.lkhData.lkhno, message: result.message || 'LKH berhasil diupdate' }
           }));
@@ -517,16 +512,9 @@ document.addEventListener('alpine:init', () => {
     // HELPER METHODS
     // =====================================
     
-    /**
-     * Normalize time format from H:i to H:i:s
-     * @param {string} time - Time in H:i or H:i:s format
-     * @return {string|null} - Time in H:i:s format or null
-     */
     normalizeTime(time) {
       if (!time) return null;
-      // If already H:i:s format (length 8), return as is
       if (time.length === 8) return time;
-      // If H:i format (length 5), append :00
       if (time.length === 5) return time + ':00';
       return time;
     },
@@ -555,24 +543,14 @@ document.addEventListener('alpine:init', () => {
       }, 4000);
     },
 
-    // =====================================
-    // DIRTY STATE TRACKING
-    // =====================================
-    
-    /**
-     * Mark worker data as dirty (modified)
-     */
     markDirty() {
-      if (this.jenistenagakerja != 1) return; // Only track for HARIAN
+      if (this.jenistenagakerja != 1) return;
       this.isDirty = true;
       console.log('🔴 Worker data marked as dirty - recalculation required');
     },
 
-    /**
-     * Generate hash of worker data for comparison
-     */
     getWorkerDataHash() {
-      if (this.jenistenagakerja != 1) return null; // Only for HARIAN
+      if (this.jenistenagakerja != 1) return null;
       
       const data = this.workers.map(w => ({
         id: w.tenagakerjaid,

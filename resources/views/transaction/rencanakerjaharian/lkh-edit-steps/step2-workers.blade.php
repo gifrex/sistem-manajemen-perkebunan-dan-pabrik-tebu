@@ -170,7 +170,8 @@
   <div x-show="jenistenagakerja == 2" class="border border-gray-200 rounded-lg overflow-hidden">
     
     {{-- Borongan Summary --}}
-    <div class="bg-purple-50 border-b-2 border-purple-200 p-4">
+    <div class="border-b-2 p-4"
+        :class="boronganRate > 0 ? 'bg-purple-50 border-purple-200' : 'bg-amber-50 border-amber-200'">
       <div class="grid grid-cols-4 gap-4 text-center">
         <div>
           <p class="text-xs text-gray-600 mb-1">Total Luas</p>
@@ -178,16 +179,38 @@
         </div>
         <div>
           <p class="text-xs text-gray-600 mb-1">Rate/Ha</p>
-          <p class="text-xl font-bold text-purple-700" x-text="formatRupiah(boronganRate)"></p>
+          <p class="text-xl font-bold" 
+            :class="boronganRate > 0 ? 'text-purple-700' : 'text-amber-600'"
+            x-text="boronganRate > 0 ? formatRupiah(boronganRate) : 'Belum diset'"></p>
         </div>
         <div>
           <p class="text-xs text-gray-600 mb-1">Total Upah</p>
-          <p class="text-xl font-bold text-green-700" x-text="formatRupiah(getTotalLuas() * boronganRate)"></p>
+          <p class="text-xl font-bold" 
+            :class="boronganRate > 0 ? 'text-green-700' : 'text-gray-400'"
+            x-text="formatRupiah(getTotalLuas() * boronganRate)"></p>
         </div>
         <div>
           <p class="text-xs text-gray-600 mb-1">Per Worker</p>
-          <p class="text-xl font-bold text-green-700" 
-             x-text="workers.length > 0 ? formatRupiah((getTotalLuas() * boronganRate) / workers.length) : 'Rp 0'"></p>
+          <p class="text-xl font-bold" 
+            :class="boronganRate > 0 ? 'text-green-700' : 'text-gray-400'"
+            x-text="workers.length > 0 ? formatRupiah((getTotalLuas() * boronganRate) / workers.length) : 'Rp 0'"></p>
+        </div>
+      </div>
+    </div>
+
+    {{-- Borongan Rate Warning --}}
+    <div x-show="jenistenagakerja == 2 && boronganRate === 0" 
+        class="bg-amber-50 border border-amber-300 p-4 m-4 rounded-lg">
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+        </svg>
+        <div class="flex-1">
+          <p class="text-sm font-semibold text-amber-800 mb-1">Rate upah borongan belum tersedia</p>
+          <p class="text-xs text-amber-700 leading-relaxed">
+            Activity <strong x-text="lkhData.activitycode"></strong> belum memiliki rate untuk tanggal LKH ini.
+            Silakan atur terlebih dahulu di <strong>Master Data &rarr; Upah Borongan</strong>.
+          </p>
         </div>
       </div>
     </div>

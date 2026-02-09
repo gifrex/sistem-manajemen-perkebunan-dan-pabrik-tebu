@@ -156,7 +156,7 @@ class LkhController extends Controller
      * 
      * @param Request $request
      * @param string $lkhno
-     * @return \Illuminate\Http\RedirectResponse
+     * @return \Illuminate\Http\JsonResponse
      */
     public function updateLKH(Request $request, $lkhno)
     {
@@ -164,19 +164,25 @@ class LkhController extends Controller
             // Validate
             $this->validationService->validateLkhUpdateRequest($request);
 
-            // Prepare DTO
+            // ✅ FIX: Include materials in DTO
             $dto = [
                 'keterangan' => $request->input('keterangan'),
                 'plots' => $request->input('plots'),
                 'workers' => $request->input('workers'),
-                // materials tidak dikirim (read-only)
+                'materials' => $request->input('materials'), // ✅ NOW INCLUDED
             ];
+
+            // Debug log
+            \Log::info("🔵 LkhController::updateLKH called", [
+                'lkhno' => $lkhno,
+                'has_materials' => !empty($dto['materials']),
+                'materials_count' => count($dto['materials'] ?? [])
+            ]);
 
             // Update LKH
             $companycode = Session::get('companycode');
             $this->lkhService->updateLkh($lkhno, $dto, $companycode);
 
-            // FIX: Return JSON instead of redirect
             return response()->json([
                 'success' => true,
                 'message' => 'LKH berhasil diupdate',
@@ -186,7 +192,6 @@ class LkhController extends Controller
         } catch (\Exception $e) {
             \Log::error("Error updating LKH: " . $e->getMessage());
             
-            // FIX: Return JSON error instead of redirect
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
