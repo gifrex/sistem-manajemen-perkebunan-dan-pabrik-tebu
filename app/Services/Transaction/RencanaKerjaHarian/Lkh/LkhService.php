@@ -216,6 +216,12 @@ class LkhService
                 throw new \Exception('LKH sudah disubmit dan tidak dapat diedit');
             }
 
+            // Get RKH number for usemateriallst update
+            $rkhno = DB::table('lkhhdr')
+                ->where('companycode', $companycode)
+                ->where('lkhno', $lkhno)
+                ->value('rkhno');
+
             // Prepend "Alasan Edit: " to keterangan
             $keterangan = $dto['keterangan'] ?? null;
             if ($keterangan) {
@@ -269,8 +275,100 @@ class LkhService
                 $this->lkhRepo->replaceWorkerDetails($companycode, $lkhno, $workerDetails);
             }
 
-            // Materials are READ-ONLY
+            // ✅ NEW: Update material details (SYNC 2 TABLES)
+            if (!empty($dto['materials'])) {
+                $this->updateMaterialUsage($dto['materials'], $lkhno, $rkhno, $companycode, $currentUser->userid);
+            }
         });
+    }
+
+    private function updateMaterialUsage($materials, $lkhno, $rkhno, $companycode, $userid)
+    {
+        \Log::info("🔵 updateMaterialUsage STARTED", [
+            'lkhno' => $lkhno,
+            'rkhno' => $rkhno,
+            'companycode' => $companycode,
+            'total_materials' => count($materials)
+        ]);
+
+        foreach ($materials as $index => $material) {
+            $plot = $material['plot'];
+            $itemcode = $material['itemcode'];
+            $qtydigunakan = (float)($material['qtydigunakan'] ?? 0);
+            $qtyditerima = (float)($material['qtyditerima'] ?? 0);
+            
+            \Log::info("🔹 Processing material #{$index}", [
+                'id' => $material['id'] ?? 'N/A',
+                'plot' => $plot,
+                'itemcode' => $itemcode,
+                'qtydigunakan' => $qtydigunakan,
+                'qtyditerima' => $qtyditerima
+            ]);
+            
+            // Validation
+            if ($qtydigunakan > $qtyditerima) {
+                throw new \Exception("Qty Used ({$qtydigunakan}) cannot exceed Qty Received ({$qtyditerima}) for item {$itemcode} on plot {$plot}");
+            }
+            
+            // Calculate qtysisa (remaining = return)
+            $qtysisa = $qtyditerima - $qtydigunakan;
+            
+            // 1️⃣ Update lkhdetailmaterial (LKH detail)
+            $affectedRows1 = DB::table('lkhdetailmaterial')
+                ->where('id', $material['id'])
+                ->where('companycode', $companycode)
+                ->where('lkhno', $lkhno)
+                ->update([
+                    'qtydigunakan' => $qtydigunakan,
+                    'qtysisa' => $qtysisa,
+                    'updatedat' => now()
+                ]);
+
+            \Log::info("✅ lkhdetailmaterial updated", [
+                'affected_rows' => $affectedRows1,
+                'qtydigunakan' => $qtydigunakan,
+                'qtysisa' => $qtysisa
+            ]);
+            
+            // 2️⃣ Sync to usemateriallst (Material tracking)
+            $existingRecord = DB::table('usemateriallst')
+                ->where('companycode', $companycode)
+                ->where('rkhno', $rkhno)
+                ->where('lkhno', $lkhno)
+                ->where('plot', $plot)
+                ->where('itemcode', $itemcode)
+                ->first();
+
+            if (!$existingRecord) {
+                \Log::error("❌ Record NOT FOUND in usemateriallst", [
+                    'companycode' => $companycode,
+                    'rkhno' => $rkhno,
+                    'lkhno' => $lkhno,
+                    'plot' => $plot,
+                    'itemcode' => $itemcode
+                ]);
+                continue;
+            }
+
+            $affectedRows2 = DB::table('usemateriallst')
+                ->where('companycode', $companycode)
+                ->where('rkhno', $rkhno)
+                ->where('lkhno', $lkhno)
+                ->where('plot', $plot)
+                ->where('itemcode', $itemcode)
+                ->update([
+                    'qtydigunakan' => $qtydigunakan,
+                    'qtyretur' => $qtysisa,
+                ]);
+            
+            \Log::info("✅ usemateriallst updated", [
+                'affected_rows' => $affectedRows2,
+                'qtydigunakan' => $qtydigunakan,
+                'qtyretur' => $qtysisa // ✅ same as qtysisa
+            ]);
+        }
+
+        \Log::info("🟢 updateMaterialUsage COMPLETED");
     }
 
     /**

@@ -138,8 +138,13 @@
   </div>
 
   {{-- Keterangan Preview --}}
-  <div x-show="keterangan" class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-    <p class="text-xs text-gray-600 font-medium mb-1">Keterangan</p>
+  <div x-show="keterangan" class="bg-amber-50 border-l-4 border-amber-400 rounded-lg p-4 shadow-sm">
+    <p class="text-xs text-amber-700 font-semibold mb-1 flex items-center gap-1">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+      </svg>
+      Alasan Edit
+    </p>
     <p class="text-sm text-gray-700" x-text="keterangan"></p>
   </div>
 
@@ -248,10 +253,82 @@
     </div>
   </div>
 
+  {{-- ✅ NEW: Material Details Accordion --}}
+  <div x-data="{ openMaterials: false }" class="border border-gray-200 rounded-lg overflow-hidden shadow-sm" x-show="materials.length > 0">
+    <button @click="openMaterials = !openMaterials" type="button"
+      class="w-full px-4 py-3 bg-white hover:bg-gray-50 flex items-center justify-between transition-colors">
+      <span class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+        <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+        </svg>
+        Material Details (<span x-text="materials.length"></span>)
+      </span>
+      <svg class="w-5 h-5 text-gray-500 transition-transform duration-200" :class="openMaterials && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+      </svg>
+    </button>
+    <div x-show="openMaterials" 
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 -translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         class="border-t border-gray-200 bg-gray-50">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-white">
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-600">Plot</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-600">Item Code</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-600">Item Name</th>
+              <th class="px-4 py-2 text-right text-xs font-medium text-gray-600">Received</th>
+              <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 bg-blue-50">Used</th>
+              <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 bg-green-50">Remaining</th>
+              <th class="px-4 py-2 text-center text-xs font-medium text-gray-600">Unit</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 bg-white">
+            <template x-for="material in materials" :key="material.id">
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-2 font-mono text-gray-700 uppercase" x-text="material.plot"></td>
+                <td class="px-4 py-2 font-mono text-gray-700" x-text="material.itemcode"></td>
+                <td class="px-4 py-2 text-gray-700" x-text="material.itemname"></td>
+                <td class="px-4 py-2 text-right font-mono text-gray-700" x-text="parseFloat(material.qtyditerima || 0).toFixed(3)"></td>
+                <td class="px-4 py-2 text-right font-mono font-semibold text-blue-700 bg-blue-50" x-text="parseFloat(material.qtydigunakan || 0).toFixed(3)"></td>
+                <td class="px-4 py-2 text-right font-mono font-semibold bg-green-50"
+                    :class="(parseFloat(material.qtyditerima) - parseFloat(material.qtydigunakan)) < 0 ? 'text-red-600' : 'text-green-700'"
+                    x-text="(parseFloat(material.qtyditerima || 0) - parseFloat(material.qtydigunakan || 0)).toFixed(3)"></td>
+                <td class="px-4 py-2 text-center text-gray-700" x-text="material.satuan"></td>
+              </tr>
+            </template>
+          </tbody>
+          <tfoot class="bg-orange-50 border-t-2 border-orange-200">
+            <tr>
+              <td colspan="3" class="px-4 py-2 text-right font-semibold text-gray-700">Total:</td>
+              <td class="px-4 py-2 text-right font-mono font-bold text-gray-700" x-text="getTotalReceived()"></td>
+              <td class="px-4 py-2 text-right font-mono font-bold text-blue-700 bg-blue-50" x-text="getTotalUsed()"></td>
+              <td class="px-4 py-2 text-right font-mono font-bold text-green-700 bg-green-50" x-text="getTotalRemaining()"></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
   {{-- Validation Checklist --}}
   <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
     <p class="text-sm font-semibold text-gray-700 mb-3">Validation Checklist</p>
     <div class="space-y-2">
+      <div class="flex items-center gap-2">
+        <div class="w-5 h-5 rounded-full flex items-center justify-center"
+             :class="keterangan.trim() !== '' ? 'bg-blue-600' : 'bg-gray-300'">
+          <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </div>
+        <span class="text-sm text-gray-700">
+          <strong class="text-red-600">*</strong> Alasan Edit is required
+        </span>
+      </div>
       <div class="flex items-center gap-2">
         <div class="w-5 h-5 rounded-full flex items-center justify-center"
              :class="plots.length > 0 ? 'bg-blue-600' : 'bg-gray-300'">
@@ -283,6 +360,17 @@
         </div>
         <span class="text-sm text-gray-700">
           All workers must have a name selected
+        </span>
+      </div>
+      <div class="flex items-center gap-2" x-show="materials.length > 0">
+        <div class="w-5 h-5 rounded-full flex items-center justify-center"
+             :class="!hasMaterialValidationError() ? 'bg-blue-600' : 'bg-red-500'">
+          <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </div>
+        <span class="text-sm" :class="!hasMaterialValidationError() ? 'text-gray-700' : 'text-red-600'">
+          Material quantities must be valid (Used ≤ Received)
         </span>
       </div>
     </div>

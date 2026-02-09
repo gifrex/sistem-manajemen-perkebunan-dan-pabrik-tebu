@@ -9,45 +9,37 @@
         <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
         </svg>
-        Material Details
+        Material Usage
       </h3>
-      <p class="text-xs text-gray-600 mt-1">Material usage for this LKH (Read-only)</p>
+      <p class="text-xs text-gray-600 mt-1">Edit material usage - Only "Used" quantity is editable</p>
     </div>
-    <div class="flex items-center gap-3">
-      <div class="text-right">
-        <div class="text-xl font-bold text-orange-600" x-text="materials.length"></div>
-        <div class="text-[10px] text-gray-500">Total Items</div>
-      </div>
-      {{-- ADD BUTTON DISABLED --}}
-      <button type="button" disabled
-        class="px-3 py-2 bg-gray-300 text-gray-500 rounded-lg text-sm font-medium cursor-not-allowed flex items-center gap-1.5 opacity-60">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-        </svg>
-        Locked
-      </button>
+    <div class="text-right">
+      <div class="text-xl font-bold text-orange-600" x-text="materials.length"></div>
+      <div class="text-[10px] text-gray-500">Total Items</div>
     </div>
   </div>
 
-  {{-- Info Card - READ-ONLY WARNING --}}
+  {{-- Info Card --}}
   <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg p-4">
     <div class="flex items-start gap-3">
       <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
         <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
       </div>
       <div>
-        <p class="text-sm font-bold text-blue-900 mb-1">🔒 Material Editing Locked</p>
-        <p class="text-xs text-blue-700 leading-relaxed">
-          Material data cannot be modified from this page because it affects stock inventory and API integrations. 
-          Any changes must be made through the dedicated Material Management module to ensure proper stock tracking.
-        </p>
+        <p class="text-sm font-bold text-blue-900 mb-1">✏️ Editing Rules</p>
+        <ul class="text-xs text-blue-700 leading-relaxed space-y-1">
+          <li>• <strong>Editable:</strong> "Used" quantity only</li>
+          <li>• <strong>Auto-calculated:</strong> "Remaining" = Received - Used</li>
+          <li>• <strong>Synced:</strong> Updates both lkhdetailmaterial & usemateriallst</li>
+          <li>• <strong>Validation:</strong> Used cannot exceed Received</li>
+        </ul>
       </div>
     </div>
   </div>
 
-  {{-- Material Table - READ-ONLY --}}
+  {{-- Material Table --}}
   <div class="border border-gray-200 rounded-lg overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full">
@@ -57,49 +49,68 @@
             <th class="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Plot</th>
             <th class="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Item Code</th>
             <th class="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase min-w-[180px]">Item Name</th>
-            <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Received</th>
-            <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Remaining</th>
-            <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase bg-blue-50">Used</th>
+            <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase bg-gray-50">Received</th>
+            <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase bg-green-50">Remaining</th>
+            <th class="px-3 py-3 text-right text-xs font-semibold text-gray-600 uppercase bg-blue-50">Used ✏️</th>
             <th class="px-3 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Unit</th>
             <th class="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Notes</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
-          <template x-for="(material, index) in materials" :key="index">
-            <tr class="bg-gray-50">
+          <template x-for="(material, index) in materials" :key="material.id">
+            <tr class="hover:bg-gray-50 transition-colors">
               <td class="px-3 py-2 text-sm text-gray-600 font-medium" x-text="index + 1"></td>
               
-              {{-- ALL INPUTS ARE READ-ONLY --}}
+              {{-- READ-ONLY FIELDS --}}
               <td class="px-3 py-2">
-                <div class="px-2 py-1.5 text-sm bg-white border border-gray-200 rounded-lg font-mono uppercase text-gray-700" 
+                <div class="px-2 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg font-mono uppercase text-gray-700" 
                      x-text="material.plot || '-'"></div>
               </td>
               <td class="px-3 py-2">
-                <div class="px-2 py-1.5 text-sm bg-white border border-gray-200 rounded-lg font-mono text-gray-700" 
+                <div class="px-2 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg font-mono text-gray-700" 
                      x-text="material.itemcode || '-'"></div>
               </td>
               <td class="px-3 py-2">
-                <div class="px-2 py-1.5 text-sm bg-white border border-gray-200 rounded-lg text-gray-700" 
+                <div class="px-2 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-700" 
                      x-text="material.itemname || '-'"></div>
               </td>
-              <td class="px-3 py-2">
+              <td class="px-3 py-2 bg-gray-50">
                 <div class="px-2 py-1.5 text-sm bg-white border border-gray-200 rounded-lg text-right font-mono text-gray-700" 
                      x-text="parseFloat(material.qtyditerima || 0).toFixed(3)"></div>
               </td>
-              <td class="px-3 py-2">
-                <div class="px-2 py-1.5 text-sm bg-white border border-gray-200 rounded-lg text-right font-mono text-gray-700" 
-                     x-text="parseFloat(material.qtysisa || 0).toFixed(3)"></div>
+              
+              {{-- AUTO-CALCULATED REMAINING --}}
+              <td class="px-3 py-2 bg-green-50">
+                <div class="px-2 py-1.5 text-sm bg-green-100 border border-green-200 rounded-lg text-right font-semibold font-mono"
+                     :class="(parseFloat(material.qtyditerima) - parseFloat(material.qtydigunakan)) < 0 ? 'text-red-600 bg-red-50 border-red-300' : 'text-green-700'"
+                     x-text="(parseFloat(material.qtyditerima || 0) - parseFloat(material.qtydigunakan || 0)).toFixed(3)"></div>
               </td>
+              
+              {{-- ✏️ EDITABLE: USED QUANTITY --}}
               <td class="px-3 py-2 bg-blue-50">
-                <div class="px-2 py-1.5 text-sm bg-blue-100 border border-blue-200 rounded-lg text-right font-semibold font-mono text-blue-800" 
-                     x-text="parseFloat(material.qtydigunakan || 0).toFixed(3)"></div>
+                <input 
+                  type="number" 
+                  step="0.001"
+                  min="0"
+                  :max="material.qtyditerima"
+                  x-model="material.qtydigunakan"
+                  @input="validateMaterialUsed(material)"
+                  class="w-full px-2 py-1.5 text-sm bg-white border-2 rounded-lg text-right font-semibold font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  :class="parseFloat(material.qtydigunakan) > parseFloat(material.qtyditerima) ? 'border-red-500 bg-red-50' : 'border-blue-300'"
+                  placeholder="0.000">
+                <div x-show="parseFloat(material.qtydigunakan) > parseFloat(material.qtyditerima)" 
+                     class="text-xs text-red-600 mt-1 font-medium">
+                  ⚠️ Exceeds received!
+                </div>
               </td>
+              
               <td class="px-3 py-2">
-                <div class="px-2 py-1.5 text-sm bg-white border border-gray-200 rounded-lg text-center text-gray-700" 
+                <div class="px-2 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg text-center text-gray-700" 
                      x-text="material.satuan || '-'"></div>
               </td>
               <td class="px-3 py-2">
-                <div class="px-2 py-1.5 text-sm bg-white border border-gray-200 rounded-lg text-gray-700" 
+                <div class="px-2 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-700 truncate max-w-[150px]" 
+                     :title="material.keterangan"
                      x-text="material.keterangan || '-'"></div>
               </td>
             </tr>
@@ -134,31 +145,18 @@
     </div>
   </div>
 
-  {{-- Important Notice --}}
-  <div class="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4">
+  {{-- Validation Warning --}}
+  <div x-show="hasMaterialValidationError()" class="bg-red-50 border-l-4 border-red-400 rounded-lg p-4 animate-pulse">
     <div class="flex items-start gap-3">
-      <svg class="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+      <svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
       </svg>
       <div>
-        <p class="text-sm font-semibold text-yellow-800 mb-1">Material Management Restriction</p>
-        <p class="text-xs text-yellow-700 leading-relaxed">
-          Material quantities are linked to inventory stock levels and cannot be modified here. 
-          To adjust material data, please contact your system administrator or use the Material Stock Management module.
+        <p class="text-sm font-semibold text-red-800 mb-1">❌ Validation Error</p>
+        <p class="text-xs text-red-700 leading-relaxed">
+          Some materials have "Used" quantity exceeding "Received" quantity. Please correct before proceeding.
         </p>
       </div>
-    </div>
-  </div>
-
-  {{-- Navigation Info --}}
-  <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-    <div class="flex items-center gap-3">
-      <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-      </svg>
-      <p class="text-sm text-blue-700">
-        <span class="font-medium">You can proceed to the next step.</span> Material data is for reference only and will not be modified during this edit session.
-      </p>
     </div>
   </div>
 </div>
