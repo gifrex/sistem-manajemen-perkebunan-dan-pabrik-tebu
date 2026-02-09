@@ -405,6 +405,310 @@ class GudangController extends Controller
             'usematerialapproval' => $usematerialapproval
         ]);
     }
+    
+
+    public function koreksi(Request $request)
+    {   
+        if( request()->getHost() == 'sugarcane.sblampung.com' ){$islokal = 'LIVE';}else{$islokal = 'TESTING';}
+
+        $usematerialhdr = new usematerialhdr;
+        $usemateriallst = new usemateriallst;
+        $dosage = new HerbisidaDosage;
+        $herbisida = new Herbisida;
+
+        $dosage = HerbisidaDosage::get();
+
+        $validItemCodes = HerbisidaDosage::get()->pluck('itemcode')->unique();
+
+        $itemlist = DB::table('herbisidadosage as d')
+            ->join('herbisida as h', function ($join) {
+                $join->on('d.itemcode', '=', 'h.itemcode')
+                    ->on('d.companycode', '=', 'h.companycode');
+            })
+            ->join('herbisidagroup as hg', 'd.herbisidagroupid', '=', 'hg.herbisidagroupid')
+            ->where('d.companycode', session('companycode'))
+            ->select(
+                'd.itemcode',
+                'd.dosageperha',
+                'h.itemname',
+                'h.measure',
+                'd.herbisidagroupid',
+                'hg.herbisidagroupname',
+                'hg.activitycode',
+                'hg.description',
+                'hg.rounddosage'
+            )
+            ->orderBy('d.herbisidagroupid')
+            ->orderBy('d.itemcode')
+            ->orderBy('d.dosageperha')
+            ->get();
+
+        $details = collect($usematerialhdr->selectusematerial(session('companycode'), $request->rkhno, 1));
+        $first = $details->first();
+
+        return view('transaction.gudang.detail')->with([
+            'title' => 'Gudang',
+            'details' => $details,
+            'dosage' => $dosage,
+            'itemlist' => $itemlist,
+            'islokal' => $islokal
+        ]);
+    }
+
+    
+    //koreksi
+    public function koreksi_insert(Request $request)
+{
+    // Tentukan koneksi berdasarkan host
+    if (request()->getHost() == 'sugarcane.sblampung.com') {
+        $islokal = 'LIVE';
+    } else {
+        $islokal = 'TESTING';
+    }
+    $connection = 'IP' . $islokal;
+    $rkhList = collect((new usematerialhdr)->selectusematerial(session('companycode')));
+    // Ambil data RKH yang ada untuk dropdown
+    // $rkhList = usematerialhdr::where('companycode', session('companycode'))
+    //                           ->orderBy('rkhno', 'desc')
+    //                           ->get();                    
+
+    // Ambil daftar semua item untuk dropdown pemakaian baru
+    $itemList = Herbisida::where('companycode', session('companycode'))
+                         ->orderBy('itemcode')
+                         ->get();
+
+    // Return view koreksi untuk menampilkan form
+    return view('transaction.gudang.koreksi')->with([
+        'rkhList' => $rkhList,
+        'itemList' => $itemList,
+        'title' => 'Koreksi Stok',
+        'navbar' => 'Input',
+        'nav' => 'gudang',
+    ]);
+}
+
+// AJAX: Get items by RKH
+public function getItemsByRkh(Request $request)
+{
+    $rkhno = $request->rkhno;
+    $companycode = session('companycode');
+
+    // Ambil detail items dari usemateriallst berdasarkan RKH
+    $items = usemateriallst::where('companycode', $companycode)
+                           ->where('rkhno', $rkhno)
+                           ->orderBy('itemseq')
+                           ->get();
+    // dd($items, $companycode, $rkhno);
+    // Format data untuk response
+    $formattedItems = $items->map(function($item) {
+        return [
+            'itemseq' => $item->itemseq,
+            'itemcode' => $item->itemcode,
+            'itemname' => $item->itemname ?? '',
+            'qty' => $item->qty,
+            'uom' => $item->uom ?? '',
+        ];
+    });
+
+    return response()->json([
+        'success' => true,
+        'items' => $formattedItems
+    ]);
+}
+
+// AJAX: Get item detail by itemseq (untuk tipe USE)
+public function getItemDetail(Request $request)
+{
+    $rkhno = $request->rkhno;
+    $itemseq = $request->itemseq;
+    $companycode = session('companycode');
+
+    // Ambil detail item berdasarkan itemseq
+    $item = usemateriallst::where('companycode', $companycode)
+                          ->where('rkhno', $rkhno)
+                          ->where('itemseq', $itemseq)
+                          ->first();
+
+    if (!$item) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Item tidak ditemukan'
+        ], 404);
+    }
+
+    return response()->json([
+        'success' => true,
+        'item' => [
+            'itemseq' => $item->itemseq,
+            'itemcode' => $item->itemcode,
+            'itemname' => $item->itemname ?? '',
+            'qty' => $item->qty,
+            'uom' => $item->uom ?? '',
+        ]
+    ]);
+}
+
+public function koreksi_submit(Request $request)
+{
+    $tipe = $request->tipe_transaksi;
+
+    // Validasi berbeda berdasarkan tipe transaksi
+    if ($tipe == 'RETUR') {
+        $validated = $request->validate([
+            'rkhno' => 'required',
+            'tipe_transaksi' => 'required|in:USE,RETUR',
+            'itemseq' => 'required|integer',
+            'qty' => 'required|numeric|min:0.01',
+        ]);
+    } else { // USE
+        $validated = $request->validate([
+            'rkhno' => 'required',
+            'tipe_transaksi' => 'required|in:USE,RETUR',
+            'itemseq' => 'required|integer',
+            'itemcode' => 'required',
+            'qty' => 'required|numeric|min:0.01',
+        ]);
+    }
+
+    // Tentukan koneksi berdasarkan host
+    if (request()->getHost() == 'sugarcane.sblampung.com') {
+        $islokal = 'LIVE';
+    } else {
+        $islokal = 'TESTING';
+    }
+    $connection = 'IP' . $islokal;
+
+    $companycode = session('companycode');
+
+    // Ambil data RKH berdasarkan rkhno
+    $header = usematerialhdr::where('companycode', $companycode)
+                             ->where('rkhno', $request->rkhno)
+                             ->first();
+
+    if (!$header) {
+        return redirect()->back()->with('error', 'RKH tidak ditemukan.');
+    }
+
+    // Ambil data item dari usemateriallst berdasarkan itemseq
+    $usematerialItem = usemateriallst::where('companycode', $companycode)
+                                     ->where('rkhno', $request->rkhno)
+                                     ->where('itemseq', $request->itemseq)
+                                     ->first();
+
+    if (!$usematerialItem) {
+        return redirect()->back()->with('error', 'Item tidak ditemukan pada RKH tersebut.');
+    }
+
+    // Validasi khusus untuk RETUR
+    if ($tipe == 'RETUR') {
+        // Qty retur tidak boleh melebihi qty yang sudah dipakai
+        if ($request->qty > $usematerialItem->qty) {
+            return redirect()->back()->with('error', 
+                'Qty retur (' . $request->qty . ') tidak boleh melebihi qty pemakaian (' . $usematerialItem->qty . ').'
+            );
+        }
+
+        // Untuk RETUR, itemcode harus sama dengan yang ada di usemateriallst
+        $itemcode = $usematerialItem->itemcode;
+    } else { // USE
+        // Untuk USE, bisa ganti itemcode
+        $itemcode = $request->itemcode;
+        
+        // Log untuk tracking perubahan item
+        if ($itemcode != $usematerialItem->itemcode) {
+            Log::info('Item Change Detected', [
+                'rkhno' => $request->rkhno,
+                'itemseq' => $request->itemseq,
+                'original_item' => $usematerialItem->itemcode,
+                'original_qty' => $usematerialItem->qty,
+                'new_item' => $itemcode,
+                'new_qty' => $request->qty,
+                'user' => session('userid')
+            ]);
+        }
+    }
+
+    // Prepare data untuk API
+    $apiData = [
+        'rkhno' => $request->rkhno,
+        'itemseq' => $request->itemseq,
+        'itemcode' => $itemcode,
+        'qty' => $request->qty,
+        'tipe' => $tipe,
+        'companycode' => $companycode,
+        'userid' => session('userid'),
+        // Data header yang mungkin diperlukan
+        'estategroup' => $header->estategroup ?? '',
+        'estatecode' => $header->estatecode ?? '',
+        'divisioncode' => $header->divisioncode ?? '',
+    ];
+
+    try {
+        // Tentukan payload untuk API berdasarkan tipe transaksi
+        $apiPayload = $this->prepareApiPayload($header, $apiData, $tipe);
+
+        // Kirim ke API sesuai dengan tipe transaksi
+        $response = $this->sendToApi($apiPayload, $tipe);
+
+        // Menangani respon API
+        if ($response->successful()) {
+            // Proses sukses
+            $message = $tipe == 'RETUR' ? 'Retur berhasil dilakukan.' : 'Koreksi pemakaian berhasil dilakukan.';
+            return redirect()->route('transaction.gudang.home')->with('success', $message);
+        } else {
+            // Log error dan beri pesan
+            Log::error('API Error', [
+                'type' => $tipe,
+                'data' => $apiData,
+                'response' => $response->body()
+            ]);
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat menghubungi API: ' . $response->body());
+        }
+    } catch (\Exception $e) {
+        Log::error('Koreksi Submit Error', [
+            'type' => $tipe,
+            'data' => $apiData,
+            'error' => $e->getMessage()
+        ]);
+        return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+    }
+}
+
+// Helper function untuk prepare API payload
+private function prepareApiPayload($header, $data, $type)
+{
+    // Sesuaikan dengan format API Anda
+    $payload = [
+        'companycode' => $data['companycode'],
+        'rkhno' => $data['rkhno'],
+        'itemseq' => $data['itemseq'],
+        'itemcode' => $data['itemcode'],
+        'qty' => $data['qty'],
+        'transaction_type' => $type,
+        'estategroup' => $data['estategroup'],
+        'estatecode' => $data['estatecode'],
+        'divisioncode' => $data['divisioncode'],
+        'userid' => $data['userid'],
+        'timestamp' => now()->toDateTimeString(),
+    ];
+
+    return $payload;
+}
+
+// Helper function untuk kirim ke API
+private function sendToApi($payload, $type)
+{
+    // Tentukan endpoint berdasarkan tipe
+    $endpoint = $type == 'RETUR' ? '/api/retur' : '/api/use-material';
+    
+    // Sesuaikan dengan URL API Anda
+    $apiUrl = config('app.api_url') . $endpoint;
+    
+    return Http::post($apiUrl, $payload);
+}
+    //koreksi
+
+
 
     public function retur(Request $request)
     {   
@@ -423,6 +727,20 @@ class GudangController extends Controller
         $usemateriallst = new usemateriallst;
         $header = $usematerialhdr->selectuse(session('companycode'), $request->rkhno, 1)->get();
         $hfirst = $header->first();
+
+        // ✅ Pastikan LKH yang diretur sudah approved
+        $approvalStatus = DB::table('lkhhdr')
+        ->where('companycode', session('companycode'))
+        ->where('lkhno', $request->lkhno)
+        ->value('approvalstatus');
+
+        if ((int)$approvalStatus !== 1) {
+        return back()->with(
+            'error',
+            "Tidak bisa retur: LKH {$request->lkhno} belum approved (approvalstatus=" . ($approvalStatus ?? 'NULL') . ")."
+        );
+        }
+
 
         Log::info('RETUR DEBUG HEADER', [
             'header_count' => $header->count(),
@@ -592,31 +910,50 @@ class GudangController extends Controller
             ->whereNull('noretur')
             ->where('qtyretur', '>', 0)
             ->get(['rkhno', 'lkhno', 'itemcode', 'plot']);
-
+    
         $ok = 0;
         $fail = 0;
-
+        $reject = 0;
+    
         foreach ($rows as $row) {
-            // bentuk sub-request sesuai parameter yang dibutuhkan fungsi retur()
+    
+            // ✅ REJECT: LKH belum approved
+            $approvalStatus = DB::table('lkhhdr')->where('companycode', session('companycode'))
+                ->where('lkhno', $row->lkhno)->value('approvalstatus');
+    
+            if ((int)$approvalStatus !== 1) {
+                $reject++;
+                continue;
+            }
+    
             $sub = new \Illuminate\Http\Request([
                 'rkhno' => $row->rkhno,
                 'lkhno' => $row->lkhno,
                 'itemcode' => $row->itemcode,
                 'plot' => $row->plot,
             ]);
-
+    
             try {
-                $resp = $this->retur($sub); // pakai fungsi retur() yang sudah ada
-                // anggap retur() redirect back; hitung sukses jika tidak melempar exception
+                $this->retur($sub);  // proses normal
                 $ok++;
             } catch (\Throwable $e) {
-                \Log::error('retur_bulk error', ['item' => $row->itemcode, 'err' => $e->getMessage()]);
+                \Log::error('retur_bulk error', [
+                    'rkhno' => $row->rkhno,
+                    'lkhno' => $row->lkhno,
+                    'plot' => $row->plot,
+                    'itemcode' => $row->itemcode,
+                    'err' => $e->getMessage()
+                ]);
                 $fail++;
             }
         }
-
-        return back()->with($ok ? 'success1' : 'error', "Retur massal selesai. Sukses: {$ok}, Gagal: {$fail}");
+    
+        return back()->with(
+            ($fail > 0 ? 'warning' : 'success1'),
+            "Retur massal selesai. Sukses: {$ok}, Gagal: {$fail}, Ditolak: {$reject}"
+        );
     }
+    
 
 
 public function submit(Request $request)
