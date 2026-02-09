@@ -110,6 +110,7 @@ class PiasController extends Controller
             $join->on('lkhhdr.rkhno', '=', 'rkhhdr.rkhno')
                  ->on('lkhhdr.companycode', '=', 'rkhhdr.companycode');
         })
+        ->where('lkhhdr.activitycode', '5.2.1')
         ->leftJoin('lkhdetailplot', function($join) {
             $join->on('lkhdetailplot.lkhno', '=', 'lkhhdr.lkhno')
                  ->on('lkhdetailplot.companycode', '=', 'lkhhdr.companycode');
