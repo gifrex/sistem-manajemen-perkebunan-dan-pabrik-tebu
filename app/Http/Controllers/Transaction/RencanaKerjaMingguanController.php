@@ -472,15 +472,16 @@ class RencanaKerjaMingguanController extends Controller
             ->orderBy('a.rkmno', 'desc');
 
         if ($startDate) {
-            $query->whereDate('rkmhdr.rkmdate', '>=', $startDate);
+            $query->whereDate('a.rkmdate', '>=', $startDate);
         }
         if ($endDate) {
-            $query->whereDate('rkmhdr.rkmdate', '<=', $endDate);
+            $query->whereDate('a.rkmdate', '<=', $endDate);
         }
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('rkmlst.rkmno', 'like', "%{$search}%")
-                    ->orWhere('plotting.activitycode', 'like', "%{$search}%");
+                $q->where('b.rkmno', 'like', "%{$search}%")
+                    ->orWhere('a.activitycode', 'like', "%{$search}%")
+                    ->orWhere('act.activityname', 'like', "%{$search}%");
             });
         }
 
