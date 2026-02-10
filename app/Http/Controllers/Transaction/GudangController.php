@@ -1597,56 +1597,8 @@ public function submit(Request $request)
             }
             
             Cache::forget($lockKey);
-            return redirect()->back()->with('success1', 'Data updated successfully');
-
-            //new
-
-
-
-            // $itemPriceMap = [];
-            // foreach ($responseData['stockitem'] as $row) {
-            //     $itemcode = $row['Itemcode'] ?? null;
-            //     if ($itemcode) {
-            //         $itemPriceMap[$itemcode] = $row['Itemprice'] ?? 0;
-            //     }
-            // }
-
-            // // Update nouse & itemprice
-            // foreach ($itemPriceMap as $itemcode => $itemprice) {
-
-            //     Log::info("Before DB update:", [
-            //         'itemcode' => $itemcode,
-            //         'itemprice' => $itemprice,
-            //         'type' => gettype($itemprice)
-            //     ]);
-
-            //     usemateriallst::where('rkhno', $request->rkhno)
-            //         ->where('companycode', session('companycode'))
-            //         ->where('itemcode', $itemcode)
-            //         ->update([
-            //             'nouse' => $responseData['noUse'],
-            //             'itemprice' => $itemprice,
-            //             'costcenter' => $request->costcenter,
-            //             'startstock' => $responseData['stockitem'][$itemcode]['StartStock'] ?? 0,
-            //             'endstock' => $responseData['stockitem'][$itemcode]['EndStock'] ?? 0,
-            //             'tgluse'    => now()
-            //         ]);
-
-            //     // Cek hasil di database
-            //     $saved = usemateriallst::where('rkhno', $request->rkhno)
-            //         ->where('companycode', session('companycode'))
-            //         ->where('itemcode', $itemcode)
-            //         ->value('itemprice');
-
-            //     Log::info("After DB update:", [
-            //         'itemcode' => $itemcode,
-            //         'itemprice_saved' => $saved,
-            //         'type' => gettype($saved)
-            //     ]);
-            // }
-
-            // Cache::forget($lockKey);
-            // return redirect()->back()->with('success1', 'Data updated successfully');
+            return redirect()->route('transaction.gudang.home')->with('success', 'Data berhasil disimpan! NoUse: ' . ($responseData['noUse'] ?? 'N/A'));
+            
 
         } else {
             Cache::forget($lockKey);
