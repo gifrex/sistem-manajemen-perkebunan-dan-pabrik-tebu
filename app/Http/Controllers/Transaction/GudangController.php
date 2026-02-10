@@ -1650,35 +1650,40 @@ public function submit(Request $request)
 
         } else {
             Cache::forget($lockKey);
+            
+            $errorCode = $responseData['code'] ?? 'UNKNOWN';
+            $errorMsg = $responseData['message'] ?? 'API error';
+            $errors = $responseData['errors'] ?? [];
+            
             Log::error('API response invalid after commit', [
                 'status' => $response->status(),
-                'responseData' => $responseData,
-                'rkhno' => $request->rkhno
+                'code' => $errorCode,
+                'message' => $errorMsg,
+                'rkhno' => $request->rkhno,
+                'errors' => $errors,
             ]);
             
-            //return redirect()->back()->with('warning', 'Data tersimpan, tapi response API tidak valid. Status: ' . $response->status());
-            //
-            return back()->with(
-            'warning',
-            'Data tersimpan, tapi API menolak ['.(($responseData['status'] ?? '-') . '/' . ($responseData['code'] ?? '-')).']: '.
-            (
-                ($responseData['code'] ?? '') === 'CHECKSP_EMPTY' ? 'Gagal cek stok (SP CheckStockItem kosong). ' :
-                (($responseData['code'] ?? '') === 'FACTORY_NOT_FOUND' ? 'Factory tidak valid. ' :
-                (($responseData['code'] ?? '') === 'INSUFFICIENT_STOCK' ? 'Stok tidak cukup. ' : ''))
-            ).
-            ($responseData['message'] ?? 'API error') .
-            (
-                is_array($responseData['errors'] ?? null) && count($responseData['errors']) > 0
-                ? ' | ' . implode(', ', array_map(function($e){
-                    if (isset($e['itemcode'], $e['requested'], $e['available'])) return $e['itemcode'].' req='.$e['requested'].' stok='.$e['available'];
-                    if (isset($e['itemcode'])) return $e['itemcode'];
-                    return json_encode($e);
-                    }, array_slice($responseData['errors'], 0, 5)))
-                : ''
-            )
-            );
-
-            //
+            // Simple user message
+            $userMsg = "⚠️ Data tersimpan, tapi API gagal. ";
+            
+            // Tambah detail berdasarkan error code
+            if ($errorCode === 'DUPLICATE') {
+                $userMsg .= "Data duplikat terdeteksi.";
+            } elseif ($errorCode === 'CHECKSP_EMPTY') {
+                $userMsg .= "Gagal cek stok inventory.";
+            } elseif ($errorCode === 'FACTORY_NOT_FOUND') {
+                $userMsg .= "Factory tidak valid.";
+            } elseif ($errorCode === 'INSUFFICIENT_STOCK') {
+                $userMsg .= "Stok tidak mencukupi.";
+                if (!empty($errors)) {
+                    $item = $errors[0]['itemcode'] ?? '';
+                    $userMsg .= " Item: $item";
+                }
+            } else {
+                $userMsg .= "Error: $errorMsg";
+            }
+            
+            return back()->with('warning', $userMsg);
         }
 
     } catch (\Exception $e) {
