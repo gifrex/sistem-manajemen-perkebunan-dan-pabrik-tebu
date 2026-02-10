@@ -1460,14 +1460,14 @@ public function submit(Request $request)
         }
 
         $responseData = $response->json();
-        Log::info('SUBMIT API RESPONSE BASIC', [
+        Log::info('SUBMIT API RESPONSE DETAIL', [
             'http_status' => $response->status(),
-            'resp_status' => $responseData['status'] ?? null,
-            'resp_noUse' => $responseData['noUse'] ?? null,
-            'stockitem_type' => isset($responseData['stockitem']) ? gettype($responseData['stockitem']) : null,
-            'stockitem_count' => is_array($responseData['stockitem'] ?? null) ? count($responseData['stockitem']) : null,
-            'stockitem_keys_sample' => is_array($responseData['stockitem'] ?? null) ? array_slice(array_keys($responseData['stockitem']), 0, 10) : null,
+            'api_status' => $responseData['status'] ?? null,
+            'api_code' => $responseData['code'] ?? null,
+            'api_message' => $responseData['message'] ?? null,
+            'api_errors_sample' => is_array($responseData['errors'] ?? null) ? array_slice($responseData['errors'], 0, 5) : null,
         ]);
+        
         
         // Check response
         if ($response->status() == 200 && isset($responseData['status']) && $responseData['status'] == 1) {
@@ -1656,7 +1656,29 @@ public function submit(Request $request)
                 'rkhno' => $request->rkhno
             ]);
             
-            return redirect()->back()->with('warning', 'Data tersimpan, tapi response API tidak valid. Status: ' . $response->status());
+            //return redirect()->back()->with('warning', 'Data tersimpan, tapi response API tidak valid. Status: ' . $response->status());
+            //
+            return back()->with(
+            'warning',
+            'Data tersimpan, tapi API menolak ['.(($responseData['status'] ?? '-') . '/' . ($responseData['code'] ?? '-')).']: '.
+            (
+                ($responseData['code'] ?? '') === 'CHECKSP_EMPTY' ? 'Gagal cek stok (SP CheckStockItem kosong). ' :
+                (($responseData['code'] ?? '') === 'FACTORY_NOT_FOUND' ? 'Factory tidak valid. ' :
+                (($responseData['code'] ?? '') === 'INSUFFICIENT_STOCK' ? 'Stok tidak cukup. ' : ''))
+            ).
+            ($responseData['message'] ?? 'API error') .
+            (
+                is_array($responseData['errors'] ?? null) && count($responseData['errors']) > 0
+                ? ' | ' . implode(', ', array_map(function($e){
+                    if (isset($e['itemcode'], $e['requested'], $e['available'])) return $e['itemcode'].' req='.$e['requested'].' stok='.$e['available'];
+                    if (isset($e['itemcode'])) return $e['itemcode'];
+                    return json_encode($e);
+                    }, array_slice($responseData['errors'], 0, 5)))
+                : ''
+            )
+            );
+
+            //
         }
 
     } catch (\Exception $e) {
