@@ -436,7 +436,7 @@ class RencanaKerjaMingguanController extends Controller
             })
             ->leftJoin('lkhdetailplot as d', function ($join) {
                 $join->on('c.lkhno', '=', 'd.lkhno')
-                    ->on('a.companycode', '=', 'b.companycode')
+                    ->on('c.companycode', '=', 'd.companycode')
                     ->on('b.plot', '=', 'd.plot');
             })
             ->leftJoin('activity as act', 'a.activitycode', '=', 'act.activitycode')
@@ -452,8 +452,8 @@ class RencanaKerjaMingguanController extends Controller
                 'b.blok',
                 'b.plot',
                 'b.totalluasactual',
-                DB::raw('SUM(d.luashasil) AS hasil'),
-                DB::raw('b.totalestimasi - SUM(d.luashasil) AS sisa')
+                DB::raw('COALESCE(SUM(d.luashasil), 0) AS hasil'),
+                DB::raw('COALESCE(b.totalestimasi - SUM(d.luashasil), b.totalestimasi) AS sisa')
             )
             ->where('a.companycode', $companyCode)
             ->groupBy(
