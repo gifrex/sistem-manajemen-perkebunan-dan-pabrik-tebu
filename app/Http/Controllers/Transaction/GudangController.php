@@ -1597,7 +1597,7 @@ public function submit(Request $request)
             }
             
             Cache::forget($lockKey);
-            return redirect()->route('transaction.gudang.home')->with('success', 'Data berhasil disimpan! NoUse: ' . ($responseData['noUse'] ?? 'N/A'));
+            return redirect()->route('transaction.gudang.detail', ['rkhno' => $request->rkhno])->with('success', 'Data berhasil disimpan! NoUse: ' . ($responseData['noUse'] ?? 'N/A'));
             
 
         } else {

@@ -210,7 +210,7 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
         Route::any('gudang/returall', [GudangController::class, 'returAll'])->name('gudang.returall');
         Route::get('gudang/report', [GudangController::class, 'report'])->name('gudang.report');
         Route::get('gudang/koreksi', [GudangController::class, 'koreksi'])->name('gudang.koreksi');
-        Route::get('gudang/koreksi-home', [GudangController::class, 'koreksi_home'])->name('gudang.home');
+        Route::get('gudang/koreksi-home', [GudangController::class, 'koreksi_home'])->name('gudang.koreksi');
         Route::get('gudang/koreksi-insert', [GudangController::class, 'koreksi_insert'])->name('gudang.koreksi.insert');
         Route::post('gudang/koreksi-submit', [GudangController::class, 'koreksi_submit'])->name('gudang.koreksi.submit');
         
