@@ -343,18 +343,46 @@
                         </svg>
                         Helper
                     </span>
-                    <span class="text-xs text-gray-600">Pilih plot untuk auto-add ke list</span>
+                    <span class="text-xs text-gray-600">Pilih blok & plot untuk auto-add ke list</span>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
                     <div>
                         <label class="block mb-1.5 text-xs font-semibold text-gray-700">Blok Helper</label>
-                        <select id="helper-blok-select"
-                            class="input-focus border rounded-lg border-gray-300 p-2 w-full text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="" disabled selected>-- Pilih Blok --</option>
-                            @foreach ($bloks as $blok)
-                                <option value="{{ $blok->blok }}" class="text-black">{{ $blok->blok }}</option>
-                            @endforeach
-                        </select>
+                        <div class="custom-dropdown" id="helper-blok-dropdown">
+                            <div
+                                class="custom-dropdown-trigger input-focus border rounded-lg border-gray-300 p-2 w-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white flex items-center justify-between">
+                                <span id="helper-blok-selected-count" class="text-gray-400 text-xs">Pilih
+                                    blok...</span>
+                                <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                                    id="helper-blok-dropdown-icon" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                            <div class="custom-dropdown-menu" id="helper-blok-menu">
+                                <div class="custom-dropdown-search">
+                                    <div class="relative">
+                                        <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 transform -translate-y-1/2"
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                        <input type="text" id="helper-blok-search" placeholder="Cari blok..."
+                                            class="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                </div>
+                                <div id="helper-blok-list">
+                                    @foreach ($bloks as $blok)
+                                        <div class="checkbox-dropdown-item">
+                                            <input type="checkbox" id="helper-blok-{{ $blok->blok }}"
+                                                value="{{ $blok->blok }}">
+                                            <label for="helper-blok-{{ $blok->blok }}">{{ $blok->blok }}</label>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <label class="block mb-1.5 text-xs font-semibold text-gray-700">Plot Helper</label>
@@ -382,7 +410,7 @@
                                     </div>
                                 </div>
                                 <div id="helper-plot-list">
-                                    <div class="custom-dropdown-no-results">Pilih blok dulu</div>
+                                    <div class="custom-dropdown-no-results">Pilih blok terlebih dahulu</div>
                                 </div>
                             </div>
                         </div>
@@ -525,6 +553,8 @@
     </form>
 
     <script>
+        // Tempatkan script ini di bagian bawah view Anda, ganti semua script yang ada
+
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         const routes = {
             getPlot: "{{ route('transaction.rkm.getPlot', ':blok') }}",
@@ -540,7 +570,8 @@
                     m.classList.remove('active');
                     m.closest('.custom-dropdown').classList.remove('active');
                     const i = m.parentElement.querySelector(
-                        '.dropdown-icon, #dropdown-icon, #helper-dropdown-icon');
+                        '.dropdown-icon, #dropdown-icon, #helper-dropdown-icon, #helper-blok-dropdown-icon'
+                    );
                     if (i) i.style.transform = 'rotate(0deg)';
                 });
                 if (!wasActive) {
@@ -620,35 +651,57 @@
             }
         })();
 
-        (function initHelperPlot() {
-            const blokSelect = document.getElementById('helper-blok-select');
-            const dropdown = document.getElementById('helper-plot-dropdown');
-            const trigger = dropdown.querySelector('.custom-dropdown-trigger');
-            const menu = document.getElementById('helper-plot-menu');
-            const search = document.getElementById('helper-plot-search');
+        (function initHelperBlokPlot() {
+            const blokDropdown = document.getElementById('helper-blok-dropdown');
+            const blokTrigger = blokDropdown.querySelector('.custom-dropdown-trigger');
+            const blokMenu = document.getElementById('helper-blok-menu');
+            const blokSearch = document.getElementById('helper-blok-search');
+            const blokList = document.getElementById('helper-blok-list');
+            const blokSelectedCount = document.getElementById('helper-blok-selected-count');
+            const blokIcon = document.getElementById('helper-blok-dropdown-icon');
+
+            const plotDropdown = document.getElementById('helper-plot-dropdown');
+            const plotTrigger = plotDropdown.querySelector('.custom-dropdown-trigger');
+            const plotMenu = document.getElementById('helper-plot-menu');
+            const plotSearch = document.getElementById('helper-plot-search');
             const plotList = document.getElementById('helper-plot-list');
-            const selectedCount = document.getElementById('helper-selected-count');
-            const icon = document.getElementById('helper-dropdown-icon');
-            let selectedPlots = new Map();
+            const plotSelectedCount = document.getElementById('helper-selected-count');
+            const plotIcon = document.getElementById('helper-dropdown-icon');
 
-            setupDropdown(trigger, menu, icon);
+            let selectedBloks = new Set();
+            let selectedPlots = new Map(); // Map<plot, blok>
+            let plotsByBlok = new Map(); // Map<blok, Set<plots>>
 
-            blokSelect.addEventListener('change', function() {
-                const blok = this.value;
-                fetch(routes.getPlot.replace(':blok', blok))
-                    .then(r => r.json())
-                    .then(data => {
-                        plotList.innerHTML = data.length ? data.map(plot => {
-                                const isChecked = selectedPlots.has(plot) && selectedPlots.get(plot) ===
-                                    blok;
-                                return `<div class="checkbox-dropdown-item"><input type="checkbox" id="helper-plot-${plot}" value="${plot}" data-blok="${blok}" ${isChecked ? 'checked' : ''}><label for="helper-plot-${plot}">${plot}</label></div>`;
-                            }).join('') :
-                            '<div class="custom-dropdown-no-results">Tidak ada plot tersedia</div>';
-                        attachCheckboxEvents();
-                    });
+            setupDropdown(blokTrigger, blokMenu, blokIcon);
+            setupDropdown(plotTrigger, plotMenu, plotIcon);
+
+            // Setup blok checkboxes
+            blokList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    const blok = this.value;
+                    if (this.checked) {
+                        selectedBloks.add(blok);
+                        loadPlotsForBlok(blok);
+                    } else {
+                        selectedBloks.delete(blok);
+                        removePlotsForBlok(blok);
+                    }
+                    updateBlokCount();
+                    refreshPlotList();
+                });
             });
 
-            search.addEventListener('input', function() {
+            // Setup blok search
+            blokSearch.addEventListener('input', function() {
+                const term = this.value.toLowerCase();
+                blokList.querySelectorAll('.checkbox-dropdown-item').forEach(item => {
+                    const label = item.querySelector('label').textContent.toLowerCase();
+                    item.style.display = label.includes(term) ? 'flex' : 'none';
+                });
+            });
+
+            // Setup plot search
+            plotSearch.addEventListener('input', function() {
                 const term = this.value.toLowerCase();
                 plotList.querySelectorAll('.checkbox-dropdown-item').forEach(item => {
                     const label = item.querySelector('label').textContent.toLowerCase();
@@ -656,23 +709,112 @@
                 });
             });
 
-            function attachCheckboxEvents() {
+            function loadPlotsForBlok(blok) {
+                fetch(routes.getPlot.replace(':blok', blok))
+                    .then(r => r.json())
+                    .then(data => {
+                        plotsByBlok.set(blok, new Set(data));
+                        refreshPlotList();
+                    });
+            }
+
+            function removePlotsForBlok(blok) {
+                // Remove all plots for this blok from selection
+                const plotsToRemove = [];
+                selectedPlots.forEach((plotBlok, plot) => {
+                    if (plotBlok === blok) {
+                        plotsToRemove.push(plot);
+                    }
+                });
+
+                plotsToRemove.forEach(plot => {
+                    selectedPlots.delete(plot);
+                    removeRowFromHelper(blok, plot);
+                });
+
+                plotsByBlok.delete(blok);
+                updatePlotCount();
+                refreshPlotList();
+            }
+
+            function refreshPlotList() {
+                if (selectedBloks.size === 0) {
+                    plotList.innerHTML = '<div class="custom-dropdown-no-results">Pilih blok terlebih dahulu</div>';
+                    return;
+                }
+
+                const allPlots = [];
+                selectedBloks.forEach(blok => {
+                    const plots = plotsByBlok.get(blok);
+                    if (plots) {
+                        plots.forEach(plot => {
+                            allPlots.push({
+                                plot,
+                                blok
+                            });
+                        });
+                    }
+                });
+
+                if (allPlots.length === 0) {
+                    plotList.innerHTML = '<div class="custom-dropdown-no-results">Tidak ada plot tersedia</div>';
+                    return;
+                }
+
+                // Sort plots
+                allPlots.sort((a, b) => {
+                    const aBlok = a.blok;
+                    const bBlok = b.blok;
+                    if (aBlok !== bBlok) return aBlok.localeCompare(bBlok);
+
+                    const aNum = parseInt(a.plot.replace(/\D/g, '')) || 0;
+                    const bNum = parseInt(b.plot.replace(/\D/g, '')) || 0;
+                    return aNum - bNum;
+                });
+
+                plotList.innerHTML = allPlots.map(({
+                    plot,
+                    blok
+                }) => {
+                    const isChecked = selectedPlots.has(plot) && selectedPlots.get(plot) === blok;
+                    return `<div class="checkbox-dropdown-item">
+                <input type="checkbox" id="helper-plot-${plot}" value="${plot}" data-blok="${blok}" ${isChecked ? 'checked' : ''}>
+                <label for="helper-plot-${plot}">${plot} <span class="text-gray-400 text-xs">(${blok})</span></label>
+            </div>`;
+                }).join('');
+
+                attachPlotCheckboxEvents();
+            }
+
+            function attachPlotCheckboxEvents() {
                 plotList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                     cb.addEventListener('change', function() {
                         const plot = this.value;
                         const blok = this.dataset.blok;
-                        this.checked ? (selectedPlots.set(plot, blok), addRowFromHelper(blok, plot)) : (
-                            selectedPlots.delete(plot), removeRowFromHelper(blok, plot));
-                        updateSelectedCount();
+                        if (this.checked) {
+                            selectedPlots.set(plot, blok);
+                            addRowFromHelper(blok, plot);
+                        } else {
+                            selectedPlots.delete(plot);
+                            removeRowFromHelper(blok, plot);
+                        }
+                        updatePlotCount();
                     });
                 });
             }
 
-            function updateSelectedCount() {
+            function updateBlokCount() {
+                const count = selectedBloks.size;
+                blokSelectedCount.textContent = count === 0 ? 'Pilih blok...' : `${count} blok terpilih`;
+                blokSelectedCount.classList.toggle('text-gray-400', count === 0);
+                blokSelectedCount.classList.toggle('text-gray-900', count > 0);
+            }
+
+            function updatePlotCount() {
                 const count = selectedPlots.size;
-                selectedCount.textContent = count === 0 ? 'Pilih plot...' : `${count} plot terpilih`;
-                selectedCount.classList.toggle('text-gray-400', count === 0);
-                selectedCount.classList.toggle('text-gray-900', count > 0);
+                plotSelectedCount.textContent = count === 0 ? 'Pilih plot...' : `${count} plot terpilih`;
+                plotSelectedCount.classList.toggle('text-gray-400', count === 0);
+                plotSelectedCount.classList.toggle('text-gray-900', count > 0);
             }
 
             function addRowFromHelper(blok, plot) {
@@ -727,7 +869,10 @@
                         })
                     }).then(r => r.json()).then(data => {
                         const li = row.querySelector('input[name$="[totalluasactual]"]');
-                        if (li) li.value = data.luasarea;
+                        if (li) {
+                            li.value = data.luasarea;
+                            setupEstimasiValidation(row);
+                        }
                     });
                 }, 300);
             }
@@ -735,14 +880,63 @@
             function removeRowFromHelper(blok, plot) {
                 const rows = document.querySelectorAll('.input-row');
                 rows.forEach(row => {
-                    if (row.dataset.helperGenerated === 'true' && row.dataset.helperBlok === blok && row.dataset
-                        .helperPlot === plot) {
+                    if (row.dataset.helperGenerated === 'true' &&
+                        row.dataset.helperBlok === blok &&
+                        row.dataset.helperPlot === plot) {
                         row.remove();
                         updateRowNumbers();
                     }
                 });
             }
+
+            // Expose fungsi untuk diakses dari luar
+            window.helperPlotRemove = function(blok, plot) {
+                selectedPlots.delete(plot);
+                updatePlotCount();
+
+                const checkbox = document.querySelector(`#helper-plot-${plot}[data-blok="${blok}"]`);
+                if (checkbox) {
+                    checkbox.checked = false;
+                }
+            };
         })();
+
+        function setupEstimasiValidation(row) {
+            const luasInput = row.querySelector('input[name$="[totalluasactual]"]');
+            const estimasiInput = row.querySelector('input[name$="[totalestimasi]"]');
+
+            if (!luasInput || !estimasiInput) return;
+
+            estimasiInput.addEventListener('input', function() {
+                const luas = parseFloat(luasInput.value) || 0;
+                const estimasi = parseFloat(this.value) || 0;
+
+                if (estimasi > luas) {
+                    this.value = luas.toFixed(2);
+
+                    const warning = document.createElement('div');
+                    warning.className = 'text-red-600 text-xs mt-1 font-semibold';
+                    warning.textContent = 'Estimasi tidak boleh melebihi Luas!';
+
+                    const existingWarning = this.parentElement.querySelector('.text-red-600');
+                    if (existingWarning) {
+                        existingWarning.remove();
+                    }
+
+                    this.parentElement.appendChild(warning);
+                    setTimeout(() => warning.remove(), 3000);
+                }
+            });
+
+            estimasiInput.addEventListener('blur', function() {
+                const luas = parseFloat(luasInput.value) || 0;
+                const estimasi = parseFloat(this.value) || 0;
+
+                if (estimasi > luas) {
+                    this.value = luas.toFixed(2);
+                }
+            });
+        }
 
         function initPlotDropdown(row) {
             const dropdown = row.querySelector('.plot-dropdown');
@@ -764,9 +958,8 @@
                     .then(r => r.json())
                     .then(data => {
                         list.innerHTML = data.length ? data.map(plot =>
-                                `<div class="custom-dropdown-item" data-code="${plot}"><div class="custom-dropdown-item-code">${plot}</div></div>`
-                            ).join('') :
-                            '<div class="custom-dropdown-no-results">Tidak ada plot tersedia</div>';
+                            `<div class="custom-dropdown-item" data-code="${plot}"><div class="custom-dropdown-item-code">${plot}</div></div>`
+                        ).join('') : '<div class="custom-dropdown-no-results">Tidak ada plot tersedia</div>';
                         attachPlotEvents();
                     });
             });
@@ -803,7 +996,10 @@
                             })
                         }).then(r => r.json()).then(data => {
                             const li = row.querySelector('input[name$="[totalluasactual]"]');
-                            if (li) li.value = data.luasarea;
+                            if (li) {
+                                li.value = data.luasarea;
+                                setupEstimasiValidation(row);
+                            }
                         });
                     });
                 });
@@ -812,6 +1008,8 @@
 
         document.querySelectorAll('.input-row').forEach(row => {
             initPlotDropdown(row);
+            setupEstimasiValidation(row);
+
             const blokSelect = row.querySelector('.blok-select');
             if (blokSelect.value) {
                 blokSelect.dispatchEvent(new Event('change'));
@@ -841,6 +1039,7 @@
             const newRow = createRow(container.querySelectorAll('.input-row').length);
             container.appendChild(newRow);
             initPlotDropdown(newRow);
+            setupEstimasiValidation(newRow);
             updateRowNumbers();
         });
 
@@ -850,10 +1049,11 @@
                 const row = btn.closest('.input-row');
                 if (row) {
                     if (row.dataset.helperGenerated === 'true') {
-                        const cb = document.querySelector(`#helper-plot-${row.dataset.helperPlot}`);
-                        if (cb && cb.dataset.blok === row.dataset.helperBlok) {
-                            cb.checked = false;
-                            cb.dispatchEvent(new Event('change'));
+                        const blok = row.dataset.helperBlok;
+                        const plot = row.dataset.helperPlot;
+
+                        if (typeof window.helperPlotRemove === 'function') {
+                            window.helperPlotRemove(blok, plot);
                         }
                     }
                     row.remove();
