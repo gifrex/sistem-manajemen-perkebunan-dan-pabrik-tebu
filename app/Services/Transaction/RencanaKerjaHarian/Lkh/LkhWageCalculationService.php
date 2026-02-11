@@ -90,12 +90,12 @@ class LkhWageCalculationService
             ];
         }
         
-        $totalUpah = $totalLuas * $rate;
-        
+        $totalUpah = round($totalLuas * $rate, 2);
+
         return [
-            'total_luas' => (float) $totalLuas,
-            'rate_per_ha' => (float) $rate,
-            'total_upah' => (float) $totalUpah,
+            'total_luas' => round($totalLuas, 2),
+            'rate_per_ha' => round($rate, 2),
+            'total_upah' => $totalUpah,
         ];
     }
 
@@ -131,7 +131,7 @@ class LkhWageCalculationService
                 ];
             }
             
-            $wageData['upahharian'] = $dailyRate;
+            $wageData['upahharian'] = round($dailyRate, 2);
             
         } else {
             // Part day (< 7 hours) - use hourly rate
@@ -143,8 +143,8 @@ class LkhWageCalculationService
                 ];
             }
             
-            $wageData['upahperjam'] = $hourlyRate;
-            $wageData['upahharian'] = $totalJamKerja * $wageData['upahperjam'];
+            $wageData['upahperjam'] = round($hourlyRate, 2);
+            $wageData['upahharian'] = round($totalJamKerja * $wageData['upahperjam'], 2);
         }
         
         // Calculate overtime if applicable
@@ -157,10 +157,10 @@ class LkhWageCalculationService
                 ];
             }
             
-            $wageData['upahlembur'] = $overtimeHours * $overtimeRate;
+            $wageData['upahlembur'] = round($overtimeHours * $overtimeRate, 2);
         }
         
-        $wageData['totalupah'] = $wageData['upahharian'] + $wageData['upahlembur'] + $wageData['premi'];
+        $wageData['totalupah'] = round($wageData['upahharian'] + $wageData['upahlembur'] + $wageData['premi'], 2);
         
         return $wageData;
     }

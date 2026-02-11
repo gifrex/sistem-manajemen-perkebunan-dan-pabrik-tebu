@@ -86,7 +86,7 @@
                         </div>
                         <div class="flex justify-between gap-8">
                             <span class="text-gray-700">Total Upah:</span>
-                            <span class="font-bold text-gray-900">Rp {{ number_format($lkhData->totalupahall ?? 0, 0, ',', '.') }}</span>
+                            <span class="font-bold text-gray-900">Rp {{ number_format($lkhData->totalupahall ?? 0, 2, ',', '.') }}</span>
                         </div>
                     </div>
                 </div>
@@ -370,16 +370,16 @@
                             {{ ($worker->overtimehours ?? 0) > 0 ? number_format($worker->overtimehours, 0) . ' jam' : '-' }}
                         </td>
                         <td class="border border-gray-400 px-2 py-2 text-right">
-                            Rp {{ number_format($worker->premi ?? 0, 0, ',', '.') }}
+                            Rp {{ number_format($worker->premi ?? 0, 2, ',', '.') }}
                         </td>
                         <td class="border border-gray-400 px-2 py-2 text-right">
-                            Rp {{ number_format($worker->upahharian ?? 0, 0, ',', '.') }}
+                            Rp {{ number_format($worker->upahharian ?? 0, 2, ',', '.') }}
                         </td>
                         <td class="border border-gray-400 px-2 py-2 text-right">
-                            Rp {{ number_format($worker->upahlembur ?? 0, 0, ',', '.') }}
+                            Rp {{ number_format($worker->upahlembur ?? 0, 2, ',', '.') }}
                         </td>
                         <td class="border border-gray-400 px-2 py-2 text-right font-bold bg-gray-100">
-                            Rp {{ number_format($worker->totalupah ?? 0, 0, ',', '.') }}
+                            Rp {{ number_format($worker->totalupah ?? 0, 2, ',', '.') }}
                         </td>
                     </tr>
                     @endforeach
@@ -388,7 +388,7 @@
                     <tr class="bg-gray-200 font-bold">
                         <td colspan="10" class="border border-gray-400 px-2 py-2 text-right">TOTAL UPAH:</td>
                         <td class="border border-gray-400 px-2 py-2 text-right bg-gray-300">
-                            Rp {{ number_format($lkhWorkerDetails->sum('totalupah'), 0, ',', '.') }}
+                            Rp {{ number_format($lkhWorkerDetails->sum('totalupah'), 2, ',', '.') }}
                         </td>
                     </tr>
                 </tfoot>

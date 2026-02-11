@@ -59,7 +59,7 @@
                         </div>
                         <div class="flex justify-between">
                             <span class="font-medium text-gray-700">Total Upah:</span> 
-                            <span class="font-bold text-gray-900">Rp {{ number_format($lkhData->totalupahall ?? 0, 0, ',', '.') }}</span>
+                            <span class="font-bold text-gray-900">Rp {{ number_format($lkhData->totalupahall ?? 0, 2, ',', '.') }}</span>
                         </div>
                     </div>
                 </div>
@@ -166,16 +166,16 @@
                                     {{ ($worker->overtimehours ?? 0) > 0 ? number_format($worker->overtimehours, 0) . ' jam' : '-' }}
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-right text-sm">
-                                    Rp {{ number_format($worker->premi ?? 0, 0, ',', '.') }}
+                                    Rp {{ number_format($worker->premi ?? 0, 2, ',', '.') }}
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-right text-sm">
-                                    Rp {{ number_format($worker->upahharian ?? 0, 0, ',', '.') }}
+                                    Rp {{ number_format($worker->upahharian ?? 0, 2, ',', '.') }}
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-right text-sm">
-                                    Rp {{ number_format($worker->upahlembur ?? 0, 0, ',', '.') }}
+                                    Rp {{ number_format($worker->upahlembur ?? 0, 2, ',', '.') }}
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-right text-sm font-semibold bg-green-50">
-                                    Rp {{ number_format($worker->totalupah ?? 0, 0, ',', '.') }}
+                                    Rp {{ number_format($worker->totalupah ?? 0, 2, ',', '.') }}
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-sm text-gray-600">{{ $worker->keterangan ?? '-' }}</td>
                             </tr>
@@ -185,10 +185,10 @@
                             <tr>
                                 <td colspan="10" class="border border-gray-300 px-2 py-2 text-center text-sm">TOTAL UPAH</td>
                                 <td class="border border-gray-300 px-2 py-2 text-right text-sm">
-                                    Rp {{ number_format($lkhWorkerDetails->sum('upahlembur'), 0, ',', '.') }}
+                                    Rp {{ number_format($lkhWorkerDetails->sum('upahlembur'), 2, ',', '.') }}
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-right text-sm bg-green-100">
-                                    Rp {{ number_format($lkhWorkerDetails->sum('totalupah'), 0, ',', '.') }}
+                                    Rp {{ number_format($lkhWorkerDetails->sum('totalupah'), 2, ',', '.') }}
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2"></td>
                             </tr>
@@ -234,12 +234,12 @@
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="font-medium text-gray-700">Rate per Ha:</span> 
-                                    <span class="font-bold text-gray-900">Rp {{ number_format($boronganRate, 0, ',', '.') }}</span>
+                                    <span class="font-bold text-gray-900">Rp {{ number_format($boronganRate, 2, ',', '.') }}</span>
                                 </div>
                                 <div class="pt-2 border-t border-gray-300"></div>
                                 <div class="flex justify-between">
                                     <span class="font-semibold text-gray-800">Total Upah:</span> 
-                                    <span class="font-bold text-lg text-gray-900">Rp {{ number_format($lkhData->totalupahall ?? 0, 0, ',', '.') }}</span>
+                                    <span class="font-bold text-lg text-gray-900">Rp {{ number_format($lkhData->totalupahall ?? 0, 2, ',', '.') }}</span>
                                 </div>
                             </div>
                             <div class="mt-3 pt-3 border-t border-gray-300">
