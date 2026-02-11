@@ -26,7 +26,6 @@ class PerhitunganUpahApiMobile extends Controller
                 'keterangan' => 'nullable|string|max:255',
             ]);
             
-            // Get jenistenagakerja from activity table
             $activity = DB::table('activity')
                 ->where('activitycode', $validated['activitycode'])
                 ->first(['jenistenagakerja', 'activitygroup']);
@@ -47,7 +46,6 @@ class PerhitunganUpahApiMobile extends Controller
             
             $jenistenagakerja = $activity->jenistenagakerja;
             
-            // Validate jenis tenaga kerja
             if (in_array($jenistenagakerja, [2, 3, 5])) {
                 return response()->json([
                     'status' => 0,
@@ -55,7 +53,6 @@ class PerhitunganUpahApiMobile extends Controller
                 ], 400);
             }
             
-            // Convert jenistenagakerja 4 to 1
             if ($jenistenagakerja == 4) {
                 $jenistenagakerja = 1;
             }
@@ -64,7 +61,6 @@ class PerhitunganUpahApiMobile extends Controller
             
             $wageData = $this->calculateWage($validated, $totalJamKerja, $activity->activitygroup);
             
-            // Check if wage calculation returned error
             if (isset($wageData['error'])) {
                 return response()->json([
                     'status' => 0,
@@ -205,7 +201,7 @@ class PerhitunganUpahApiMobile extends Controller
                 ], 404);
             }
             
-            $totalUpah = $totalArea * $rate;
+            $totalUpah = round($totalArea * $rate, 2);
             
             $totalWorkers = DB::table('lkhdetailworker')
                 ->where('companycode', $validated['companycode'])
@@ -217,7 +213,7 @@ class PerhitunganUpahApiMobile extends Controller
                 ->where('lkhno', $validated['lkhno'])
                 ->update([
                     'totalupahall' => $totalUpah,
-                    'totalhasil' => $totalArea,
+                    'totalhasil' => round($totalArea, 2),
                     'totalworkers' => $totalWorkers,
                     'updatedat' => now()
                 ]);
@@ -227,9 +223,9 @@ class PerhitunganUpahApiMobile extends Controller
                 'description' => 'Total upah borongan berhasil dihitung',
                 'data' => [
                     'lkhno' => $validated['lkhno'],
-                    'total_area' => (float) $totalArea,
-                    'rate_per_ha' => (float) $rate,
-                    'total_upah' => (float) $totalUpah,
+                    'total_area' => round($totalArea, 2),
+                    'rate_per_ha' => round($rate, 2),
+                    'total_upah' => $totalUpah,
                     'total_workers' => $totalWorkers
                 ]
             ], 200);
@@ -273,9 +269,9 @@ class PerhitunganUpahApiMobile extends Controller
                 ->where('lkhno', $lkhno)
                 ->update([
                     'totalworkers' => $workerTotals->total_workers ?? 0,
-                    'totalupahall' => $workerTotals->total_upah ?? 0,
-                    'totalhasil' => $plotTotals->total_hasil ?? 0,
-                    'totalsisa' => $plotTotals->total_sisa ?? 0,
+                    'totalupahall' => round($workerTotals->total_upah ?? 0, 2),
+                    'totalhasil' => round($plotTotals->total_hasil ?? 0, 2),
+                    'totalsisa' => round($plotTotals->total_sisa ?? 0, 2),
                     'updatedat' => now()
                 ]);
 
@@ -310,7 +306,7 @@ class PerhitunganUpahApiMobile extends Controller
                 ];
             }
             
-            $wageData['upahharian'] = $dailyRate;
+            $wageData['upahharian'] = round($dailyRate, 2);
         } else {
             $hourlyRate = $this->getHarianRate($data['companycode'], $activityGroup, 'HOURLY', $data['lkhdate']);
             
@@ -320,8 +316,8 @@ class PerhitunganUpahApiMobile extends Controller
                 ];
             }
             
-            $wageData['upahperjam'] = $hourlyRate;
-            $wageData['upahharian'] = $totalJamKerja * $wageData['upahperjam'];
+            $wageData['upahperjam'] = round($hourlyRate, 2);
+            $wageData['upahharian'] = round($totalJamKerja * $wageData['upahperjam'], 2);
         }
         
         $overtimeHours = $data['overtimehours'] ?? 0;
@@ -334,10 +330,10 @@ class PerhitunganUpahApiMobile extends Controller
                 ];
             }
             
-            $wageData['upahlembur'] = $overtimeHours * $overtimeRate;
+            $wageData['upahlembur'] = round($overtimeHours * $overtimeRate, 2);
         }
         
-        $wageData['totalupah'] = $wageData['upahharian'] + $wageData['upahlembur'];
+        $wageData['totalupah'] = round($wageData['upahharian'] + $wageData['upahlembur'], 2);
         
         return $wageData;
     }
@@ -358,7 +354,6 @@ class PerhitunganUpahApiMobile extends Controller
             ->orderBy('effectivedate', 'DESC')
             ->value('amount');
         
-        // Return null if not found (no fallback)
         return $rate;
     }
     

@@ -210,7 +210,7 @@
                                 {{ $wageTypes[$d->wagetype] ?? $d->wagetype }}
                             </td>
                             <td class="py-2 px-4 border-b text-gray-700">
-                                <div class="font-semibold text-green-700">Rp {{ number_format($d->amount, 0, ',', '.') }}</div>
+                                <div class="font-semibold text-green-700">Rp {{ number_format($d->amount, 2, ',', '.') }}</div>
                             </td>
                             <td class="py-2 px-4 border-b text-gray-700">
                                 @if($d->parameter)
@@ -383,8 +383,10 @@
                                             <span class="absolute left-3 top-2 text-gray-500">Rp</span>
                                             <input type="number" id="amount" name="amount" x-model="form.amount" required
                                                 class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                placeholder="0" min="0" step="0.01" />
+                                                placeholder="0.00" min="0" step="0.01" 
+                                                oninput="this.value = this.value.match(/^\d+\.?\d{0,2}/) ? this.value : this.value.slice(0, -1)" />
                                         </div>
+                                        <p class="mt-1 text-xs text-gray-500">Format: gunakan titik untuk desimal (contoh: 50000.50)</p>
                                     </div>
 
                                     <!-- Parameter -->

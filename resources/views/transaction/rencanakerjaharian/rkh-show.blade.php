@@ -497,7 +497,12 @@
       if (this.materialItems.length === 0) return '-';
       
       const total = this.materialItems.reduce((sum, item) => {
-        return sum + (parseFloat(item.dosageperha) * parseFloat(this.currentMaterial.luasarea));
+        const qtyRaw = parseFloat(item.dosageperha) * parseFloat(this.currentMaterial.luasarea);
+        
+        // Round to 0.25
+        const qtyRounded = qtyRaw > 0 ? Math.max(0.25, Math.round(qtyRaw / 0.25) * 0.25) : 0;
+        
+        return sum + qtyRounded;
       }, 0);
       
       return total.toFixed(2);
