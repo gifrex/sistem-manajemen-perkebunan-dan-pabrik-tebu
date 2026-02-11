@@ -93,7 +93,7 @@ class UpahBoronganController extends Controller
         // Validasi input
         $request->validate([
             'activitycode' => 'required|exists:activity,activitycode',
-            'amount' => 'required|numeric|min:0',
+            'amount' => 'required|numeric|regex:/^\d+(\.\d{1,2})?$/|min:0',
             'effectivedate' => 'required|date',
             'enddate' => 'nullable|date|after_or_equal:effectivedate',
         ], [
@@ -150,7 +150,7 @@ class UpahBoronganController extends Controller
                 : 'sekarang';
 
             return redirect()->route('masterdata.upah-borongan.index')
-                ->with('error', "Tidak dapat menambah upah! Periode OVERLAP dengan upah existing untuk [{$request->activitycode} - {$activityName}] dengan nominal Rp " . number_format($overlapping->amount, 0, ',', '.') . " yang berlaku dari " . date('d-m-Y', strtotime($overlapping->effectivedate)) . " sampai {$endDateText}. Silakan sesuaikan tanggal atau edit upah yang sudah ada.");
+                ->with('error', "Tidak dapat menambah upah! Periode OVERLAP dengan upah existing untuk [{$request->activitycode} - {$activityName}] dengan nominal Rp " . number_format($overlapping->amount, 2, ',', '.') . " yang berlaku dari " . date('d-m-Y', strtotime($overlapping->effectivedate)) . " sampai {$endDateText}. Silakan sesuaikan tanggal atau edit upah yang sudah ada.");
         }
 
         // Insert data
@@ -174,7 +174,7 @@ class UpahBoronganController extends Controller
         // Validasi input
         $request->validate([
             'activitycode' => 'required|exists:activity,activitycode',
-            'amount' => 'required|numeric|min:0',
+            'amount' => 'required|numeric|regex:/^\d+(\.\d{1,2})?$/|min:0',
             'effectivedate' => 'required|date',
             'enddate' => 'nullable|date|after_or_equal:effectivedate',
         ], [
@@ -238,7 +238,7 @@ class UpahBoronganController extends Controller
                 : 'sekarang';
 
             return redirect()->route('masterdata.upah-borongan.index')
-                ->with('error', "Tidak dapat mengupdate upah! Periode OVERLAP dengan upah lain untuk [{$request->activitycode} - {$activityName}] dengan nominal Rp " . number_format($overlapping->amount, 0, ',', '.') . " yang berlaku dari " . date('d-m-Y', strtotime($overlapping->effectivedate)) . " sampai {$endDateText}.");
+                ->with('error', "Tidak dapat mengupdate upah! Periode OVERLAP dengan upah lain untuk [{$request->activitycode} - {$activityName}] dengan nominal Rp " . number_format($overlapping->amount, 2, ',', '.') . " yang berlaku dari " . date('d-m-Y', strtotime($overlapping->effectivedate)) . " sampai {$endDateText}.");
         }
 
         // Update data

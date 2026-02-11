@@ -1,3 +1,5 @@
+{{--resources\views\masterdata\upah-borongan\index.blade.php--}}
+
 <x-layout>
     <x-slot:title>Upah Borongan</x-slot:title>
     <x-slot:navbar>Upah Borongan Navbar</x-slot:navbar>
@@ -259,7 +261,7 @@
                                 <div class="font-medium">{{ $d->activityname }}</div>
                             </td>
                             <td class="py-3 px-2 sm:px-4 text-sm text-gray-700">
-                                <div class="font-semibold text-green-700">Rp {{ number_format($d->amount, 0, ',', '.') }}</div>
+                                <div class="font-semibold text-green-700">Rp {{ number_format($d->amount, 2, ',', '.') }}</div>
                             </td>
                             <td class="py-3 px-2 sm:px-4 text-sm text-gray-700 hidden lg:table-cell">
                                 <code class="bg-gray-100 px-2 py-1 rounded text-xs">{{ date('d-m-Y', strtotime($d->effectivedate)) }}</code>
@@ -417,7 +419,7 @@
                                 <div class="flex-1">
                                     <p class="text-sm font-medium text-blue-800">Upah Aktif Saat Ini:</p>
                                     <p class="text-sm text-blue-700 mt-1">
-                                        <span class="font-semibold">Rp <span x-text="currentWage ? new Intl.NumberFormat('id-ID').format(currentWage.amount) : '-'"></span></span>
+                                        <span class="font-semibold">Rp <span x-text="currentWage ? new Intl.NumberFormat('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(currentWage.amount) : '-'"></span></span>
                                         <span class="text-xs ml-2">
                                             (berlaku sejak <span x-text="currentWage ? new Date(currentWage.effectivedate).toLocaleDateString('id-ID') : '-'"></span>)
                                         </span>
@@ -435,8 +437,10 @@
                                 <span class="absolute left-3 top-2 text-gray-500">Rp</span>
                                 <input type="number" id="amount" name="amount" x-model="form.amount" required
                                     class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="0" min="0" step="0.01" />
+                                    placeholder="0.00" min="0" step="0.01"
+                                    oninput="this.value = this.value.match(/^\d+\.?\d{0,2}/) ? this.value : this.value.slice(0, -1)" />
                             </div>
+                            <p class="mt-1 text-xs text-gray-500">Format: gunakan titik untuk desimal (contoh: 50000.50)</p>
                         </div>
 
                         <!-- Tanggal Mulai Berlaku -->
