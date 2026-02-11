@@ -359,7 +359,14 @@ class MaterialUsageGeneratorService
             
             // Insert each item for this specific plot (NO MERGING)
             foreach ($herbisidaDosages as $dosage) {
-                $qtyForThisPlot = $plotLuas * $dosage->dosageperha;
+                $qtyRaw = $plotLuas * $dosage->dosageperha;
+    
+                    // Apply rounding to 0.25
+                    if ($qtyRaw > 0) {
+                        $qty = max(0.25, round($qtyRaw / 0.25) * 0.25);
+                    } else {
+                        $qty = 0;
+                    }
                 
                 // Insert record per plot
                 DB::table('usemateriallst')->insert([
@@ -368,7 +375,7 @@ class MaterialUsageGeneratorService
                     'lkhno' => $lkh->lkhno,
                     'plot' => $lkhPlot->plot, // PLOT SPECIFIC
                     'itemcode' => $dosage->itemcode,
-                    'qty' => $qtyForThisPlot,
+                    'qty' => $qty,
                     'qtydigunakan' => null,
                     'qtyretur' => 0,
                     'unit' => $dosage->measure,
