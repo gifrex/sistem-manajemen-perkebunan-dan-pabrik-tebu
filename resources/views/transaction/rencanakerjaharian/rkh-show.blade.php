@@ -493,19 +493,24 @@
         }));
     },
 
+    // Add rounding to 0.25
     getTotalQty() {
       if (this.materialItems.length === 0) return '-';
       
       const total = this.materialItems.reduce((sum, item) => {
         const qtyRaw = parseFloat(item.dosageperha) * parseFloat(this.currentMaterial.luasarea);
-        
-        // Round to 0.25
         const qtyRounded = qtyRaw > 0 ? Math.max(0.25, Math.round(qtyRaw / 0.25) * 0.25) : 0;
-        
         return sum + qtyRounded;
       }, 0);
       
       return total.toFixed(2);
+    },
+
+    // Helper for per-item qty
+    getItemQty(dosageperha) {
+      const qtyRaw = parseFloat(dosageperha) * parseFloat(this.currentMaterial.luasarea);
+      const qtyRounded = qtyRaw > 0 ? Math.max(0.25, Math.round(qtyRaw / 0.25) * 0.25) : 0;
+      return qtyRounded.toFixed(2);
     }
   }" x-cloak>
     
@@ -588,7 +593,7 @@
                     <td class="px-4 py-3 text-sm text-right text-gray-700" x-text="item.dosageperha.toFixed(2)"></td>
                     <td class="px-4 py-3 text-sm text-center text-gray-700" x-text="item.measure"></td>
                     <td class="px-4 py-3 text-sm text-right font-semibold text-green-700" 
-                        x-text="(parseFloat(item.dosageperha) * parseFloat(currentMaterial.luasarea)).toFixed(2)"></td>
+                        x-text="getItemQty(item.dosageperha)"></td>
                   </tr>
                 </template>
               </tbody>
