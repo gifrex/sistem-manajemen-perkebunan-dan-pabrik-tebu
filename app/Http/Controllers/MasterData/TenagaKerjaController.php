@@ -427,7 +427,7 @@ class TenagaKerjaController extends Controller
             ->first();
 
         if ($cekmandor) {
-            return redirect()->back()s
+            return redirect()->back()
                 ->withInput()
                 ->withErrors(['mandor' => 'Mandor tersebut sudah terdaftar']);
         }
