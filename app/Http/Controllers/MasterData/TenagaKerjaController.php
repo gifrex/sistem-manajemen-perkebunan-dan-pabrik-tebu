@@ -309,6 +309,7 @@ class TenagaKerjaController extends Controller
                     $errorCount++;
                     continue;
                 }
+                
 
                 if (!in_array($gender, ['L', 'P'])) {
                     $errors[] = "Baris $rowNumber: Gender harus L atau P";
@@ -349,6 +350,17 @@ class TenagaKerjaController extends Controller
                         continue;
                     }
                 }
+
+
+                $cekmandor = TenagaKerja::where('mandoruserid', $mandoruserid)
+                    ->where('isactive', 1)
+                    ->exists();
+                if ($cekmandor) {
+                    $errors[] = "Baris $rowNumber: Mandor tersebut sudah terdaftar";
+                    $errorCount++;
+                    continue;
+                }
+                
 
                 // Generate next ID
                 $nextId = $this->generateNextId($companycode);
@@ -410,7 +422,16 @@ class TenagaKerjaController extends Controller
                 ->withErrors(['nik' => 'NIK sudah terdaftar dan masih aktif']);
         }
 
-        // Generate the next ID
+        $cekmandor = TenagaKerja::where('mandoruserid', $request->mandor)
+            ->where('isactive', 1)
+            ->first();
+
+        if ($cekmandor) {
+            return redirect()->back()s
+                ->withInput()
+                ->withErrors(['mandor' => 'Mandor tersebut sudah terdaftar']);
+        }
+
         $nextId = $this->generateNextId($companycode);
 
         // Double check if the ID already exists
