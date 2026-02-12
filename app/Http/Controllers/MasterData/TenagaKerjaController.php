@@ -341,7 +341,7 @@ class TenagaKerjaController extends Controller
 
                 // Check if NIK already exists (hanya cek yang active)
                 if (!empty($nik)) {
-                    $nikExists = TenagaKerja::where('nik', $nik)
+                    $nikExists = TenagaKerja::where('nik', $nik)->where('companycode', $companycode)->where('mandoruserid', $mandoruserid)
                         ->where('isactive', 1)
                         ->exists();
                     if ($nikExists) {
@@ -349,18 +349,7 @@ class TenagaKerjaController extends Controller
                         $errorCount++;
                         continue;
                     }
-                }
-
-
-                $cekmandor = TenagaKerja::where('mandoruserid', $mandoruserid)
-                    ->where('isactive', 1)
-                    ->exists();
-                if ($cekmandor) {
-                    $errors[] = "Baris $rowNumber: Mandor tersebut sudah terdaftar";
-                    $errorCount++;
-                    continue;
-                }
-                
+                }                
 
                 // Generate next ID
                 $nextId = $this->generateNextId($companycode);
@@ -413,23 +402,13 @@ class TenagaKerjaController extends Controller
         $companycode = session('companycode');
 
         // Check NIK yang masih aktif
-        $ceknik = TenagaKerja::where('nik', $request->nik)
+        $ceknik = TenagaKerja::where('nik', $request->nik)->where('companycode', $companycode)->where('mandoruserid', $request->mandor)
             ->where('isactive', 1)
             ->first();
         if ($ceknik) {
             return redirect()->back()
                 ->withInput()
                 ->withErrors(['nik' => 'NIK sudah terdaftar dan masih aktif']);
-        }
-
-        $cekmandor = TenagaKerja::where('mandoruserid', $request->mandor)
-            ->where('isactive', 1)
-            ->first();
-
-        if ($cekmandor) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['mandor' => 'Mandor tersebut sudah terdaftar']);
         }
 
         $nextId = $this->generateNextId($companycode);
