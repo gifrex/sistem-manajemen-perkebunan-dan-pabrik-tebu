@@ -12,6 +12,21 @@
             </div>
         </div>
 
+        @if(session('warning'))
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4" role="alert">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-yellow-700">{{ session('warning') }}</p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <!-- Alert Messages -->
         <div class="max-w-7xl mx-auto px-6 py-4">
             @if(session('success'))
@@ -108,114 +123,114 @@
                             > 
                                 <option value="">-- Pilih RKH --</option>
                                 @foreach($rkhList as $rkh)
-                                    <option value="{{ $rkh->rkhno }}">{{ $rkh->companycode }} {{ $rkh->rkhno }} - {{ $rkh->name ?? '' }} - {{ $rkh->costcenter }} </option>
+                                    <option value="{{ $rkh->rkhno }}">{{ $rkh->companycode }} {{ $rkh->rkhno }} - {{ $rkh->mandor_name ?? '' }} - {{ $rkh->nouse }} </option>
                                 @endforeach
                             </select>
                         </div>
 
-                        <!-- Item Sequence -->
-                        <div>
-                            <label for="itemseq" class="block text-sm font-medium text-gray-700 mb-2">
-                                Item Urutan (Seq) <span class="text-red-500">*</span>
-                            </label>
-                            <select 
-                                id="itemseq" 
-                                name="itemseq" 
-                                x-model="itemseq"
-                                @change="onItemseqChange"
-                                :disabled="!rkhno || loading"
-                                required 
-                                class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                            >
-                                <option value="">-- Pilih Item Urutan --</option>
-                                <template x-for="item in items" :key="item.itemseq">
-                                    <option :value="item.itemseq" x-text="`Seq ${item.itemseq} - ${item.itemcode} (Qty: ${item.qty} ${item.uom})`"></option>
-                                </template>
-                            </select>
-                            <p class="mt-2 text-sm text-gray-500">Pilih urutan item yang akan dikoreksi</p>
-                        </div>
+                        
+                        
 
-                        <!-- Info Item Original -->
-                        <div 
-                            x-show="currentItem" 
-                            x-transition
-                            class="bg-blue-50 border-l-4 border-blue-400 p-4"
-                        >
-                            <h5 class="text-sm font-semibold text-blue-900 mb-3">Informasi Item Original</h5>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <p class="text-gray-600">Item Code:</p>
-                                    <p class="font-semibold text-blue-700" x-text="currentItem?.itemcode"></p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-600">Item Name:</p>
-                                    <p class="font-semibold" x-text="currentItem?.itemname || '-'"></p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-600">Qty Original:</p>
-                                    <p class="font-semibold text-green-600" x-text="currentItem ? `${currentItem.qty} ${currentItem.uom}` : '-'"></p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-600">UOM:</p>
-                                    <p class="font-semibold" x-text="currentItem?.uom || '-'"></p>
-                                </div>
+
+
+
+                        <!-- LIST ITEMS (tampil semua item setelah pilih RKH) -->
+                        <div x-show="rkhno && items.length" x-transition>
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-sm font-semibold text-gray-800">
+                                    Daftar Item (isi Qty untuk diproses)
+                                </h3>
+                                <p class="text-xs text-gray-500">
+                                    Kosongkan qty = skip baris itu
+                                </p>
+                            </div>
+
+                            <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600">Seq</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600">LKH</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600">Plot</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600">Item Original</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600">Qty Original</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600" x-text="tipeTransaksi==='USE' ? 'Item Baru (USE)' : 'Item Retur (fixed)'"></th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-600" x-text="tipeTransaksi==='USE' ? 'Qty Baru' : 'Qty Retur'"></th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <template x-for="(row, idx) in items" :key="row.itemseq">
+                                            <tr>
+                                                <td class="px-3 py-2 text-sm text-gray-800" x-text="row.itemseq"></td>
+                                                <td class="px-3 py-2 text-sm text-gray-800" x-text="row.lkhno"></td>
+                                                <td class="px-3 py-2 text-sm text-gray-800" x-text="row.plot"></td>
+                                                <td class="px-3 py-2 text-sm">
+                                                    <div class="font-semibold text-gray-900" x-text="row.itemcode"></div>
+                                                    <div class="text-gray-500 text-xs" x-text="row.itemname || '-'"></div>
+
+                                                    <!-- hidden baseline -->
+                                                    <input type="hidden" :name="`rows[${idx}][itemseq]`" :value="row.itemseq">
+                                                    <input type="hidden" :name="`rows[${idx}][orig_itemcode]`" :value="row.itemcode">
+                                                    <input type="hidden" :name="`rows[${idx}][orig_qty]`" :value="row.qty">
+                                                </td>
+
+                                                <td class="px-3 py-2 text-sm text-gray-800">
+                                                    <span x-text="row.qty"></span>
+                                                    <span class="text-gray-500" x-text="row.uom ? ` ${row.uom}` : ''"></span>
+                                                </td>
+
+                                                <!-- Item baru / fixed -->
+                                                <td class="px-3 py-2 text-sm">
+                                                    <template x-if="tipeTransaksi === 'USE'">
+                                                        <select class="block w-72 rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                                x-model="row.new_itemcode"
+                                                                :name="`rows[${idx}][itemcode]`">
+                                                            <option value="">-- Pilih Item --</option>
+                                                            @foreach($itemList as $item)
+                                                                <option value="{{ $item->itemcode }}">{{ $item->itemcode }} - {{ $item->itemname ?? '' }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </template>
+
+                                                    <template x-if="tipeTransaksi === 'RETUR'">
+                                                        <div class="text-gray-600">
+                                                            <span class="font-semibold" x-text="row.itemcode"></span>
+                                                            <span class="text-xs text-gray-500 block" x-text="row.itemname || '-'"></span>
+                                                            <!-- kirim itemcode juga biar controller gampang -->
+                                                            <input type="hidden" :name="`rows[${idx}][itemcode]`" :value="row.itemcode">
+                                                        </div>
+                                                    </template>
+                                                </td>
+
+                                                <!-- Qty baru/retur: isi = proses -->
+                                                <td class="px-3 py-2 text-sm">
+                                                    <input type="number" step="0.01"
+                                                        class="block w-40 rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                        x-model="row.new_qty"
+                                                        :name="`rows[${idx}][qty]`"
+                                                        :max="tipeTransaksi === 'RETUR' ? row.qty : null"
+                                                        placeholder="kosong = skip">
+
+                                                    <div class="text-xs text-red-600 mt-1"
+                                                        x-show="tipeTransaksi==='RETUR' && row.new_qty && parseFloat(row.new_qty) > parseFloat(row.qty)">
+                                                        Qty retur tidak boleh > qty pemakaian
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
-                        <!-- Item Code (untuk tipe USE) -->
-                        <div x-show="tipeTransaksi === 'USE' && currentItem" x-transition>
-                            <label for="itemcode" class="block text-sm font-medium text-gray-700 mb-2">
-                                Item Code <span class="text-red-500">*</span>
-                            </label>
-                            <select 
-                                id="itemcode" 
-                                name="itemcode" 
-                                x-model="itemcode"
-                                @change="onItemcodeChange"
-                                :disabled="!currentItem"
-                                class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
-                            >
-                                <option value="">-- Pilih Item --</option>
-                                @foreach($itemList as $item)
-                                    <option value="{{ $item->itemcode }}">{{ $item->itemcode }} - {{ $item->itemname ?? '' }}</option>
-                                @endforeach
-                            </select>
-                            <p class="mt-2 text-sm text-yellow-600">
-                                <svg class="inline w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                </svg>
-                                Anda bisa mengganti item berbeda dari item original
-                            </p>
-                        </div>
 
-                        <!-- Quantity -->
-                        <div>
-                            <label for="qty" class="block text-sm font-medium text-gray-700 mb-2">
-                                Quantity <span class="text-red-500">*</span>
-                            </label>
-                            <div class="relative rounded-md shadow-sm">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                    </svg>
-                                </div>
-                                <input 
-                                    type="number" 
-                                    step="0.01" 
-                                    name="qty" 
-                                    id="qty" 
-                                    x-model="qty"
-                                    @input="validateQty"
-                                    :disabled="!currentItem"
-                                    :max="tipeTransaksi === 'RETUR' && currentItem ? currentItem.qty : null"
-                                    required 
-                                    placeholder="0.00"
-                                    class="block w-full pl-10 rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                    :class="{ 'border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500': qtyError }"
-                                >
-                            </div>
-                            <p class="mt-2 text-sm" :class="qtyError ? 'text-red-600' : 'text-gray-500'" x-text="qtyHint"></p>
-                        </div>
+
+
+
+
+
+
 
                     </div>
 
@@ -247,173 +262,120 @@
     </div>
 
     <script>
-        function koreksiData() {
-            return {
-                tipeTransaksi: '',
-                rkhno: '',
-                itemseq: '',
-                itemcode: '',
-                qty: '',
-                items: [],
-                currentItem: null,
-                loading: false,
-                qtyError: false,
-                tipeHint: '',
-                qtyHint: '',
+function koreksiData() {
+  return {
+    tipeTransaksi: '',
+    rkhno: '',
+    items: [],
+    loading: false,
+    tipeHint: '',
 
-                onTipeChange() {
-                    this.resetForm();
-                    
-                    if (this.tipeTransaksi === 'RETUR') {
-                        this.tipeHint = 'Pengembalian pemakaian yang sudah tercatat. Qty tidak boleh melebihi qty original.';
-                        this.qtyHint = 'Masukkan qty yang akan diretur (max: qty original)';
-                    } else if (this.tipeTransaksi === 'USE') {
-                        this.tipeHint = 'Koreksi pemakaian. Anda bisa mengubah item dan qty tanpa batasan.';
-                        this.qtyHint = 'Masukkan qty koreksi (tanpa batasan)';
-                    }
-                },
+    onTipeChange() {
+      this.rkhno = '';
+      this.items = [];
 
-                async onRkhChange() {
-                    if (!this.rkhno) {
-                        this.items = [];
-                        this.currentItem = null;
-                        return;
-                    }
+      if (this.tipeTransaksi === 'RETUR') {
+        this.tipeHint = 'RETUR: isi qty retur (max = qty pemakaian). Item tidak bisa diganti.';
+      } else if (this.tipeTransaksi === 'USE') {
+        this.tipeHint = 'USE: isi qty pemakaian baru. Boleh ganti item.';
+      } else {
+        this.tipeHint = '';
+      }
+    },
 
-                    this.loading = true;
-                    
-                    try {
-                        const response = await fetch('{{ route("transaction.gudang.getItemsByRkh") }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            body: JSON.stringify({ rkhno: this.rkhno })
-                        });
+    async onRkhChange() {
+      this.items = [];
+      if (!this.rkhno) return;
 
-                        const data = await response.json();
-                        
-                        if (data.success && data.items.length > 0) {
-                            this.items = data.items;
-                        } else {
-                            this.items = [];
-                            alert('Tidak ada item ditemukan pada RKH ini.');
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        alert('Gagal mengambil data item: ' + error.message);
-                    } finally {
-                        this.loading = false;
-                    }
-                },
+      this.loading = true;
+      try {
+        const response = await fetch('{{ route("transaction.gudang.getItemsByRkh") }}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+          },
+          body: JSON.stringify({ rkhno: this.rkhno })
+        });
 
-                async onItemseqChange() {
-                    if (!this.itemseq) {
-                        this.currentItem = null;
-                        return;
-                    }
+        const data = await response.json();
 
-                    try {
-                        const response = await fetch('{{ route("transaction.gudang.getItemDetail") }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            body: JSON.stringify({ 
-                                rkhno: this.rkhno,
-                                itemseq: this.itemseq 
-                            })
-                        });
-
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            this.currentItem = data.item;
-                            
-                            // Set default itemcode untuk USE
-                            if (this.tipeTransaksi === 'USE') {
-                                this.itemcode = data.item.itemcode;
-                            }
-                            
-                            this.qty = '';
-                            this.qtyError = false;
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        alert('Gagal mengambil detail item: ' + error.message);
-                    }
-                },
-
-                onItemcodeChange() {
-                    if (this.tipeTransaksi === 'USE' && this.currentItem && this.itemcode !== this.currentItem.itemcode) {
-                        if (!confirm(`Anda akan mengubah item dari ${this.currentItem.itemcode} menjadi ${this.itemcode}. Lanjutkan?`)) {
-                            this.itemcode = this.currentItem.itemcode;
-                        }
-                    }
-                },
-
-                validateQty() {
-                    if (this.tipeTransaksi === 'RETUR' && this.currentItem) {
-                        const qtyValue = parseFloat(this.qty);
-                        const maxQty = parseFloat(this.currentItem.qty);
-                        
-                        if (qtyValue > maxQty) {
-                            this.qtyError = true;
-                            this.qtyHint = `Qty retur tidak boleh melebihi ${maxQty}`;
-                        } else {
-                            this.qtyError = false;
-                            this.qtyHint = `Masukkan qty yang akan diretur (max: ${maxQty})`;
-                        }
-                    }
-                },
-
-                handleSubmit(event) {
-                    if (this.tipeTransaksi === 'RETUR' && this.currentItem) {
-                        const qtyValue = parseFloat(this.qty);
-                        const maxQty = parseFloat(this.currentItem.qty);
-                        
-                        if (qtyValue > maxQty) {
-                            event.preventDefault();
-                            alert(`Qty retur (${qtyValue}) tidak boleh melebihi qty original (${maxQty})`);
-                            return false;
-                        }
-                    }
-                    
-                    const tipeText = this.tipeTransaksi === 'RETUR' ? 'Retur' : 'Koreksi Pemakaian';
-                    if (!confirm(`Apakah Anda yakin akan menyimpan ${tipeText} ini?`)) {
-                        event.preventDefault();
-                        return false;
-                    }
-                },
-
-                resetForm() {
-                    this.rkhno = '';
-                    this.itemseq = '';
-                    this.itemcode = '';
-                    this.qty = '';
-                    this.items = [];
-                    this.currentItem = null;
-                    this.qtyError = false;
-                },
-
-                get canSubmit() {
-                    if (!this.tipeTransaksi || !this.rkhno || !this.itemseq || !this.qty) {
-                        return false;
-                    }
-                    
-                    if (this.tipeTransaksi === 'USE' && !this.itemcode) {
-                        return false;
-                    }
-                    
-                    if (this.qtyError) {
-                        return false;
-                    }
-                    
-                    return true;
-                }
-            }
+        if (data.success && Array.isArray(data.items) && data.items.length > 0) {
+          this.items = data.items.map(x => ({
+            ...x,
+            new_itemcode: x.itemcode, // default item baru = item original
+            new_qty: ''              // kosong = skip
+          }));
+        } else {
+          alert('Tidak ada item ditemukan pada RKH ini.');
         }
-    </script>
+      } catch (err) {
+        console.error(err);
+        alert('Gagal mengambil data item: ' + err.message);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    handleSubmit(event) {
+      const picked = this.items.filter(r => r.new_qty && parseFloat(r.new_qty) > 0);
+
+      if (!this.tipeTransaksi || !this.rkhno) {
+        event.preventDefault();
+        alert('Pilih tipe transaksi dan RKH terlebih dahulu.');
+        return false;
+      }
+
+      if (picked.length === 0) {
+        event.preventDefault();
+        alert('Isi minimal 1 Qty untuk diproses.');
+        return false;
+      }
+
+      if (this.tipeTransaksi === 'USE') {
+        for (const r of picked) {
+          if (!r.new_itemcode) {
+            event.preventDefault();
+            alert(`Item baru wajib dipilih untuk Seq ${r.itemseq}`);
+            return false;
+          }
+        }
+      }
+
+      if (this.tipeTransaksi === 'RETUR') {
+        for (const r of picked) {
+          if (parseFloat(r.new_qty) > parseFloat(r.qty)) {
+            event.preventDefault();
+            alert(`Qty retur Seq ${r.itemseq} tidak boleh > qty pemakaian`);
+            return false;
+          }
+        }
+      }
+
+      const tipeText = this.tipeTransaksi === 'RETUR' ? 'Retur' : 'Koreksi Pemakaian';
+      if (!confirm(`Simpan ${tipeText} untuk ${picked.length} item?`)) {
+        event.preventDefault();
+        return false;
+      }
+    },
+
+    get canSubmit() {
+      if (this.loading) return false;
+      if (!this.tipeTransaksi || !this.rkhno) return false;
+      if (!this.items.length) return false;
+
+      const picked = this.items.filter(r => r.new_qty && parseFloat(r.new_qty) > 0);
+      if (!picked.length) return false;
+
+      for (const r of picked) {
+        if (this.tipeTransaksi === 'USE' && !r.new_itemcode) return false;
+        if (this.tipeTransaksi === 'RETUR' && parseFloat(r.new_qty) > parseFloat(r.qty)) return false;
+      }
+      return true;
+    }
+  }
+}
+</script>
+
+
 </x-layout>
