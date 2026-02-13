@@ -312,7 +312,7 @@ class OtherApprovalRepository
             ->where('transactionnumber', $transactionnumber)
             ->first();
     }
-
+ 
     public function getApprovalUseMaterialDetail( $companycode, $approvalno )
     {
       $joinmaterial = DB::select('SELECT a.companycode,a.rkhno,a.itemseq,a.lkhno,a.plot,d.totalluas, u.name,
@@ -323,7 +323,7 @@ class OtherApprovalRepository
                c.measure AS old_measure,b.unit AS new_measure,
                a.unit AS old_unit,b.unit AS new_unit,
                a.nouse,a.tgluse,
-               b.approvalno,b.flagstatus,b.approved,b.createdat
+               b.approvalno,b.flagstatus,b.approved,b.createdat,b.type
         FROM usemateriallst a
         INNER JOIN usematerialapproval b ON b.companycode=a.companycode AND b.rkhno=a.rkhno AND b.itemseq=a.itemseq
         LEFT JOIN herbisida c ON a.companycode = c.companycode AND a.itemcode = c.itemcode

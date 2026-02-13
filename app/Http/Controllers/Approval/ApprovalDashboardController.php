@@ -8,7 +8,7 @@ use App\Repositories\Approval\LkhApprovalRepository;
 use App\Repositories\Approval\OtherApprovalRepository;
 use App\Repositories\Approval\AbsenApprovalRepository;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Auth; 
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 
@@ -256,7 +256,7 @@ class ApprovalDashboardController extends Controller
         $detail = array();
         if( count($otherDetail) > 0 ){
             foreach( $otherDetail as $item ){
-                if ( $item->category == "Use Material" ){
+                if ( $item->category == "Use Material" OR $item->category == "Use Koreksi" OR $item->category == "Retur Koreksi" ){
                     $materialDetail = $this->otherRepository->getApprovalUseMaterialDetail(
                         $item->companycode, 
                         $item->approvalno

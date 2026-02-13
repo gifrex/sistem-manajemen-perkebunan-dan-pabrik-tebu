@@ -420,7 +420,7 @@
                                         </div>
                                     </div>
                                     @if( isset($otherDetail[$approval->approvalno]) )
-                                        @if( $approval->category == "Use Material" )
+                                        @if( $approval->category == "Use Material" OR $approval->category == "Use Koreksi" OR $approval->category == "Retur Koreksi")
                                             <div class="text-sm font-medium text-gray-900 mt-1">
                                             <table width="100%" class="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
                                                 @php $detail= $otherDetail[$approval->approvalno][0]; @endphp
@@ -479,8 +479,20 @@
                                                     </td>
 
                                                     <td class="px-3 py-2 align-top whitespace-nowrap">
-                                                        <span class="font-semibold">{{ $item->new_qty }}</span>
-                                                        <span class="text-gray-500">{{ $item->new_measure }}</span>
+                                                        <span class="font-semibold">
+                                                            @if($item->type =="USE") 
+                                                            Total: {{ $item->old_qty+$item->new_qty }}
+                                                            @elseif($item->type =="RTR")
+
+                                                            @else
+                                                            {{ $item->new_qty }} @endif</span>
+                                                        <span class="text-gray-500">{{ $item->new_measure }}</span><br>
+                                                        <span class="text-xs text-gray-500">
+                                                        @if($item->type =="USE")
+                                                        requested {{ $item->new_qty }} existing {{ $item->old_qty }}
+                                                        @else
+                                                        @endif
+                                                        </span>
                                                     </td>
                                                     </tr>
                                                 @endif
