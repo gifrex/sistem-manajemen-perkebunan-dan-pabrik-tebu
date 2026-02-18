@@ -1507,7 +1507,8 @@ public function submit(Request $request)
                 ]
             ]);
             
-            return redirect()->back()->with('warning', 'Data tersimpan, tapi API gagal. Status: ' . $response->status());
+            $msg = 'Data tersimpan, tapi API gagal. Status: ' . $response->status();
+            return $releaseLockAndBack('warning', $msg, 80);
         }
 
         $responseData = $response->json();
@@ -1654,12 +1655,10 @@ public function submit(Request $request)
             
 
         } else {
-            Cache::forget($lockKey);
-            
             $errorCode = $responseData['code'] ?? 'UNKNOWN';
-            $errorMsg = $responseData['message'] ?? 'API error';
-            $errors = $responseData['errors'] ?? [];
-            
+            $errorMsg  = $responseData['message'] ?? 'API error';
+            $errors    = $responseData['errors'] ?? [];
+        
             Log::error('API response invalid after commit', [
                 'status' => $response->status(),
                 'code' => $errorCode,
@@ -1667,29 +1666,24 @@ public function submit(Request $request)
                 'rkhno' => $request->rkhno,
                 'errors' => $errors,
             ]);
-            
-            // Simple user message
-            $userMsg = "⚠️ Data tersimpan, tapi API gagal. ";
-            
-            // Tambah detail berdasarkan error code
-            if ($errorCode === 'DUPLICATE') {
-                $userMsg .= "Data duplikat terdeteksi.";
+        
+            // ✅ user-friendly message (pakai message dari API untuk stock karena sudah flashMessages)
+            if ($errorCode === 'INSUFFICIENT_STOCK') {
+                $msg = "⚠️ Stok tidak mencukupi. " . ($errorMsg ?: '');
             } elseif ($errorCode === 'CHECKSP_EMPTY') {
-                $userMsg .= "Gagal cek stok inventory.";
+                $msg = "⚠️ Gagal cek stok inventory. " . ($errorMsg ?: '');
+            } elseif ($errorCode === 'DUPLICATE') {
+                $msg = "⚠️ Data duplikat terdeteksi. " . ($errorMsg ?: '');
             } elseif ($errorCode === 'FACTORY_NOT_FOUND') {
-                $userMsg .= "Factory tidak valid.";
-            } elseif ($errorCode === 'INSUFFICIENT_STOCK') {
-                $userMsg .= "Stok tidak mencukupi.";
-                if (!empty($errors)) {
-                    $item = $errors[0]['itemcode'] ?? '';
-                    $userMsg .= " Item: $item";
-                }
+                $msg = "⚠️ Factory tidak valid. " . ($errorMsg ?: '');
             } else {
-                $userMsg .= "Error: $errorMsg";
+                // fallback: tetap tampilkan code biar bisa ditelusuri
+                $msg = "⚠️ {$errorCode}: " . ($errorMsg ?: 'API error');
             }
-            
-            return back()->with('warning', $userMsg);
+        
+            return $releaseLockAndBack('warning', trim($msg), 90);
         }
+        
 
     } catch (\Exception $e) {
         Cache::forget($lockKey);
