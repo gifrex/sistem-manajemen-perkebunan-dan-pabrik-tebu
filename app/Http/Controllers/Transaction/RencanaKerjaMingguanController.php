@@ -33,8 +33,6 @@ class RencanaKerjaMingguanController extends Controller
             'lists.*.plot' => 'required',
             'lists.*.totalluasactual' => 'required',
             'lists.*.totalestimasi' => 'required',
-            // 'lists.*.totalhasil' => 'required',
-            // 'lists.*.totalsisa' => 'required',
         ];
     }
 
@@ -59,10 +57,6 @@ class RencanaKerjaMingguanController extends Controller
         $perPage = $request->session()->get('perPage', 10);
 
         $querys = DB::table('rkmhdr')
-            // ->leftJoin('rkmlst', function ($join) {
-            //     $join->on('rkmhdr.rkmno', '=', 'rkmlst.rkmno')
-            //         ->whereColumn('rkmhdr.companycode', '=', 'rkmlst.companycode');
-            // })
             ->join('activity', 'activity.activitycode', '=', 'rkmhdr.activitycode')
             ->where('rkmhdr.companycode', '=', session('companycode'))
             ->when($startDate, function ($query) use ($startDate) {
@@ -75,12 +69,13 @@ class RencanaKerjaMingguanController extends Controller
         if ($userid != 'Admin') {
             $querys->where('rkmhdr.inputby', '=', $userid);
         }
-        // ->where('rkmlst.companycode', '=', session('companycode'))
-        // ->where('rkmhdr.isclosing', '=', $isClosing);
+
+
         if (!empty($search)) {
             $querys->where(function ($query) use ($search) {
                 $query->where('rkmhdr.rkmno', 'like', '%' . $search . '%')
-                    ->orWhere('rkmhdr.activitycode', 'like', '%' . $search . '%');
+                    ->orWhere('rkmhdr.activitycode', 'like', '%' . $search . '%')
+                    ->orWhere('activity.activityname', 'like', '%' . $search . '%');
             });
         }
 
@@ -109,11 +104,6 @@ class RencanaKerjaMingguanController extends Controller
         $url = route('transaction.rencana-kerja-mingguan.store');
         $buttonSubmit = 'Submit';
         $selectedDate = $request->input('targetDate');
-
-        // if (!$selectedDate) {
-        //     return redirect()->route('transaction.rencana-kerja-mingguan.index')
-        //         ->with('error', 'Silakan pilih tanggal terlebih dahulu');
-        // }
 
         if (!$this->validateDateRange($selectedDate)) {
             return redirect()->route('transaction.rencana-kerja-mingguan.index')
@@ -156,7 +146,6 @@ class RencanaKerjaMingguanController extends Controller
         $comp = session('companycode');
         $plots = DB::table('masterlist')
             ->where('companycode', $comp)
-            // ->where('tgl2', '=', null)
             ->where('plot', 'like', $blok . '%')
             ->orderByRaw("LEFT(plot, 1), CAST(SUBSTRING(plot, 2) AS UNSIGNED)")
             ->pluck('plot');
@@ -209,8 +198,6 @@ class RencanaKerjaMingguanController extends Controller
                 'success1' => 'Data sudah ada di salah satu tabel, silahkan coba dengan data yang berbeda.',
             ])->withInput();
         }
-
-        // dd($validated);
 
         DB::beginTransaction();
 
@@ -277,7 +264,7 @@ class RencanaKerjaMingguanController extends Controller
             })
             ->leftJoin('lkhdetailplot as d', function ($join) {
                 $join->on('c.lkhno', '=', 'd.lkhno')
-                    ->on('c.companycode', '=', 'd.companycode') // Ubah dari a.companycode ke c.companycode
+                    ->on('c.companycode', '=', 'd.companycode')
                     ->on('b.plot', '=', 'd.plot');
             })
             ->leftJoin('activity as act', 'a.activitycode', '=', 'act.activitycode')
@@ -487,14 +474,14 @@ class RencanaKerjaMingguanController extends Controller
 
         $now = Carbon::now();
 
-        // Tentukan nama file
+
         if ($startDate && $endDate) {
             $filename = "RKMReport_{$startDate}_sd_{$endDate}.xlsx";
         } else {
             $filename = "RKMReport.xlsx";
         }
 
-        // Buat direktori temp jika belum ada
+
         $tempDir = storage_path('app/temp');
         if (!file_exists($tempDir)) {
             mkdir($tempDir, 0755, true);
@@ -502,20 +489,20 @@ class RencanaKerjaMingguanController extends Controller
 
         $tempFile = $tempDir . '/' . $filename;
 
-        // Buat writer dengan Spout dan set temp folder
+
         $writer = WriterEntityFactory::createXLSXWriter();
 
-        // SET TEMP FOLDER - INI YANG PENTING!
+
         $writer->setTempFolder($tempDir);
 
         $writer->openToFile($tempFile);
 
-        // Style untuk header (bold)
+
         $headerStyle = (new StyleBuilder())
             ->setFontBold()
             ->build();
 
-        // Buat header row
+
         $headerCells = [
             WriterEntityFactory::createCell('No. RKM'),
             WriterEntityFactory::createCell('RKM Date'),
@@ -535,7 +522,7 @@ class RencanaKerjaMingguanController extends Controller
         $headerRow = WriterEntityFactory::createRow($headerCells, $headerStyle);
         $writer->addRow($headerRow);
 
-        // Proses data dalam chunk untuk efisiensi memori
+
         $query->chunk(1000, function ($rkmChunk) use ($writer, $now) {
             $rows = [];
 
@@ -563,17 +550,15 @@ class RencanaKerjaMingguanController extends Controller
                 $rows[] = WriterEntityFactory::createRow($cells);
             }
 
-            // Tulis semua rows dalam chunk sekaligus
             $writer->addRows($rows);
 
-            // Bebaskan memori
             unset($rows);
             gc_collect_cycles();
         });
 
         $writer->close();
 
-        // Return file sebagai download dan hapus setelah dikirim
+
         return response()->download($tempFile, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Cache-Control' => 'max-age=0',

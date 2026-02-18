@@ -6,7 +6,6 @@ use NumberFormatter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Number;
-use Symfony\Component\Clock\now;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\View;
@@ -866,7 +865,7 @@ class RekapUpahMingguanController extends Controller
 
         // Footer
         $writer->addRow(WriterEntityFactory::createRowFromArray(['']));
-        $writer->addRow(WriterEntityFactory::createRowFromArray(['', '', '', '', '', 'Dicetak pada: ' . now()->format('d/m/Y H:i')]));
+        $writer->addRow(WriterEntityFactory::createRowFromArray(['', '', '', '', '', 'Dicetak pada: ' . Carbon::now()->format('d/m/Y H:i')]));
 
         $writer->close();
 

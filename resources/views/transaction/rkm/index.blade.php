@@ -113,8 +113,9 @@
                                     </svg>
                                 </div>
                                 <input type="text" id="search" name="search" value="{{ old('search', $search) }}"
+                                    autocomplete="off"
                                     class="w-80 pl-10 pr-4 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-                                    placeholder="Search No.RKM, or Activity Code..." />
+                                    placeholder="Search No.RKM, or Activity..." />
                             </div>
                         </div>
                     </form>
@@ -130,7 +131,8 @@
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">No.
                             </th>
-                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">No.
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                No.
                                 RKM</th>
                             <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                                 RKM Date</th>
@@ -384,11 +386,12 @@
     </div>
 
     <script>
-        document.querySelector('form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            loadData();
-        });
+        // ========================================
+        // RKM SPECIFIC SCRIPTS ONLY
+        // (Remove duplicates already in global.js)
+        // ========================================
 
+        // 1. DROPDOWN TOGGLE (Page Specific)
         function toggleDropdown() {
             const dropdown = document.getElementById('menu-dropdown');
             dropdown.classList.toggle('hidden');
@@ -403,99 +406,7 @@
             }
         });
 
-        function loadData() {
-            const form = document.querySelector('form');
-            const formData = new FormData(form);
-            const ajaxData = document.getElementById('ajax-data');
-            const url = ajaxData.dataset.url;
-
-            fetch(url, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-
-                    const newTableBody = doc.querySelector('#tables tbody');
-                    const currentTableBody = document.querySelector('#tables tbody');
-                    if (newTableBody && currentTableBody) {
-                        currentTableBody.innerHTML = newTableBody.innerHTML;
-                    }
-
-                    const newPagination = doc.querySelector('#pagination-links');
-                    const currentPagination = document.querySelector('#pagination-links');
-                    if (newPagination && currentPagination) {
-                        currentPagination.innerHTML = newPagination.innerHTML;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-        }
-
-        document.getElementById('perPage').addEventListener('input', function() {
-            loadData();
-        });
-
-        let searchTimeout;
-        document.getElementById('search').addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                loadData();
-            }, 500);
-        });
-
-        document.getElementById('start_date').addEventListener('change', function() {
-            loadData();
-        });
-
-        document.getElementById('end_date').addEventListener('change', function() {
-            loadData();
-        });
-
-        document.addEventListener('click', function(e) {
-            if (e.target.closest('#pagination-links a')) {
-                e.preventDefault();
-                const url = e.target.closest('a').href;
-
-                const form = document.querySelector('form');
-                const formData = new FormData(form);
-
-                fetch(url, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    })
-                    .then(response => response.text())
-                    .then(html => {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(html, 'text/html');
-
-                        const newTableBody = doc.querySelector('#tables tbody');
-                        const currentTableBody = document.querySelector('#tables tbody');
-                        if (newTableBody && currentTableBody) {
-                            currentTableBody.innerHTML = newTableBody.innerHTML;
-                        }
-
-                        const newPagination = doc.querySelector('#pagination-links');
-                        const currentPagination = document.querySelector('#pagination-links');
-                        if (newPagination && currentPagination) {
-                            currentPagination.innerHTML = newPagination.innerHTML;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                    });
-            }
-        });
-
+        // 2. CREATE RKM MODAL (Page Specific)
         const modal = document.getElementById('targetDateModal');
         const openModalBtn = document.getElementById('openModalBtn');
         const closeModalBtn = document.getElementById('closeModalBtn');
@@ -564,6 +475,7 @@
             updateSubmitButton();
         });
 
+        // 3. SHOW LIST MODAL (Page Specific)
         function showList(rkmno, companycode) {
             const modal = document.getElementById('listModal');
             const tableBody = document.getElementById('listTableBody');
@@ -583,33 +495,33 @@
 
                     if (data.length === 0) {
                         tableBody.innerHTML = `
-                            <tr>
-                                <td colspan="8" class="px-4 py-12">
-                                    <div class="flex flex-col items-center justify-center text-center">
-                                        <svg class="w-16 h-16 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        <h3 class="text-base font-semibold text-gray-700 mb-1">Tidak Ada Detail</h3>
-                                        <p class="text-gray-500 text-sm">Belum ada data detail untuk RKM ini</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        `;
+                    <tr>
+                        <td colspan="8" class="px-4 py-12">
+                            <div class="flex flex-col items-center justify-center text-center">
+                                <svg class="w-16 h-16 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <h3 class="text-base font-semibold text-gray-700 mb-1">Tidak Ada Detail</h3>
+                                <p class="text-gray-500 text-sm">Belum ada data detail untuk RKM ini</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
                     } else {
                         data.forEach((item, index) => {
                             const row = `
-                                <tr class="hover:bg-blue-50 transition-colors duration-150">
-                                    <td class="px-4 py-3 text-sm text-gray-900">${item.no}.</td>
-                                    <td class="px-4 py-3 text-sm font-medium text-gray-900">${item.rkmno}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-700">${item.blok}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-700">${item.plot}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-700">${item.totalluasactual}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-700">${item.totalestimasi}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-700">${item.hasil ?? 0}</td>
-                                    <td class="px-4 py-3 text-sm text-gray-700">${item.sisa ?? 0}</td>
-                                </tr>
-                            `;
+                        <tr class="hover:bg-blue-50 transition-colors duration-150">
+                            <td class="px-4 py-3 text-sm text-gray-900">${item.no}.</td>
+                            <td class="px-4 py-3 text-sm font-medium text-gray-900">${item.rkmno}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">${item.blok}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">${item.plot}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">${item.totalluasactual}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">${item.totalestimasi}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">${item.hasil ?? 0}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">${item.sisa ?? 0}</td>
+                        </tr>
+                    `;
                             tableBody.innerHTML += row;
                         });
                     }
