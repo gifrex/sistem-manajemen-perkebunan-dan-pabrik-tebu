@@ -2,20 +2,21 @@
 
 // routes/report.php
 
-use App\Http\Controllers\Transaction\HPTController;
-use App\Http\Controllers\Transaction\AgronomiController;
-use App\Http\Controllers\Report\PivotController;
-use App\Http\Controllers\Report\ReportController;
-use App\Http\Controllers\Report\PanenTebuController;
+use App\Http\Controllers\Report\AbsenReportController;
+use App\Http\Controllers\Report\BiayaPerPlotController;
 use App\Http\Controllers\Report\MasterLahanReportController;
+use App\Http\Controllers\Report\PanenTebuController;
+use App\Http\Controllers\Report\PanenTrackPlotReportController;
+use App\Http\Controllers\Report\PivotController;
 use App\Http\Controllers\Report\RekapUpahMingguanController;
+use App\Http\Controllers\Report\ReportController;
+use App\Http\Controllers\Report\SaldoPanenReportController;
 use App\Http\Controllers\Report\SuratJalanReportController;
 use App\Http\Controllers\Report\SuratJalanTimbanganReportController;
-use App\Http\Controllers\Report\PanenTrackPlotReportController;
-use App\Http\Controllers\Report\SaldoPanenReportController;
-use App\Http\Controllers\Report\AbsenReportController;
 use App\Http\Controllers\Report\TrackPiasReportController;
-use App\Http\Controllers\Report\BiayaPerPlotController;
+use App\Http\Controllers\Transaction\AgronomiController;
+use App\Http\Controllers\Transaction\HPTController;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->prefix('report')->name('report.')->group(function () {
 
@@ -118,12 +119,16 @@ Route::middleware('auth')->prefix('report')->name('report.')->group(function () 
     // REKAP UPAH MINGGUAN
     // ============================================================================
     Route::middleware('permission:report.rekapupahminggu.view')->group(function () {
-        Route::match(['GET', 'POST'], 'rekap-upah-mingguan', [RekapUpahMingguanController::class, 'index'])->name('rekap-upah-mingguan.index');
-        Route::get('rekap-upah-mingguan/excel', [RekapUpahMingguanController::class, 'excelRUM'])->name('rekap-upah-mingguan.exportExcel');
-        Route::get('rekap-upah-mingguan/show/{lkhno}', [RekapUpahMingguanController::class, 'show'])->name('rekap-upah-mingguan.show');
-        Route::match(['GET', 'POST'], 'rekap-upah-mingguan/preview', [RekapUpahMingguanController::class, 'previewReport'])->name('rekap-upah-mingguan.preview');
-        Route::get('rekap-upah-mingguan/export-excel', [RekapUpahMingguanController::class, 'exportExcel'])->name('rekap-upah-mingguan.export-excel');
-        Route::get('rekap-upah-mingguan/print-bp', [RekapUpahMingguanController::class, 'printBp'])->name('rekap-upah-mingguan.print-bp');
+        Route::prefix('rekap-upah-mingguan')->name('rekap-upah-mingguan.')->group(function () {
+            Route::controller(RekapUpahMingguanController::class)->group(function () {
+                Route::match(['GET', 'POST'], '/', 'index')->name('index');
+                Route::get('/show/{lkhno}', 'show')->name('show');
+
+                Route::match(['GET', 'POST'], '/preview', 'previewReport')->name('preview');
+                Route::get('/export-excel', 'exportExcel')->name('export-excel');
+                Route::get('/print-bp', 'printBp')->name('print-bp');
+            });
+        });
     });
 
     // ============================================================================
@@ -152,10 +157,10 @@ Route::middleware('auth')->prefix('report')->name('report.')->group(function () 
         Route::post('biaya-per-plot/data', [BiayaPerPlotController::class, 'getData'])->name('biaya-per-plot.data');
         Route::get('biaya-per-plot/{batchno}', [BiayaPerPlotController::class, 'show'])->name('biaya-per-plot.show');
         Route::get('biaya-per-plot/{batchno}/detail', [BiayaPerPlotController::class, 'getDetail'])->name('biaya-per-plot.detail');
-        
+
         // NEW: Cycle comparison for chart
         Route::get('biaya-per-plot/{batchno}/cycle-comparison', [BiayaPerPlotController::class, 'getCycleComparison'])->name('biaya-per-plot.cycle-comparison');
-        
+
         // Export routes
         Route::post('biaya-per-plot/export-excel', [BiayaPerPlotController::class, 'exportExcel'])->name('biaya-per-plot.export-excel');
         Route::post('biaya-per-plot/export-pdf', [BiayaPerPlotController::class, 'exportPdf'])->name('biaya-per-plot.export-pdf');
