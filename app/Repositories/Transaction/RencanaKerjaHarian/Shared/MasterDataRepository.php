@@ -227,4 +227,41 @@ class MasterDataRepository
             ->orderBy('effectivedate', 'DESC')
             ->value('amount');
     }
+
+    /**
+     * Check if user has permission to access given activitygroup.
+     *
+     * @param string $userid
+     * @param string $companycode
+     * @param string $activitygroup
+     * @return bool
+     */
+    public function hasActivityGroupPermission($userid, $companycode, $activitygroup): bool
+    {
+        return DB::table('useractivity')
+            ->where('userid', $userid)
+            ->where('companycode', $companycode)
+            ->where('activitygroup', $activitygroup)
+            ->where('isactive', 1)
+            ->exists();
+    }
+
+    /**
+     * Resolve activitygroup from lkhno via rkhhdr.
+     *
+     * @param string $companycode
+     * @param string $lkhno
+     * @return string|null
+     */
+    public function getActivityGroupByLkhNo($companycode, $lkhno): ?string
+    {
+        return DB::table('lkhhdr as l')
+            ->join('rkhhdr as r', function ($join) {
+                $join->on('l.rkhno', '=', 'r.rkhno')
+                     ->on('l.companycode', '=', 'r.companycode');
+            })
+            ->where('l.companycode', $companycode)
+            ->where('l.lkhno', $lkhno)
+            ->value('r.activitygroup');
+    }
 }

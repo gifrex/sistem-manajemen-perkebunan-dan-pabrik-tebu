@@ -174,6 +174,7 @@ class RkhService
         });
     }
 
+    
     /**
      * Get data for show page
      */
@@ -183,22 +184,24 @@ class RkhService
         if (!$header) {
             throw new \Exception('RKH not found');
         }
-        
+
+        // Authorization check
+        $this->authorizeActivityGroup($header->activitygroup, $companycode);
+
         $details = $this->rkhRepo->getDetails($companycode, $rkhno);
         $workers = $this->workerRepo->getWorkersByActivityForRkh($companycode, $rkhno);
         $kendaraan = $this->kendaraanRepo->getKendaraanByActivity($companycode, $rkhno);
-        
+
         $absenData = $this->absenRepo->getAttendanceData($companycode, $header->rkhdate, $header->mandorid);
         $herbisidaData = $this->masterDataRepo->getFullHerbisidaGroupData($companycode);
-        
+
         return [
-            // ✅ FIX: Match God Controller variable names
-            'rkhHeader' => $header,                      // header → rkhHeader
-            'rkhDetails' => $details,                    // details → rkhDetails
-            'workersByActivity' => $workers,             // workers → workersByActivity
-            'kendaraanByActivity' => $kendaraan,         // kendaraan → kendaraanByActivity
-            'absentenagakerja' => $absenData,
-            'herbisidagroups' => $herbisidaData,
+            'rkhHeader'          => $header,
+            'rkhDetails'         => $details,
+            'workersByActivity'  => $workers,
+            'kendaraanByActivity'=> $kendaraan,
+            'absentenagakerja'   => $absenData,
+            'herbisidagroups'    => $herbisidaData,
         ];
     }
 
@@ -211,39 +214,36 @@ class RkhService
         if (!$header) {
             throw new \Exception('RKH not found');
         }
-        
-        $details = $this->rkhRepo->getDetailsForEdit($companycode, $rkhno);
-        $workers = $this->workerRepo->getWorkersByActivityForRkh($companycode, $rkhno);
+
+        // Authorization check
+        $this->authorizeActivityGroup($header->activitygroup, $companycode);
+
+        $details   = $this->rkhRepo->getDetailsForEdit($companycode, $rkhno);
+        $workers   = $this->workerRepo->getWorkersByActivityForRkh($companycode, $rkhno);
         $kendaraan = $this->kendaraanRepo->getKendaraanByActivity($companycode, $rkhno);
-        
-        // Get all master data from respective repositories
-        $activities = $this->masterDataRepo->getActivitiesActive();
+
+        $activities    = $this->masterDataRepo->getActivitiesActive();
         $herbisidaData = $this->masterDataRepo->getFullHerbisidaGroupData($companycode);
-        $blokData = $this->masterDataRepo->getBlokData($companycode);
-        $masterlistData = $this->batchRepo->getAllActivePlotsWithBatch($companycode);
-        $absenData = $this->absenRepo->getDataAbsenFull($companycode, $header->rkhdate, $header->mandorid);
-        $vehicles = $this->kendaraanRepo->getVehiclesWithOperators($companycode);
-        $helpersData = $this->workerRepo->getHelpersByCompany($companycode);
-        
+        $blokData      = $this->masterDataRepo->getBlokData($companycode);
+        $masterlistData= $this->batchRepo->getAllActivePlotsWithBatch($companycode);
+        $absenData     = $this->absenRepo->getDataAbsenFull($companycode, $header->rkhdate, $header->mandorid);
+        $vehicles      = $this->kendaraanRepo->getVehiclesWithOperators($companycode);
+        $helpersData   = $this->workerRepo->getHelpersByCompany($companycode);
+
         return [
-            // ✅ FIX: Match God Controller variable names
-            'rkhHeader' => $header,              // header → rkhHeader
-            'rkhDetails' => $details,            // details → rkhDetails
-            'existingWorkers' => $workers,       // workers → existingWorkers
-            'existingKendaraan' => $kendaraan,   // kendaraan → existingKendaraan
-            
-            // Master data (sudah benar)
-            'activities' => $activities,
-            'bloks' => $blokData,
-            'masterlist' => $masterlistData,
-            'herbisida' => $herbisidaData,
-            'herbisidagroups' => $herbisidaData,
-            'vehiclesData' => $vehicles,
-            'helpersData' => $helpersData,
+            'rkhHeader'        => $header,
+            'rkhDetails'       => $details,
+            'existingWorkers'  => $workers,
+            'existingKendaraan'=> $kendaraan,
+            'activities'       => $activities,
+            'bloks'            => $blokData,
+            'masterlist'       => $masterlistData,
+            'herbisida'        => $herbisidaData,
+            'herbisidagroups'  => $herbisidaData,
+            'vehiclesData'     => $vehicles,
+            'helpersData'      => $helpersData,
             'absentenagakerja' => $absenData,
-            
-            // ✅ TAMBAH: oldInput (dipake di view)
-            'oldInput' => old(),
+            'oldInput'         => old(),
         ];
     }
 
@@ -713,5 +713,32 @@ class RkhService
             'batal_by_nama' => $rkh->batal_by_nama ?? 'Unknown',
             'batalalasan' => $rkh->batalalasan
         ];
+    }
+
+    /**
+     * Authorize current user for given activitygroup.
+     * Throws AuthorizationException if not permitted.
+     *
+     * @param string $activitygroup
+     * @param string $companycode
+     * @throws \Illuminate\Auth\Access\AuthorizationException
+     */
+    private function authorizeActivityGroup($activitygroup, $companycode): void
+    {
+        $userid = \Illuminate\Support\Facades\Auth::user()->userid;
+
+        $allowed = $this->masterDataRepo->hasActivityGroupPermission($userid, $companycode, $activitygroup);
+
+        if (!$allowed) {
+            \Log::warning('RKH Authorization Failed', [
+                'userid'        => $userid,
+                'companycode'   => $companycode,
+                'activitygroup' => $activitygroup,
+            ]);
+
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                "User {$userid} tidak memiliki akses ke activity group {$activitygroup}"
+            );
+        }
     }
 }
