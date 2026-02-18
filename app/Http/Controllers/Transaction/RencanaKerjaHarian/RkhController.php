@@ -374,56 +374,43 @@ class RkhController extends Controller
         }
     }
 
-    /**
-     * Show RKH detail
-     */
+    
     public function show($rkhno)
     {
         try {
             $companycode = Session::get('companycode');
-            
             $data = $this->rkhService->getShowPageData($rkhno, $companycode);
 
             return view('transaction.rencanakerjaharian.rkh-show', array_merge($data, [
-                'title' => 'Detail Rencana Kerja Harian',
+                'title'  => 'Detail Rencana Kerja Harian',
                 'navbar' => 'Transaction',
-                'nav' => 'Rencana Kerja Harian',
+                'nav'    => 'Rencana Kerja Harian',
             ]));
 
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            abort(403);
         } catch (\Exception $e) {
-            \Log::error('RKH Show Error', [
-                'rkhno' => $rkhno,
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
+            \Log::error('RKH Show Error', ['rkhno' => $rkhno, 'message' => $e->getMessage()]);
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Show edit form
-     */
     public function edit($rkhno)
     {
         try {
             $companycode = Session::get('companycode');
-            
             $data = $this->rkhService->getEditPageData($rkhno, $companycode);
 
             return view('transaction.rencanakerjaharian.rkh-edit', array_merge($data, [
-                'title' => 'Edit Rencana Kerja Harian',
+                'title'  => 'Edit Rencana Kerja Harian',
                 'navbar' => 'Transaction',
-                'nav' => 'Rencana Kerja Harian',
+                'nav'    => 'Rencana Kerja Harian',
             ]));
 
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            abort(403);
         } catch (\Exception $e) {
-            \Log::error('RKH Edit Error', [
-                'rkhno' => $rkhno,
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
+            \Log::error('RKH Edit Error', ['rkhno' => $rkhno, 'message' => $e->getMessage()]);
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }

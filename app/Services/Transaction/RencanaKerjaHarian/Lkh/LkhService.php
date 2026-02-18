@@ -70,109 +70,85 @@ class LkhService
         ];
     }
 
+    
     /**
      * Get show LKH page data (detects activity type)
-     * 
-     * @param string $lkhno
-     * @param string $companycode
-     * @return array|null
      */
     public function getShowLkhPageData($lkhno, $companycode)
     {
-        // Get LKH header
         $lkhData = $this->lkhRepo->getHeaderForShow($companycode, $lkhno);
 
         if (!$lkhData) {
             return null;
         }
 
-        // Detect activity type
-        $panenActivities = ['4.3.3', '4.4.3', '4.5.2'];
-        $bsmActivity = '4.7';
-        
-        $isPanenActivity = in_array($lkhData->activitycode, $panenActivities);
-        $isBsmActivity = ($lkhData->activitycode === $bsmActivity);
+        // Authorization check
+        $this->authorizeActivityGroup($lkhno, $companycode);
 
-        // Get approvals data
+        $panenActivities = ['4.3.3', '4.4.3', '4.5.2'];
+        $bsmActivity     = '4.7';
+
+        $isPanenActivity = in_array($lkhData->activitycode, $panenActivities);
+        $isBsmActivity   = ($lkhData->activitycode === $bsmActivity);
+
         $approvals = $this->getLkhApprovalsData($lkhData);
 
-        // Route 1: BSM Activity
         if ($isBsmActivity) {
-            $lkhBsmDetails = $this->lkhRepo->getBsmDetailsForShow($companycode, $lkhno);
-            $lkhWorkerDetails = $this->lkhRepo->getWorkerDetailsForShow($companycode, $lkhno);
-
             return [
-                'activity_type' => 'bsm',
-                'lkhData' => $lkhData,
-                'lkhBsmDetails' => $lkhBsmDetails,
-                'lkhWorkerDetails' => $lkhWorkerDetails,
-                'approvals' => $approvals
+                'activity_type'    => 'bsm',
+                'lkhData'          => $lkhData,
+                'lkhBsmDetails'    => $this->lkhRepo->getBsmDetailsForShow($companycode, $lkhno),
+                'lkhWorkerDetails' => $this->lkhRepo->getWorkerDetailsForShow($companycode, $lkhno),
+                'approvals'        => $approvals,
             ];
         }
-        
-        // Route 2: Panen Activity
+
         if ($isPanenActivity) {
-            $lkhPanenDetails = $this->lkhRepo->getPanenDetailsForShow($companycode, $lkhno);
-            $kontraktorSummary = $this->lkhRepo->getKontraktorSummaryForLkh($companycode, $lkhno);
-            $subkontraktorDetail = $this->lkhRepo->getSubkontraktorDetailForLkh($companycode, $lkhno);
-            $ongoingPlots = $this->lkhRepo->getOngoingPlotsForMandor($companycode, $lkhno, $lkhData->mandorid);
-
             return [
-                'activity_type' => 'panen',
-                'lkhData' => $lkhData,
-                'lkhPanenDetails' => $lkhPanenDetails,
-                'approvals' => $approvals,
-                'kontraktorSummary' => $kontraktorSummary,
-                'subkontraktorDetail' => $subkontraktorDetail,
-                'ongoingPlots' => $ongoingPlots
+                'activity_type'       => 'panen',
+                'lkhData'             => $lkhData,
+                'lkhPanenDetails'     => $this->lkhRepo->getPanenDetailsForShow($companycode, $lkhno),
+                'approvals'           => $approvals,
+                'kontraktorSummary'   => $this->lkhRepo->getKontraktorSummaryForLkh($companycode, $lkhno),
+                'subkontraktorDetail' => $this->lkhRepo->getSubkontraktorDetailForLkh($companycode, $lkhno),
+                'ongoingPlots'        => $this->lkhRepo->getOngoingPlotsForMandor($companycode, $lkhno, $lkhData->mandorid),
             ];
         }
-        
-        // Route 3: Normal Activity
-        $lkhPlotDetails = $this->lkhRepo->getPlotDetailsForShow($companycode, $lkhno);
-        $lkhWorkerDetails = $this->lkhRepo->getWorkerDetailsForShow($companycode, $lkhno);
-        $lkhMaterialDetails = $this->lkhRepo->getMaterialDetailsForShow($companycode, $lkhno);
 
         return [
-            'activity_type' => 'normal',
-            'lkhData' => $lkhData,
-            'lkhPlotDetails' => $lkhPlotDetails,
-            'lkhWorkerDetails' => $lkhWorkerDetails,
-            'lkhMaterialDetails' => $lkhMaterialDetails,
-            'approvals' => $approvals
+            'activity_type'      => 'normal',
+            'lkhData'            => $lkhData,
+            'lkhPlotDetails'     => $this->lkhRepo->getPlotDetailsForShow($companycode, $lkhno),
+            'lkhWorkerDetails'   => $this->lkhRepo->getWorkerDetailsForShow($companycode, $lkhno),
+            'lkhMaterialDetails' => $this->lkhRepo->getMaterialDetailsForShow($companycode, $lkhno),
+            'approvals'          => $approvals,
         ];
     }
 
     /**
      * Get edit LKH page data
-     * 
-     * @param string $lkhno
-     * @param string $companycode
-     * @return array|null
      */
     public function getEditLkhPageData($lkhno, $companycode)
     {
-        // Get LKH header
         $lkhData = $this->lkhRepo->getHeaderForEdit($companycode, $lkhno);
 
         if (!$lkhData) {
             return null;
         }
 
-        // Security check
+        // Authorization check
+        $this->authorizeActivityGroup($lkhno, $companycode);
+
         if ($lkhData->issubmit) {
             throw new \Exception('LKH sudah disubmit dan tidak dapat diedit');
         }
 
-        // Get details
-        $lkhPlotDetails = $this->lkhRepo->getPlotDetailsForEdit($companycode, $lkhno);
-        $lkhWorkerDetails = $this->lkhRepo->getWorkerDetailsForEdit($companycode, $lkhno);
-        $lkhMaterialDetails = $this->lkhRepo->getMaterialDetailsForEdit($companycode, $lkhno);
+        $lkhPlotDetails    = $this->lkhRepo->getPlotDetailsForEdit($companycode, $lkhno);
+        $lkhWorkerDetails  = $this->lkhRepo->getWorkerDetailsForEdit($companycode, $lkhno);
+        $lkhMaterialDetails= $this->lkhRepo->getMaterialDetailsForEdit($companycode, $lkhno);
 
-        // Get master data for form
         $formData = $this->loadLkhEditFormData($companycode);
 
-        // FIX: Add boronganRate if jenistenagakerja = 2 (Borongan)
         $boronganRate = 0;
         if ($lkhData->jenistenagakerja == 2) {
             $boronganRate = $this->masterDataRepo->getBoronganRate(
@@ -183,11 +159,11 @@ class LkhService
         }
 
         return array_merge([
-            'lkhData' => $lkhData,
-            'lkhPlotDetails' => $lkhPlotDetails,
-            'lkhWorkerDetails' => $lkhWorkerDetails,
+            'lkhData'            => $lkhData,
+            'lkhPlotDetails'     => $lkhPlotDetails,
+            'lkhWorkerDetails'   => $lkhWorkerDetails,
             'lkhMaterialDetails' => $lkhMaterialDetails,
-            'boronganRate' => $boronganRate,
+            'boronganRate'       => $boronganRate,
         ], $formData);
     }
 
@@ -809,5 +785,45 @@ class LkhService
         }
         
         return $details;
+    }
+
+    /**
+     * Authorize current user for the activitygroup of the given LKH.
+     * Resolves activitygroup via lkhhdr → rkhhdr.
+     * Throws AuthorizationException if not permitted.
+     *
+     * @param string $lkhno
+     * @param string $companycode
+     * @throws \Illuminate\Auth\Access\AuthorizationException
+     */
+    private function authorizeActivityGroup($lkhno, $companycode): void
+    {
+        $userid = \Illuminate\Support\Facades\Auth::user()->userid;
+
+        $activitygroup = $this->masterDataRepo->getActivityGroupByLkhNo($companycode, $lkhno);
+
+        if (!$activitygroup) {
+            \Log::warning('LKH Authorization - activitygroup not found', [
+                'lkhno'       => $lkhno,
+                'companycode' => $companycode,
+            ]);
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                "Activity group untuk LKH {$lkhno} tidak ditemukan"
+            );
+        }
+
+        $allowed = $this->masterDataRepo->hasActivityGroupPermission($userid, $companycode, $activitygroup);
+
+        if (!$allowed) {
+            \Log::warning('LKH Authorization Failed', [
+                'userid'        => $userid,
+                'companycode'   => $companycode,
+                'lkhno'         => $lkhno,
+                'activitygroup' => $activitygroup,
+            ]);
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                "User {$userid} tidak memiliki akses ke activity group {$activitygroup}"
+            );
+        }
     }
 }
