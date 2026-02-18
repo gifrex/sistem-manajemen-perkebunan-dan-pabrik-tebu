@@ -60,17 +60,10 @@ class LkhController extends Controller
         }
     }
 
-    /**
-     * Show LKH report (detects activity type and routes to correct view)
-     * 
-     * @param string $lkhno
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\View\View
-     */
     public function showLKH($lkhno)
     {
         try {
             $companycode = Session::get('companycode');
-            
             $pageData = $this->lkhService->getShowLkhPageData($lkhno, $companycode);
 
             if (!$pageData) {
@@ -78,41 +71,40 @@ class LkhController extends Controller
                     ->with('error', 'Data LKH tidak ditemukan');
             }
 
-            // Add borongan rate for borongan workers - ONLY from database
             if ($pageData['lkhData']->jenistenagakerja == 2) {
                 $pageData['boronganRate'] = $this->masterDataRepo->getBoronganRate(
-                    $companycode, 
-                    $pageData['lkhData']->activitycode, 
+                    $companycode,
+                    $pageData['lkhData']->activitycode,
                     $pageData['lkhData']->lkhdate
                 );
             }
 
             $activityType = $pageData['activity_type'];
-            
-            // Route based on activity type
+
             if ($activityType === 'bsm') {
                 return view('transaction.rencanakerjaharian.lkh-report-bsm', array_merge([
-                    'title' => 'Laporan Kegiatan Harian (LKH) - Cek BSM',
+                    'title'  => 'Laporan Kegiatan Harian (LKH) - Cek BSM',
                     'navbar' => 'Input',
-                    'nav' => 'Rencana Kerja Harian',
+                    'nav'    => 'Rencana Kerja Harian',
                 ], $pageData));
             }
-            
+
             if ($activityType === 'panen') {
                 return view('transaction.rencanakerjaharian.lkh-report-panen', array_merge([
-                    'title' => 'Laporan Kegiatan Harian (LKH) - Panen',
+                    'title'  => 'Laporan Kegiatan Harian (LKH) - Panen',
                     'navbar' => 'Input',
-                    'nav' => 'Rencana Kerja Harian',
+                    'nav'    => 'Rencana Kerja Harian',
                 ], $pageData));
             }
-            
-            // Default: Normal activity
+
             return view('transaction.rencanakerjaharian.lkh-report', array_merge([
-                'title' => 'Laporan Kegiatan Harian (LKH)',
+                'title'  => 'Laporan Kegiatan Harian (LKH)',
                 'navbar' => 'Input',
-                'nav' => 'Rencana Kerja Harian',
+                'nav'    => 'Rencana Kerja Harian',
             ], $pageData));
 
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            abort(403);
         } catch (\Exception $e) {
             \Log::error("Error showing LKH: " . $e->getMessage());
             return redirect()->route('transaction.rencanakerjaharian.index')
@@ -120,17 +112,10 @@ class LkhController extends Controller
         }
     }
 
-    /**
-     * Show LKH edit form
-     * 
-     * @param string $lkhno
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\View\View
-     */
     public function editLKH($lkhno)
     {
         try {
             $companycode = Session::get('companycode');
-            
             $pageData = $this->lkhService->getEditLkhPageData($lkhno, $companycode);
 
             if (!$pageData) {
@@ -139,11 +124,13 @@ class LkhController extends Controller
             }
 
             return view('transaction.rencanakerjaharian.lkh-edit-v2', array_merge([
-                'title' => 'Edit LKH',
+                'title'  => 'Edit LKH',
                 'navbar' => 'Input',
-                'nav' => 'Rencana Kerja Harian',
+                'nav'    => 'Rencana Kerja Harian',
             ], $pageData));
 
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            abort(403);
         } catch (\Exception $e) {
             \Log::error("Error editing LKH: " . $e->getMessage());
             return redirect()->route('transaction.rencanakerjaharian.index')
