@@ -65,29 +65,26 @@ public function selectuse($companycode, $rkhno = 0, $type = 0)
 
 
 public function selectusematerial($companycode, $rkhno = 0)
-{ 
+{
     return \DB::select(
     "
     SELECT a.companycode, com.name AS 'companyname', a.rkhno, a.blok, a.plot, lk.luasrkh, l.createdat, b.flagstatus, u.nouse, u.lkhno, us.name, e.activitycode, e.herbisidagroupid, e.herbisidagroupname, 
-        c.itemname, u.itemcode, d.dosageperha, c.measure, (d.dosageperha * lk.luasrkh) AS qty_siapkan, u.qty, u.qtyretur, u.noretur, u.qtydigunakan, u.costcenter, c.companyinv, c.factoryinv
+    c.itemname, d.itemcode, d.dosageperha, c.measure, (d.dosageperha * lk.luasrkh) AS qty_siapkan, u.qty, u.qtyretur, u.noretur, u.qtydigunakan, u.costcenter, c.companyinv, c.factoryinv
     FROM rkhlst AS a
     JOIN usematerialhdr AS b ON b.rkhno = a.rkhno AND b.companycode = a.companycode
     JOIN herbisidagroup AS e ON e.herbisidagroupid = a.herbisidagroupid
-    JOIN usemateriallst AS u ON u.rkhno = b.rkhno AND u.companycode = b.companycode
-    LEFT JOIN herbisidadosage AS d ON d.companycode = a.companycode AND d.herbisidagroupid = a.herbisidagroupid AND d.itemcode = u.itemcode
-    JOIN herbisida AS c ON c.companycode = a.companycode AND c.itemcode = u.itemcode
+    JOIN herbisidadosage AS d ON d.companycode = a.companycode AND d.herbisidagroupid = a.herbisidagroupid
+    JOIN usemateriallst AS u ON u.rkhno = b.rkhno AND u.itemcode = d.itemcode AND u.companycode = b.companycode
+    JOIN herbisida AS c ON c.companycode = a.companycode AND c.itemcode = d.itemcode
     JOIN lkhhdr AS l ON u.lkhno = l.lkhno AND u.companycode = l.companycode
-    JOIN user AS us ON us.userid = l.mandorid
+    JOIN user AS us ON us.userid =  l.mandorid
     JOIN lkhdetailplot AS lk ON lk.lkhno = u.lkhno AND lk.blok = a.blok AND lk.plot = a.plot
     JOIN company AS com ON com.companycode = a.companycode
     WHERE a.rkhno = ? AND a.companycode = ? AND a.usingmaterial = 1
-    ORDER BY a.blok, a.plot, u.itemcode;
+    ORDER BY a.blok, a.plot, d.itemcode;
     ",
     [$rkhno,$companycode]
     );
-    // JOIN herbisidadosage AS d ON d.companycode = a.companycode AND d.herbisidagroupid = a.herbisidagroupid
-    // JOIN usemateriallst AS u ON u.rkhno = b.rkhno AND u.itemcode = d.itemcode AND u.companycode = b.companycode
-    // JOIN herbisida AS c ON c.companycode = a.companycode AND c.itemcode = d.itemcode
 }
 
 
