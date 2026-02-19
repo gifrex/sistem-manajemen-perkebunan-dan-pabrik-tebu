@@ -21,7 +21,7 @@ class RkhApprovalRepository
      * @param array $filters ['date' => 'Y-m-d', 'all_date' => bool]
      * @return Collection
      */
-    public function getPendingApprovals(string $companycode, int $idjabatan, array $filters = []): Collection
+    public function getPendingApprovals(string $companycode, int $idjabatan, string $userid, array $filters = []): Collection
     {
         $query = DB::table('rkhhdr as r')
             ->leftJoin('user as m', 'r.mandorid', '=', 'm.userid')
@@ -30,20 +30,24 @@ class RkhApprovalRepository
                     ->where('app.companycode', '=', $companycode);
             })
             ->leftJoin('activitygroup as ag', 'r.activitygroup', '=', 'ag.activitygroup')
+            // Filter by useractivity permission
+            ->join('useractivity as ua', function($join) use ($companycode, $userid) {
+                $join->on('r.activitygroup', '=', 'ua.activitygroup')
+                     ->where('ua.companycode', '=', $companycode)
+                     ->where('ua.userid', '=', $userid)
+                     ->where('ua.isactive', '=', 1);
+            })
             ->where('r.companycode', $companycode)
             ->where(function($query) use ($idjabatan) {
-                // Level 1: Waiting for first approval
                 $query->where(function($q) use ($idjabatan) {
                     $q->where('app.idjabatanapproval1', $idjabatan)
                       ->whereNull('r.approval1flag');
                 })
-                // Level 2: Level 1 approved, waiting for level 2
                 ->orWhere(function($q) use ($idjabatan) {
                     $q->where('app.idjabatanapproval2', $idjabatan)
                       ->where('r.approval1flag', '1')
                       ->whereNull('r.approval2flag');
                 })
-                // Level 3: Level 1 & 2 approved, waiting for level 3
                 ->orWhere(function($q) use ($idjabatan) {
                     $q->where('app.idjabatanapproval3', $idjabatan)
                       ->where('r.approval1flag', '1')
@@ -52,7 +56,6 @@ class RkhApprovalRepository
                 });
             });
 
-        // Apply date filter (default: today)
         if (empty($filters['all_date'])) {
             $dateToFilter = $filters['date'] ?? date('Y-m-d');
             $query->whereDate('r.rkhdate', $dateToFilter);

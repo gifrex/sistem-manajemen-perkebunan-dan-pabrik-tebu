@@ -21,26 +21,35 @@ class LkhApprovalRepository
      * @param array $filters ['date' => 'Y-m-d', 'all_date' => bool]
      * @return Collection
      */
-    public function getPendingApprovals(string $companycode, int $idjabatan, array $filters = []): Collection
+    public function getPendingApprovals(string $companycode, int $idjabatan, string $userid, array $filters = []): Collection
     {
         $query = DB::table('lkhhdr as h')
             ->leftJoin('user as m', 'h.mandorid', '=', 'm.userid')
             ->leftJoin('activity as a', 'h.activitycode', '=', 'a.activitycode')
+            // Join ke rkhhdr untuk dapat activitygroup
+            ->join('rkhhdr as r', function($join) {
+                $join->on('h.rkhno', '=', 'r.rkhno')
+                     ->on('h.companycode', '=', 'r.companycode');
+            })
+            // Filter by useractivity permission
+            ->join('useractivity as ua', function($join) use ($companycode, $userid) {
+                $join->on('r.activitygroup', '=', 'ua.activitygroup')
+                     ->where('ua.companycode', '=', $companycode)
+                     ->where('ua.userid', '=', $userid)
+                     ->where('ua.isactive', '=', 1);
+            })
             ->where('h.companycode', $companycode)
             ->where('h.issubmit', 1)
             ->where(function($query) use ($idjabatan) {
-                // Level 1: Waiting for first approval
                 $query->where(function($q) use ($idjabatan) {
                     $q->where('h.approval1idjabatan', $idjabatan)
                       ->whereNull('h.approval1flag');
                 })
-                // Level 2: Level 1 approved, waiting for level 2
                 ->orWhere(function($q) use ($idjabatan) {
                     $q->where('h.approval2idjabatan', $idjabatan)
                       ->where('h.approval1flag', '1')
                       ->whereNull('h.approval2flag');
                 })
-                // Level 3: Level 1 & 2 approved, waiting for level 3
                 ->orWhere(function($q) use ($idjabatan) {
                     $q->where('h.approval3idjabatan', $idjabatan)
                       ->where('h.approval1flag', '1')
@@ -49,7 +58,6 @@ class LkhApprovalRepository
                 });
             });
 
-        // Apply date filter (default: today)
         if (empty($filters['all_date'])) {
             $dateToFilter = $filters['date'] ?? date('Y-m-d');
             $query->whereDate('h.lkhdate', $dateToFilter);
