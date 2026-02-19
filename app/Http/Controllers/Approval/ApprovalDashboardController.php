@@ -39,54 +39,55 @@ class ApprovalDashboardController extends Controller
 
     /**
      * Show approval dashboard with date filter
-     * GET /approval
-     *
-     * COPIED FROM: ApprovalController::index()
-     * Logic 100% sama
      */
     public function index(Request $request)
     {
         $companycode = Session::get('companycode');
         $currentUser = Auth::user();
 
-        // Validate user for approval
         if (!$this->validateUserForApproval($currentUser)) {
             return redirect()->route('home')
                 ->with('error', 'Anda tidak memiliki akses untuk approval');
         }
 
-        // Get filter parameters
+        // Default: all_date = true
         $filterDate = $request->input('filter_date');
-        $allDate = $request->input('all_date', false);
+        $allDate    = $request->input('all_date', true); // <-- default true
 
-        // Build filters array
         $filters = [
-            'date' => $filterDate,
+            'date'     => $filterDate,
             'all_date' => $allDate
         ];
 
-        // Get pending approvals from all repositories
-        $pendingRKH = $this->getPendingRKHWithDetails($companycode, $currentUser, $filters);
-        $pendingLKH = $this->getPendingLKHWithDetails($companycode, $currentUser, $filters);
+        $pendingRKH   = $this->getPendingRKHWithDetails($companycode, $currentUser, $filters);
+        $pendingLKH   = $this->getPendingLKHWithDetails($companycode, $currentUser, $filters);
         $pendingAbsen = $this->getPendingAbsenWithDetails($companycode, $currentUser, $filters);
-
         $pendingOther = $this->getPendingOtherWithDetails($companycode, $currentUser, $filters);
-
         $othersDetail = $this->setOtherDetail($pendingOther);
 
+        // Load activity groups user punya akses
+        $userActivityGroups = DB::table('useractivity as ua')
+            ->join('activitygroup as ag', 'ua.activitygroup', '=', 'ag.activitygroup')
+            ->where('ua.userid', $currentUser->userid)
+            ->where('ua.companycode', $companycode)
+            ->where('ua.isactive', 1)
+            ->select('ag.activitygroup', 'ag.groupname')
+            ->orderBy('ag.activitygroup')
+            ->get();
 
         return view('approval.index', [
-            'title' => 'Approval Center',
-            'navbar' => 'Input',
-            'nav' => 'Approval',
-            'pendingRKH' => $pendingRKH,
-            'pendingLKH' => $pendingLKH,
-            'pendingOther' => $pendingOther,
-            'pendingAbsen' => $pendingAbsen,
-            'userInfo' => $this->getUserInfo($currentUser),
-            'filterDate' => $filterDate,
-            'allDate' => $allDate,
-            'otherDetail'=>$othersDetail
+            'title'              => 'Approval Center',
+            'navbar'             => 'Input',
+            'nav'                => 'Approval',
+            'pendingRKH'         => $pendingRKH,
+            'pendingLKH'         => $pendingLKH,
+            'pendingOther'       => $pendingOther,
+            'pendingAbsen'       => $pendingAbsen,
+            'userInfo'           => $this->getUserInfo($currentUser),
+            'filterDate'         => $filterDate,
+            'allDate'            => $allDate,
+            'otherDetail'        => $othersDetail,
+            'userActivityGroups' => $userActivityGroups, // <-- tambah ini
         ]);
     }
 
@@ -103,15 +104,14 @@ class ApprovalDashboardController extends Controller
         $pendingRKH = $this->rkhRepository->getPendingApprovals(
             $companycode,
             $currentUser->idjabatan,
+            $currentUser->userid,  // tambah userid
             $filters
         );
 
-        // Enrich with additional details (activities, material, kendaraan)
         return $pendingRKH->map(function($rkh) use ($companycode) {
             $rkh->activities_list = $this->rkhRepository->getActivitiesSummary($companycode, $rkh->rkhno);
-            $rkh->has_material = $this->rkhRepository->hasMaterial($companycode, $rkh->rkhno);
-            $rkh->has_kendaraan = $this->rkhRepository->hasKendaraan($companycode, $rkh->rkhno);
-
+            $rkh->has_material    = $this->rkhRepository->hasMaterial($companycode, $rkh->rkhno);
+            $rkh->has_kendaraan   = $this->rkhRepository->hasKendaraan($companycode, $rkh->rkhno);
             return $rkh;
         });
     }
@@ -129,14 +129,13 @@ class ApprovalDashboardController extends Controller
         $pendingLKH = $this->lkhRepository->getPendingApprovals(
             $companycode,
             $currentUser->idjabatan,
+            $currentUser->userid,  // tambah userid
             $filters
         );
 
-        // Enrich with additional details
         return $pendingLKH->map(function($lkh) use ($companycode) {
-            $lkh->has_material = $this->lkhRepository->hasMaterial($companycode, $lkh->lkhno);
+            $lkh->has_material  = $this->lkhRepository->hasMaterial($companycode, $lkh->lkhno);
             $lkh->has_kendaraan = $this->lkhRepository->hasKendaraan($companycode, $lkh->lkhno);
-
             return $lkh;
         });
     }
