@@ -482,6 +482,18 @@ class GudangController extends Controller
     ->select('a.companycode','a.rkhno','a.flagstatus','b.rkhdate','c.name as mandor_name','d.nouse')
     ->orderBy('b.rkhdate','desc')
     ->get();
+    
+    $companyinv = Company::where('companycode', session('companycode'))->first();
+    
+    $response = Http::withoutVerifying()->withOptions(['headers' => ['Accept' => 'application/json']])
+            ->asJson()
+            ->get('https://rosebrand.sungaibudigroup.com/app/im-purchasing/purchasing/bpb/costcenter_api', [
+                'connection' => '172.17.1.39',
+                'company' => $companyinv->companyinventory,
+                'factory' => $companyinv->companyinventory
+            ]);
+
+    $costcenter = collect($response->json('costcenter'));
 
 
     // Ambil daftar semua item untuk dropdown pemakaian baru
@@ -505,13 +517,11 @@ public function getItemsByRkh(Request $request)
     $rkhno = $request->rkhno;
     $companycode = session('companycode');
 
-    // Ambil detail items dari usemateriallst berdasarkan RKH
     $items = usemateriallst::where('companycode', $companycode)
-                           ->where('rkhno', $rkhno)
-                           ->orderBy('itemseq')
-                           ->get();
-    // dd($items, $companycode, $rkhno);
-    // Format data untuk response
+        ->where('rkhno', $rkhno)
+        ->orderBy('itemseq')
+        ->get();
+
     $formattedItems = $items->map(function($item) {
         return [
             'itemseq' => $item->itemseq,
@@ -523,12 +533,45 @@ public function getItemsByRkh(Request $request)
             'uom' => $item->uom ?? '',
         ];
     });
-    // dd($formattedItems, $items);
+
+    // ✅ ambil header untuk costcenter + factoryinv + nouse
+    $hdr = usematerialhdr::where('companycode', $companycode)
+        ->where('rkhno', $rkhno)
+        ->first();
+
+    $oldCC = $hdr->costcenter ?? '';
+    $nouse = $hdr->nouse ?? '';
+    $factoryinv = $hdr->factoryinv ?? null;
+
+    // ✅ ambil list costcenter dari inventory berdasarkan factoryinv
+    $costcenterList = [];
+    if ($factoryinv) {
+        $companyinv = Company::where('companycode', $companycode)->first();
+
+        $resp = Http::withoutVerifying()->asJson()->get(
+            'https://rosebrand.sungaibudigroup.com/app/im-purchasing/purchasing/bpb/costcenter_api',
+            [
+                'connection' => '172.17.1.39',
+                'company' => $companyinv->companyinventory,
+                'factory' => $factoryinv,
+            ]
+        );
+
+        $costcenterList = $resp->json('costcenter') ?? [];
+    }
+
     return response()->json([
         'success' => true,
-        'items' => $formattedItems
+        'items' => $formattedItems,
+        'hdr' => [
+            'old_costcenter' => $oldCC,
+            'new_costcenter' => $oldCC, // ✅ awalnya sama persis
+            'nouse' => $nouse,
+        ],
+        'costcenter' => $costcenterList, // ✅ options dropdown
     ]);
 }
+
 
 // AJAX: Get item detail by itemseq (untuk tipe USE)
 public function getItemDetail(Request $request)

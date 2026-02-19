@@ -126,6 +126,31 @@
                                     <option value="{{ $rkh->rkhno }}">{{ $rkh->companycode }} {{ $rkh->rkhno }} - {{ $rkh->mandor_name ?? '' }} - {{ $rkh->nouse }} </option>
                                 @endforeach
                             </select>
+                            
+                            <div x-show="rkhno" x-transition class="mt-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Cost Center
+                            </label>
+
+                            <select
+                                x-model="new_costcenter"
+                                name="new_costcenter"
+                                class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                required
+                            >
+                                <option value="">-- Pilih Cost Center --</option>
+                                <template x-for="c in costcenterList" :key="c.costcentercode">
+                                <option :value="c.costcentercode"
+                                        x-text="`${c.costcenterdesc} (${c.costcentercode})`">
+                                </option>
+                                </template>
+                            </select>
+
+                            <!-- hidden untuk controller supaya old/new gampang -->
+                            <input type="hidden" name="old_costcenter" x-model="old_costcenter">
+                            </div>
+
+
                         </div>
 
                         
@@ -270,9 +295,19 @@ function koreksiData() {
     loading: false,
     tipeHint: '',
 
+    old_costcenter: '',
+    new_costcenter: '',
+    nouse: '',
+    costcenterList: [],
+
     onTipeChange() {
       this.rkhno = '';
       this.items = [];
+
+      this.old_costcenter = '';
+      this.new_costcenter = '';
+      this.nouse = '';
+      this.costcenterList = [];
 
       if (this.tipeTransaksi === 'RETUR') {
         this.tipeHint = 'RETUR: isi qty retur (max = qty pemakaian). Item tidak bisa diganti.';
@@ -306,6 +341,13 @@ function koreksiData() {
             new_itemcode: x.itemcode, // default item baru = item original
             new_qty: ''              // kosong = skip
           }));
+            // ✅ costcenter
+            this.old_costcenter = data.hdr?.old_costcenter || '';
+            this.new_costcenter = data.hdr?.new_costcenter || '';
+            this.nouse = data.hdr?.nouse || '';
+            // ✅ options dropdown
+            this.costcenterList = Array.isArray(data.costcenter) ? data.costcenter : [];
+
         } else {
           alert('Tidak ada item ditemukan pada RKH ini.');
         }
