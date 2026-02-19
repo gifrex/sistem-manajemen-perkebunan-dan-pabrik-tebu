@@ -363,7 +363,7 @@ class GudangController extends Controller
 
         //api_costcenter
         $companyinv = company::where('companycode', session('companycode'))->first();
-        
+        dd($companyinv->companyinventory, $first->factoryinv);
         $response = Http::withoutVerifying()->withOptions(['headers' => ['Accept' => 'application/json']])
             ->asJson()
             ->get('https://rosebrand.sungaibudigroup.com/app/im-purchasing/purchasing/bpb/costcenter_api', [
