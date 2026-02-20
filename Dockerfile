@@ -17,7 +17,7 @@ FROM composer:latest AS composer-builder
 
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-scripts
+RUN composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs
 
 COPY . .
 RUN composer dump-autoload --optimize
