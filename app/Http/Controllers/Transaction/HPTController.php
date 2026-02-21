@@ -390,6 +390,7 @@ class HPTController extends Controller
             ->where('hptlst.nosample', $nosample)
             ->where('hptlst.companycode', $companycode)
             ->where('hptlst.tanggalpengamatan', $tanggalpengamatan)
+            ->where('batch.isactive', 1)
             ->orderBy('hptlst.nourut', 'asc')
             ->get();
 
