@@ -1,4 +1,4 @@
-name: Auto Tag Version (patch)
+name: Auto Tag Version (Smart)
 
 on:
   push:
@@ -8,40 +8,70 @@ permissions:
   contents: write
 
 jobs:
-  tag_patch:
+  tag_logic:
     runs-on: ubuntu-latest
-
+    # ATURAN 1: Kalau di pesan commit ada tulisan [skip tag], workflow ini batal jalan.
+    if: "!contains(github.event.head_commit.message, '[skip tag]')"
+    
     steps:
       - name: Checkout (full history + tags)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Create and push next patch tag
+      - name: Create and push next tag
         shell: bash
         run: |
           set -euo pipefail
-
           git fetch --tags
 
+          # Ambil pesan commit terakhir untuk dicek "Aturan Main"-nya
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MSG"
+
+          # --- ATURAN MAIN PEMBACAAN PESAN COMMIT ---
+          # 1. Mengandung 'BREAKING CHANGE' -> Naik angka depan (v2.0.0) - Perubahan besar/merusak.
+          # 2. Mengandung 'feat:'           -> Naik angka tengah (v1.1.0) - Fitur baru.
+          # 3. Mengandung 'fix:' atau '[release]' -> Naik angka belakang (v1.0.1) - Perbaikan bug/update kecil.
+          # 4. Selain itu?                  -> TIDAK BIKIN TAG (Skip).
+          
+          BUMP="none"
+          
+          if [[ "$COMMIT_MSG" == *"BREAKING CHANGE"* ]]; then
+            BUMP="major"
+          elif [[ "$COMMIT_MSG" == *"feat:"* ]]; then
+            BUMP="minor"
+          elif [[ "$COMMIT_MSG" == *"fix:"* ]] || [[ "$COMMIT_MSG" == *"[release]"* ]]; then
+            BUMP="patch"
+          fi
+
+          # Jika tidak memenuhi kriteria di atas, hentikan proses (Exit)
+          if [ "$BUMP" == "none" ]; then
+            echo "Gak ada keyword (feat:, fix:, atau BREAKING CHANGE). Tag tidak dibuat."
+            exit 0
+          fi
+
+          # Ambil tag terakhir yang ada di sistem
           LAST_TAG=$(git tag --sort=-v:refname | head -n 1)
 
           if [ -z "${LAST_TAG:-}" ]; then
             NEW_TAG="v1.0.0"
           else
-            IFS='.' read -r MAJOR MINOR PATCH <<< "${LAST_TAG#v}"
-            PATCH=$((PATCH+1))
-            NEW_TAG="v$MAJOR.$MINOR.$PATCH"
+            VERSION_NUM=${LAST_TAG#v}
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NUM"
+
+            if [ "$BUMP" == "major" ]; then
+              NEW_TAG="v$((MAJOR+1)).0.0"
+            elif [ "$BUMP" == "minor" ]; then
+              NEW_TAG="v$MAJOR.$((MINOR+1)).0"
+            else
+              NEW_TAG="v$MAJOR.$MINOR.$((PATCH+1))"
+            fi
           fi
 
-          echo "Last tag: ${LAST_TAG:-<none>}"
-          echo "New tag:  $NEW_TAG"
+          echo "Tipe Update: $BUMP"
+          echo "Tag Baru: $NEW_TAG"
 
-          # Avoid failing if tag already exists (rare race)
-          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
-            echo "Tag $NEW_TAG already exists. Skipping."
-            exit 0
-          fi
-
+          # Push tag ke GitHub
           git tag "$NEW_TAG"
           git push origin "$NEW_TAG"
