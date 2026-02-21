@@ -30,13 +30,20 @@ class AgronomiController extends Controller
             'companycode' => 'required',
             'blok' => 'required',
             'plot' => 'required',
-            // 'idblokplot' => 'required|exists:mapping,idblokplot',
             'varietas' => 'required',
             'kat' => 'required',
+            'pkp' => 'nullable|numeric',
             'tanggaltanam' => 'required',
             'tanggalpengamatan' => 'required',
+            'bulanpanen' => 'nullable|string',
+            'umurpanen' => 'nullable|integer',
+            'tanggalzpk' => 'nullable|date',
             'lists.*.nourut' => 'required',
             'lists.*.jumlahbatang' => 'required',
+            'lists.*.bat_primer' => 'required',
+            'lists.*.bat_sekunder' => 'required',
+            'lists.*.bat_tersier' => 'required',
+            'lists.*.bat_kuarter' => 'required',
             'lists.*.pan_gap' => 'required',
             'lists.*.ph_tanah' => 'required|numeric',
             'lists.*.ktk_gulma' => 'required',
@@ -48,8 +55,33 @@ class AgronomiController extends Controller
             'lists.*.d_sekunder' => 'required',
             'lists.*.d_tersier' => 'required',
             'lists.*.d_kuarter' => 'required',
+            'lists.*.berat_primer' => 'nullable',
+            'lists.*.berat_sekunder' => 'nullable',
+            'lists.*.berat_tersier' => 'nullable',
+            'lists.*.berat_kuarter' => 'nullable',
+            'lists.*.brix_primer' => 'nullable',
+            'lists.*.brix_sekunder' => 'nullable',
+            'lists.*.brix_tersier' => 'nullable',
+            'lists.*.brix_kuarter' => 'nullable',
         ];
     }
+
+    /**
+     * Hitung per_gap berdasarkan nilai pkp (jarak tanam):
+     * pkp 135 → dibagi 1000
+     * pkp 150 → dibagi 1000
+     * pkp 180 → dibagi 2000
+     * default  → dibagi 1000
+     */
+    protected function calcPerGap(float $panGap, ?float $pkp): float
+    {
+        $divisor = match ((int) $pkp) {
+            180 => 2000,
+            default => 1000, // covers 135, 150, dan nilai lainnya
+        };
+        return $panGap / $divisor;
+    }
+
     public function index(Request $request)
     {
         $title = "Daftar Agronomi";
@@ -57,17 +89,9 @@ class AgronomiController extends Controller
 
         $startDate = $request->input('start_date', now()->toDateString());
         $endDate = $request->input('end_date', now()->toDateString());
-        $userid = Auth::user()->userid;
-        $companycode = DB::table('usercompany')
-            ->where('userid', $userid)
-            ->value('companycode');
-        $companyArray = $companycode ? explode(',', $companycode) : [];
 
         if ($request->isMethod('post')) {
-            $request->validate([
-                'perPage' => 'required|integer|min:1',
-            ]);
-
+            $request->validate(['perPage' => 'required|integer|min:1']);
             $request->session()->put('perPage', $request->input('perPage'));
         }
 
@@ -77,42 +101,33 @@ class AgronomiController extends Controller
             ->join('company', 'agrohdr.companycode', '=', 'company.companycode')
             ->where('agrohdr.companycode', '=', session('companycode'))
             ->where('agrohdr.closingperiode', '=', 'F')
-            ->when($startDate, function ($query) use ($startDate) {
-                $query->whereDate('agrohdr.tanggalpengamatan', '>=', $startDate);
-            })
-            ->when($endDate, function ($query) use ($endDate) {
-                $query->whereDate('agrohdr.tanggalpengamatan', '<=', $endDate);
-            });
+            ->when($startDate, fn($q) => $q->whereDate('agrohdr.tanggalpengamatan', '>=', $startDate))
+            ->when($endDate, fn($q) => $q->whereDate('agrohdr.tanggalpengamatan', '<=', $endDate));
 
         if (!empty($search)) {
-            $agronomi->where(function ($query) use ($search) {
-                $query->where('agrohdr.nosample', 'like', '%' . $search . '%')
-                    ->orWhere('agrohdr.varietas', 'like', '%' . $search . '%')
-                    ->orWhere('agrohdr.plot', 'like', '%' . $search . '%')
-                    ->orWhere('agrohdr.kat', 'like', '%' . $search . '%');
-            });
-
+            $agronomi->where(
+                fn($q) => $q
+                    ->where('agrohdr.nosample', 'like', "%$search%")
+                    ->orWhere('agrohdr.varietas', 'like', "%$search%")
+                    ->orWhere('agrohdr.plot', 'like', "%$search%")
+                    ->orWhere('agrohdr.kat', 'like', "%$search%")
+            );
         }
-        $agronomi = $agronomi->select(
-            'agrohdr.*',
-            'company.name as nama_comp'
-        )
+
+        $agronomi = $agronomi
+            ->select('agrohdr.*', 'company.name as nama_comp')
             ->orderBy('agrohdr.createdat', 'desc')
             ->paginate($perPage);
 
-        foreach ($agronomi as $item) {
-            $item->umur_tanam = Carbon::parse($item->tanggaltanam)->diffInMonths(Carbon::now());
-        }
-
         foreach ($agronomi as $index => $item) {
+            $item->umur_tanam = Carbon::parse($item->tanggaltanam)->diffInMonths(Carbon::now());
             $item->no = ($agronomi->currentPage() - 1) * $agronomi->perPage() + $index + 1;
         }
 
-        if ($request->ajax()) {
-            return view('transaction.agronomi.index', compact('agronomi', 'perPage', 'startDate', 'endDate', 'title', 'search'));
-        }
-
-        return view('transaction.agronomi.index', compact('agronomi', 'perPage', 'startDate', 'endDate', 'title', 'search'));
+        return view(
+            'transaction.agronomi.index',
+            compact('agronomi', 'perPage', 'startDate', 'endDate', 'title', 'search')
+        );
     }
 
     public function handle(Request $request)
@@ -120,17 +135,12 @@ class AgronomiController extends Controller
         if ($request->has('filter') || $request->has('perPage')) {
             return $this->index($request);
         }
-
         return $this->store($request);
     }
 
     public function create()
     {
         $title = "Create Data";
-        // $mapping = DB::table('mapping')
-        //     ->where('companycode', '=', session('companycode'))
-        //     ->orderByRaw("CAST(idblokplot AS UNSIGNED)")
-        //     ->get();
         $method = 'POST';
         $url = route('transaction.agronomi.handle');
         $buttonSubmit = 'Create';
@@ -139,28 +149,24 @@ class AgronomiController extends Controller
 
     public function getBlokbyField(Request $request)
     {
-        // $idblokplot = $request->input('idblokplot');
         $plot = $request->input('plot');
-        $blok = DB::table('masterlist')->where('plot', $plot)
+        $blok = DB::table('masterlist')
+            ->where('plot', $plot)
             ->where('companycode', session('companycode'))
             ->where('isactive', 1)
             ->first();
 
         if ($blok) {
-            return response()->json([
-                // 'idblokplot' => $blok->idblokplot,
-                'blok' => $blok->blok,
-            ]);
+            return response()->json(['blok' => $blok->blok]);
         }
-
         return response()->json(['message' => 'Data not found'], 404);
     }
 
     public function getVarietasandKategori(Request $request)
     {
-        // $idblokplot = $request->input('idblokplot');
         $plot = $request->input('plot');
-        $batch = DB::table('batch')->where('plot', $plot)
+        $batch = DB::table('batch')
+            ->where('plot', $plot)
             ->where('companycode', session('companycode'))
             ->where('isactive', 1)
             ->first();
@@ -170,9 +176,9 @@ class AgronomiController extends Controller
                 'varietas' => $batch->kodevarietas,
                 'kat' => $batch->lifecyclestatus,
                 'tanggaltanam' => $batch->tanggalulangtahun,
+                'pkp' => $batch->pkp,          // ← tambahan
             ]);
         }
-
         return response()->json(['message' => 'Data not found'], 404);
     }
 
@@ -180,12 +186,16 @@ class AgronomiController extends Controller
     {
         $validated = $request->validate($this->requestValidated());
 
-        $existsInHeader = DB::table('agrohdr')->where('nosample', $request->nosample)
+        $pkp = isset($validated['pkp']) ? (float) $validated['pkp'] : null;
+
+        $existsInHeader = DB::table('agrohdr')
+            ->where('nosample', $request->nosample)
             ->where('companycode', $request->companycode)
             ->where('tanggalpengamatan', $request->tanggalpengamatan)
             ->exists();
 
-        $existsInLists = DB::table('agrolst')->where('nosample', $request->nosample)
+        $existsInLists = DB::table('agrolst')
+            ->where('nosample', $request->nosample)
             ->where('companycode', $request->companycode)
             ->where('tanggalpengamatan', $request->tanggalpengamatan)
             ->exists();
@@ -197,19 +207,20 @@ class AgronomiController extends Controller
         }
 
         DB::beginTransaction();
-
         try {
-
             DB::table('agrohdr')->insert([
                 'nosample' => $validated['nosample'],
                 'companycode' => $validated['companycode'],
                 'blok' => $validated['blok'],
                 'plot' => $validated['plot'],
-                // 'idblokplot' => $validated['idblokplot'],
                 'varietas' => $validated['varietas'],
                 'kat' => $validated['kat'],
+                'pkp' => $pkp,                          // ← tambahan
                 'tanggaltanam' => $validated['tanggaltanam'],
                 'tanggalpengamatan' => $validated['tanggalpengamatan'],
+                'bulanpanen' => $validated['bulanpanen'] ?? null,
+                'umurpanen' => $validated['umurpanen'] ?? null,
+                'tanggalzpk' => $validated['tanggalzpk'] ?? null,
                 'inputby' => Auth::user()->userid,
                 'createdat' => now(),
                 'updatedat' => now(),
@@ -220,7 +231,7 @@ class AgronomiController extends Controller
             $count = count($validated['lists']);
 
             foreach ($validated['lists'] as $list) {
-                $per_gap = $list['pan_gap'] / 1000;
+                $per_gap = $this->calcPerGap((float) $list['pan_gap'], $pkp);
                 $per_germinasi = 1 - $per_gap;
                 $per_gulma = $list['ktk_gulma'] ? $list['ktk_gulma'] / 16 : 0;
 
@@ -232,6 +243,10 @@ class AgronomiController extends Controller
                     'kat' => $validated['kat'],
                     'nourut' => $list['nourut'],
                     'jumlahbatang' => $list['jumlahbatang'],
+                    'bat_primer' => $list['bat_primer'],
+                    'bat_sekunder' => $list['bat_sekunder'],
+                    'bat_tersier' => $list['bat_tersier'],
+                    'bat_kuarter' => $list['bat_kuarter'],
                     'pan_gap' => $list['pan_gap'],
                     'per_gap' => $per_gap,
                     'per_germinasi' => $per_germinasi,
@@ -247,6 +262,14 @@ class AgronomiController extends Controller
                     'd_sekunder' => $list['d_sekunder'],
                     'd_tersier' => $list['d_tersier'],
                     'd_kuarter' => $list['d_kuarter'],
+                    'berat_primer' => $list['berat_primer'] ?? 0,
+                    'berat_sekunder' => $list['berat_sekunder'] ?? 0,
+                    'berat_tersier' => $list['berat_tersier'] ?? 0,
+                    'berat_kuarter' => $list['berat_kuarter'] ?? 0,
+                    'brix_primer' => $list['brix_primer'] ?? 0,
+                    'brix_sekunder' => $list['brix_sekunder'] ?? 0,
+                    'brix_tersier' => $list['brix_tersier'] ?? 0,
+                    'brix_kuarter' => $list['brix_kuarter'] ?? 0,
                     'inputby' => Auth::user()->userid,
                     'createdat' => now(),
                     'updatedat' => now(),
@@ -258,7 +281,6 @@ class AgronomiController extends Controller
 
             $avgPerGerminasi = $totalPerGerminasi / $count;
             $avgPerGulma = $totalPerGulma / $count;
-
             $umurTanam = Carbon::parse($validated['tanggaltanam'])->diffInMonths(Carbon::now());
 
             if ($avgPerGerminasi < 0.9 && $umurTanam == 1.0 || $avgPerGulma > 0.25) {
@@ -269,15 +291,13 @@ class AgronomiController extends Controller
                         'germinasi' => $avgPerGerminasi,
                         'gulma' => $avgPerGulma,
                         'umur' => $umurTanam,
-                    ]
+                    ],
                 ]);
             }
 
             DB::commit();
-            return redirect()->back()
-                ->with('success', 'Data created successfully.');
+            return redirect()->back()->with('success', 'Data created successfully.');
         } catch (\Exception $e) {
-
             DB::rollBack();
             return redirect()->route('transaction.agronomi.create')
                 ->with('error', 'Gagal menyimpan data: ' . $e->getMessage())->withInput();
@@ -286,62 +306,62 @@ class AgronomiController extends Controller
 
     public function show($nosample, $companycode, $tanggalpengamatan)
     {
+        $companyCode = session('companycode') ?? $companycode;
 
-        $agronomi = DB::table('agrohdr')
-            ->where('companycode', '=', session('companycode'))
-            ->where('nosample', $nosample)
-            ->where('tanggalpengamatan', $tanggalpengamatan)
+        $agronomi = DB::table('agrohdr as h')
+            ->where([
+                ['h.companycode', '=', $companyCode],
+                ['h.nosample', '=', $nosample],
+                ['h.tanggalpengamatan', '=', $tanggalpengamatan],
+            ])
             ->first();
 
         if (!$agronomi) {
             abort(404, 'Agronomi header not found');
         }
 
-        $agronomiLists = DB::table('agrolst')
-            ->leftJoin('agrohdr', function ($join) {
-                $join->on('agrolst.nosample', '=', 'agrohdr.nosample')
-                    ->whereColumn('agrolst.companycode', '=', 'agrohdr.companycode')
-                    ->whereColumn('agrolst.tanggalpengamatan', '=', 'agrohdr.tanggalpengamatan');
+        $agronomiLists = DB::table('agrolst as l')
+            ->join('agrohdr as h', function ($join) {
+                $join->on('l.nosample', '=', 'h.nosample')
+                    ->on('l.companycode', '=', 'h.companycode')
+                    ->on('l.tanggalpengamatan', '=', 'h.tanggalpengamatan');
             })
-            ->leftJoin('company', function ($join) {
-                $join->on('agrohdr.companycode', '=', 'company.companycode');
+            ->leftJoin('company as c', 'h.companycode', '=', 'c.companycode')
+            ->leftJoin('blok as b', function ($join) {
+                $join->on('h.blok', '=', 'b.blok')
+                    ->on('h.companycode', '=', 'b.companycode');
             })
-            ->leftJoin('blok', function ($join) {
-                $join->on('agrohdr.blok', '=', 'blok.blok')
-                    ->whereColumn('agrohdr.companycode', '=', 'blok.companycode');
+            ->leftJoin('batch as bt', function ($join) {
+                $join->on('h.plot', '=', 'bt.plot')
+                    ->on('h.companycode', '=', 'bt.companycode');
             })
-            ->leftJoin('batch', function ($join) {
-                $join->on('agrohdr.plot', '=', 'batch.plot')
-                    ->whereColumn('agrohdr.companycode', '=', 'batch.companycode');
-            })
-            ->select(
-                'agrolst.*',
-                'agrohdr.varietas',
-                'agrohdr.kat',
-                'agrohdr.tanggaltanam',
-                'company.name as compName',
-                'blok.blok as blokName',
-                'batch.plot as plotName',
-                'batch.batcharea as luasarea',
-                'batch.pkp as jaraktanam',
-            )
-            ->where('agrolst.nosample', $nosample)
-            ->where('agrolst.companycode', $companycode)
-            ->where('agrolst.tanggalpengamatan', $tanggalpengamatan)
-            ->orderBy('agrolst.nourut', 'asc')
+            ->where([
+                ['l.nosample', '=', $nosample],
+                ['l.companycode', '=', $companyCode],
+                ['l.tanggalpengamatan', '=', $tanggalpengamatan],
+                ['bt.isactive', '=', 1],
+            ])
+            ->orderBy('l.nourut')
+            ->select([
+                'l.*',
+                'h.varietas',
+                'h.kat',
+                'h.tanggaltanam',
+                'h.pkp as jaraktanam',
+                'c.name as compName',
+                'b.blok as blokName',
+                'bt.plot as plotName',
+                'bt.batcharea as luasarea',
+            ])
             ->get();
 
-        $now = Carbon::now();
+        $now = now();
 
-        $agronomiLists = $agronomiLists->map(function ($item) use ($now) {
-            $tgl_tanam = Carbon::parse($item->tanggaltanam);
-            $item->umur_tanam = round($tgl_tanam->diffInMonths($now));
+        $agronomiLists->transform(function ($item, $i) use ($now) {
+            $item->no = $i + 1;
+            $item->umur_tanam = round(Carbon::parse($item->tanggaltanam)->diffInMonths($now));
             return $item;
         });
-
-        foreach ($agronomiLists as $index => $item) {
-            $item->no = $index + 1;
-        }
 
         return response()->json($agronomiLists);
     }
@@ -349,15 +369,18 @@ class AgronomiController extends Controller
     public function edit($nosample, $companycode, $tanggalpengamatan)
     {
         $title = 'Edit Data';
-        $header = DB::table('agrohdr')->where('nosample', $nosample)
+        $header = DB::table('agrohdr')
+            ->where('nosample', $nosample)
             ->where('companycode', $companycode)
             ->where('tanggalpengamatan', $tanggalpengamatan)
             ->first();
+
         $lists = DB::table('agrolst')
             ->where('nosample', $nosample)
             ->where('companycode', $companycode)
             ->where('tanggalpengamatan', $tanggalpengamatan)
             ->get();
+
         $list = $lists->first();
         $header->lists = $lists;
 
@@ -365,21 +388,26 @@ class AgronomiController extends Controller
         $mapping = DB::table('mapping')->get();
         $method = 'PUT';
         $buttonSubmit = 'Update';
-        $url = route('transaction.agronomi.update', ['nosample' => $nosample, 'companycode' => $companycode, 'tanggalpengamatan' => $tanggalpengamatan]);
+        $url = route('transaction.agronomi.update', compact('nosample', 'companycode', 'tanggalpengamatan'));
 
         if ($header->status === "Posted") {
-            return redirect()->route('transaction.agronomi.index')->with('success', 'Data telah di posting, tidak dapat mengakses edit.');
+            return redirect()->route('transaction.agronomi.index')
+                ->with('success', 'Data telah di posting, tidak dapat mengakses edit.');
         }
 
-        return view('transaction.agronomi.form', compact('buttonSubmit', 'header', 'list', 'company', 'mapping', 'title', 'method', 'url'));
+        return view(
+            'transaction.agronomi.form',
+            compact('buttonSubmit', 'header', 'list', 'company', 'mapping', 'title', 'method', 'url')
+        );
     }
 
     public function update(Request $request, $nosample, $companycode, $tanggalpengamatan)
     {
         $validated = $request->validate($this->requestValidated());
 
-        DB::beginTransaction();
+        $pkp = isset($validated['pkp']) ? (float) $validated['pkp'] : null;
 
+        DB::beginTransaction();
         try {
             DB::table('agrohdr')
                 ->where('nosample', $nosample)
@@ -390,18 +418,16 @@ class AgronomiController extends Controller
                     'companycode' => $validated['companycode'],
                     'blok' => $validated['blok'],
                     'plot' => $validated['plot'],
-                    // 'idblokplot' => $validated['idblokplot'],
                     'varietas' => $validated['varietas'],
                     'kat' => $validated['kat'],
+                    'pkp' => $pkp,
                     'tanggaltanam' => $validated['tanggaltanam'],
                     'tanggalpengamatan' => $validated['tanggalpengamatan'],
+                    'bulanpanen' => $validated['bulanpanen'] ?? null,
+                    'umurpanen' => $validated['umurpanen'] ?? null,
+                    'tanggalzpk' => $validated['tanggalzpk'] ?? null,
                     'updatedat' => now(),
                 ]);
-
-            $lists = DB::table('agrolst')
-                ->where('nosample', $nosample)
-                ->where('companycode', $companycode)
-                ->where('tanggalpengamatan', $tanggalpengamatan);
 
             $saved = DB::table('agrolst')
                 ->where('nosample', $nosample)
@@ -412,10 +438,17 @@ class AgronomiController extends Controller
             $createdAt = $saved->createdat;
             $userInput = $saved->inputby;
 
-            $lists->delete();
+            DB::table('agrolst')
+                ->where('nosample', $nosample)
+                ->where('companycode', $companycode)
+                ->where('tanggalpengamatan', $tanggalpengamatan)
+                ->delete();
 
             foreach ($validated['lists'] as $list) {
-                $data = [
+                $per_gap = $this->calcPerGap((float) $list['pan_gap'], $pkp);
+                $per_germinasi = 1 - $per_gap;
+
+                DB::table('agrolst')->insert([
                     'nosample' => $validated['nosample'],
                     'companycode' => $validated['companycode'],
                     'tanggaltanam' => $validated['tanggaltanam'],
@@ -423,9 +456,13 @@ class AgronomiController extends Controller
                     'kat' => $validated['kat'],
                     'nourut' => $list['nourut'],
                     'jumlahbatang' => $list['jumlahbatang'],
+                    'bat_primer' => $list['bat_primer'],
+                    'bat_sekunder' => $list['bat_sekunder'],
+                    'bat_tersier' => $list['bat_tersier'],
+                    'bat_kuarter' => $list['bat_kuarter'],
                     'pan_gap' => $list['pan_gap'],
-                    'per_gap' => $list['pan_gap'] / 1000,
-                    'per_germinasi' => 1 - ($list['pan_gap'] / 1000),
+                    'per_gap' => $per_gap,
+                    'per_germinasi' => $per_germinasi,
                     'ph_tanah' => $list['ph_tanah'],
                     'populasi' => $list['jumlahbatang'] / 10,
                     'ktk_gulma' => $list['ktk_gulma'],
@@ -438,25 +475,25 @@ class AgronomiController extends Controller
                     'd_sekunder' => $list['d_sekunder'],
                     'd_tersier' => $list['d_tersier'],
                     'd_kuarter' => $list['d_kuarter'],
+                    'berat_primer' => $list['berat_primer'] ?? 0,
+                    'berat_sekunder' => $list['berat_sekunder'] ?? 0,
+                    'berat_tersier' => $list['berat_tersier'] ?? 0,
+                    'berat_kuarter' => $list['berat_kuarter'] ?? 0,
+                    'brix_primer' => $list['brix_primer'] ?? 0,
+                    'brix_sekunder' => $list['brix_sekunder'] ?? 0,
+                    'brix_tersier' => $list['brix_tersier'] ?? 0,
+                    'brix_kuarter' => $list['brix_kuarter'] ?? 0,
                     'inputby' => $userInput,
                     'createdat' => $createdAt,
                     'updatedat' => now(),
-                ];
-                DB::table('agrolst')
-                    ->where('nosample', $nosample)
-                    ->where('companycode', $companycode)
-                    ->where('tanggalpengamatan', $tanggalpengamatan)
-                    ->where('nourut', $list['nourut'])
-                    ->insert($data);
+                ]);
             }
 
             DB::commit();
-
             return redirect()->route('transaction.agronomi.index')
                 ->with('success', 'Data updated successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-
             return redirect()->route('transaction.agronomi.create')
                 ->with('error', 'Gagal menyimpan data: ' . $e->getMessage());
         }
@@ -466,15 +503,11 @@ class AgronomiController extends Controller
     {
         DB::transaction(function () use ($nosample, $companycode, $tanggalpengamatan) {
             DB::table('agrohdr')
-                ->where('nosample', $nosample)
-                ->where('companycode', $companycode)
-                ->where('tanggalpengamatan', $tanggalpengamatan)
-                ->delete();
+                ->where('nosample', $nosample)->where('companycode', $companycode)
+                ->where('tanggalpengamatan', $tanggalpengamatan)->delete();
             DB::table('agrolst')
-                ->where('nosample', $nosample)
-                ->where('companycode', $companycode)
-                ->where('tanggalpengamatan', $tanggalpengamatan)
-                ->delete();
+                ->where('nosample', $nosample)->where('companycode', $companycode)
+                ->where('tanggalpengamatan', $tanggalpengamatan)->delete();
         });
         return redirect()->route('transaction.agronomi.index')
             ->with('success', 'Data deleted successfully.');
@@ -489,145 +522,129 @@ class AgronomiController extends Controller
         $request->validate([
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
-            'search' => 'nullable|string'
+            'search' => 'nullable|string',
         ]);
 
         $query = DB::table('agrolst')
-            ->leftJoin('agrohdr', function ($join) {
-                $join->on('agrolst.nosample', '=', 'agrohdr.nosample')
-                    ->whereColumn('agrolst.companycode', '=', 'agrohdr.companycode')
-                    ->whereColumn('agrolst.tanggalpengamatan', '=', 'agrohdr.tanggalpengamatan');
-            })
-            ->leftJoin('company', function ($join) {
-                $join->on('agrohdr.companycode', '=', 'company.companycode');
-            })
-            ->leftJoin('blok', function ($join) {
-                $join->on('agrohdr.blok', '=', 'blok.blok')
-                    ->whereColumn('agrohdr.companycode', '=', 'blok.companycode');
-            })
-            ->leftJoin('batch', function ($join) {
-                $join->on('agrohdr.plot', '=', 'batch.plot')
-                    ->whereColumn('agrohdr.companycode', '=', 'batch.companycode');
-            })
+            ->leftJoin('agrohdr', fn($j) => $j
+                ->on('agrolst.nosample', '=', 'agrohdr.nosample')
+                ->whereColumn('agrolst.companycode', '=', 'agrohdr.companycode')
+                ->whereColumn('agrolst.tanggalpengamatan', '=', 'agrohdr.tanggalpengamatan'))
+            ->leftJoin('company', 'agrohdr.companycode', '=', 'company.companycode')
+            ->leftJoin('blok', fn($j) => $j
+                ->on('agrohdr.blok', '=', 'blok.blok')
+                ->whereColumn('agrohdr.companycode', '=', 'blok.companycode'))
+            ->leftJoin('batch', fn($j) => $j
+                ->on('agrohdr.plot', '=', 'batch.plot')
+                ->whereColumn('agrohdr.companycode', '=', 'batch.companycode'))
             ->where('agrolst.companycode', session('companycode'))
             ->where('agrohdr.companycode', session('companycode'))
-            ->where('agrohdr.status', '=', 'Posted')
-            ->where('agrolst.status', '=', 'Posted')
+            ->where('agrohdr.status', 'Posted')
+            ->where('agrolst.status', 'Posted')
             ->select(
                 'agrolst.*',
                 'agrohdr.varietas',
                 'agrohdr.kat',
+                'agrohdr.pkp as jaraktanam',
                 'agrohdr.tanggaltanam',
+                'agrohdr.bulanpanen',
+                'agrohdr.umurpanen',
+                'agrohdr.tanggalzpk',
                 'company.name as compName',
                 'blok.blok as blokName',
                 'batch.plot as plotName',
                 'batch.batcharea as luasarea',
-                'batch.pkp as jaraktanam',
             )
             ->orderBy('agrohdr.tanggalpengamatan', 'desc');
 
-        if ($startDate) {
+        if ($startDate)
             $query->whereDate('agrohdr.tanggalpengamatan', '>=', $startDate);
-        }
-        if ($endDate) {
+        if ($endDate)
             $query->whereDate('agrohdr.tanggalpengamatan', '<=', $endDate);
-        }
         if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('agrolst.nosample', 'like', "%{$search}%")
-                    ->orWhere('plotting.plot', 'like', "%{$search}%")
-                    ->orWhere('agrohdr.varietas', 'like', "%{$search}%")
-                    ->orWhere('agrohdr.kat', 'like', "%{$search}%");
-            });
+            $query->where(
+                fn($q) => $q
+                    ->where('agrolst.nosample', 'like', "%$search%")
+                    ->orWhere('agrohdr.varietas', 'like', "%$search%")
+                    ->orWhere('agrohdr.kat', 'like', "%$search%")
+            );
         }
 
-        $now = Carbon::now();
+        $filename = $startDate && $endDate
+            ? "AgronomiReport_{$startDate}_sd_{$endDate}.xlsx"
+            : "AgronomiReport.xlsx";
 
-        // Tentukan nama file
-        if ($startDate && $endDate) {
-            $filename = "AgronomiReport_{$startDate}_sd_{$endDate}.xlsx";
-        } else {
-            $filename = "AgronomiReport.xlsx";
-        }
-
-        // Buat direktori temp jika belum ada
         $tempDir = storage_path('app/temp');
-        if (!file_exists($tempDir)) {
+        if (!file_exists($tempDir))
             mkdir($tempDir, 0755, true);
-        }
+        $tempFile = "$tempDir/$filename";
 
-        $tempFile = $tempDir . '/' . $filename;
-
-        // Buat writer dengan Spout dan set temp folder
         $writer = WriterEntityFactory::createXLSXWriter();
-
-        // SET TEMP FOLDER - INI YANG PENTING!
         $writer->setTempFolder($tempDir);
-
         $writer->openToFile($tempFile);
 
-        // Style untuk header (bold)
-        $headerStyle = (new StyleBuilder())
-            ->setFontBold()
-            ->build();
+        $headerStyle = (new StyleBuilder())->setFontBold()->build();
 
-        // Buat header row
-        $headerCells = [
-            WriterEntityFactory::createCell('No. Sample'),
-            WriterEntityFactory::createCell('Kebun'),
-            WriterEntityFactory::createCell('Blok'),
-            WriterEntityFactory::createCell('Plot'),
-            WriterEntityFactory::createCell('Luas'),
-            WriterEntityFactory::createCell('Varietas'),
-            WriterEntityFactory::createCell('Kategori'),
-            WriterEntityFactory::createCell('Tanggal Tanam'),
-            WriterEntityFactory::createCell('Umur Tanam'),
-            WriterEntityFactory::createCell('Jarak Tanam'),
-            WriterEntityFactory::createCell('Tanggal Pengamatan'),
-            WriterEntityFactory::createCell('Bulan Pengamatan'),
-            WriterEntityFactory::createCell('No. Urut'),
-            WriterEntityFactory::createCell('Jumlah Batang'),
-            WriterEntityFactory::createCell('Panjang GAP'),
-            WriterEntityFactory::createCell('%GAP'),
-            WriterEntityFactory::createCell('%Germinasi'),
-            WriterEntityFactory::createCell('pH Tanah'),
-            WriterEntityFactory::createCell('Populasi'),
-            WriterEntityFactory::createCell('Kotak Gulma'),
-            WriterEntityFactory::createCell('%Penutupan Gulma'),
-            WriterEntityFactory::createCell('Tinggi Primer'),
-            WriterEntityFactory::createCell('Tinggi Sekunder'),
-            WriterEntityFactory::createCell('Tinggi Tersier'),
-            WriterEntityFactory::createCell('Tinggi Kuarter'),
-            WriterEntityFactory::createCell('Diameter Primer'),
-            WriterEntityFactory::createCell('Diameter Sekunder'),
-            WriterEntityFactory::createCell('Diameter Tersier'),
-            WriterEntityFactory::createCell('Diameter Kuarter'),
-        ];
+        $headerCells = array_map(
+            fn($h) => WriterEntityFactory::createCell($h),
+            [
+                'No. Sample',
+                'Kebun',
+                'Blok',
+                'Plot',
+                'Luas',
+                'Varietas',
+                'Kategori',
+                'Tanggal Tanam',
+                'Umur Tanam',
+                'Jarak Tanam',
+                'Tanggal Pengamatan',
+                'Bulan Pengamatan',
+                'Bulan Panen',
+                'Umur Panen',
+                'Tanggal ZPK',
+                'No. Urut',
+                'Jumlah Batang',
+                'Jumlah Batang Primer',
+                'Jumlah Batang Sekunder',
+                'Jumlah Batang Tersier',
+                'Panjang GAP',
+                '%GAP',
+                '%Germinasi',
+                'pH Tanah',
+                'Populasi',
+                'Kotak Gulma',
+                '%Penutupan Gulma',
+                'Tinggi Primer',
+                'Tinggi Sekunder',
+                'Tinggi Tersier',
+                'Tinggi Kuarter',
+                'Diameter Primer',
+                'Diameter Sekunder',
+                'Diameter Tersier',
+                'Diameter Kuarter',
+                'Berat Batang Primer',
+                'Berat Batang Sekunder',
+                'Berat Batang Tersier',
+                'Berat Batang Kuarter',
+                'Brix Batang Primer',
+                'Brix Batang Sekunder',
+                'Brix Batang Tersier',
+                'Brix Batang Kuarter',
+            ]
+        );
+        $writer->addRow(WriterEntityFactory::createRow($headerCells, $headerStyle));
 
-        $headerRow = WriterEntityFactory::createRow($headerCells, $headerStyle);
-        $writer->addRow($headerRow);
-
-        // Proses data dalam chunk untuk efisiensi memori
-        $query->chunk(1000, function ($agronomiChunk) use ($writer, $now) {
+        $now = Carbon::now();
+        $query->chunk(1000, function ($chunk) use ($writer, $now) {
             $rows = [];
+            foreach ($chunk as $list) {
+                $tglTanam = Carbon::parse($list->tanggaltanam);
+                $umurTanam = $tglTanam->diffInMonths($now);
+                $bulanPengamatan = Carbon::parse($list->tanggalpengamatan)->format('F');
+                $dec2 = (new StyleBuilder())->setFormat('0.00')->build();
 
-            foreach ($agronomiChunk as $list) {
-                $tanggaltanam = Carbon::parse($list->tanggaltanam);
-                $umurTanam = $tanggaltanam->diffInMonths($now);
-
-                $tanggalpengamatan = Carbon::parse($list->tanggalpengamatan);
-                $bulanPengamatan = $tanggalpengamatan->format('F');
-
-                // Format persentase (konversi ke desimal untuk Excel)
-                // $perGap = is_numeric($list->per_gap) ? $list->per_gap / 100 : $list->per_gap;
-                // $perGerminasi = is_numeric($list->per_germinasi) ? $list->per_germinasi / 100 : $list->per_germinasi;
-                // $perGulma = is_numeric($list->per_gulma) ? $list->per_gulma / 100 : $list->per_gulma;
-
-                $decimalStyle = (new StyleBuilder())
-                    ->setFormat('0.00')
-                    ->build();
-
-                $cells = [
+                $rows[] = WriterEntityFactory::createRow([
                     WriterEntityFactory::createCell($list->nosample),
                     WriterEntityFactory::createCell($list->compName),
                     WriterEntityFactory::createCell($list->blokName),
@@ -635,50 +652,52 @@ class AgronomiController extends Controller
                     WriterEntityFactory::createCell(round((float) $list->luasarea, 10)),
                     WriterEntityFactory::createCell($list->varietas),
                     WriterEntityFactory::createCell($list->kat),
-                    WriterEntityFactory::createCell($tanggaltanam->format('Y-m-d')),
+                    WriterEntityFactory::createCell($tglTanam->format('Y-m-d')),
                     WriterEntityFactory::createCell(round($umurTanam) . ' Bulan'),
                     WriterEntityFactory::createCell(round((float) $list->jaraktanam, 10)),
                     WriterEntityFactory::createCell($list->tanggalpengamatan),
                     WriterEntityFactory::createCell($bulanPengamatan),
+                    WriterEntityFactory::createCell($list->bulanpanen),
+                    WriterEntityFactory::createCell($list->umurpanen),
+                    WriterEntityFactory::createCell($list->tanggalzpk),
                     WriterEntityFactory::createCell($list->nourut),
                     WriterEntityFactory::createCell($list->jumlahbatang),
+                    WriterEntityFactory::createCell($list->bat_primer),
+                    WriterEntityFactory::createCell($list->bat_sekunder),
+                    WriterEntityFactory::createCell($list->bat_tersier),
+                    WriterEntityFactory::createCell($list->bat_kuarter),
                     WriterEntityFactory::createCell($list->pan_gap),
-
-                    // Gunakan value asli 0.8 dengan style persentase
-                    WriterEntityFactory::createCell(round((float) $list->per_gap, 10), $decimalStyle),
-                    WriterEntityFactory::createCell(round((float) $list->per_germinasi, 10), $decimalStyle),
-
+                    WriterEntityFactory::createCell(round((float) $list->per_gap, 10), $dec2),
+                    WriterEntityFactory::createCell(round((float) $list->per_germinasi, 10), $dec2),
                     WriterEntityFactory::createCell(round((float) $list->ph_tanah, 10)),
                     WriterEntityFactory::createCell(round((float) $list->populasi, 10)),
                     WriterEntityFactory::createCell($list->ktk_gulma),
-
-                    // Untuk per_gulma juga gunakan style yang sama
-                    WriterEntityFactory::createCell(round((float) $list->per_gulma, 10), $decimalStyle),
-
+                    WriterEntityFactory::createCell(round((float) $list->per_gulma, 10), $dec2),
                     WriterEntityFactory::createCell($list->t_primer),
                     WriterEntityFactory::createCell($list->t_sekunder),
                     WriterEntityFactory::createCell($list->t_tersier),
                     WriterEntityFactory::createCell($list->t_kuarter),
                     WriterEntityFactory::createCell(round((float) $list->d_primer, 1), (new StyleBuilder())->setFormat('0.0')->build()),
-                    WriterEntityFactory::createCell(round((float) $list->d_sekunder, 2), $decimalStyle),
+                    WriterEntityFactory::createCell(round((float) $list->d_sekunder, 2), $dec2),
                     WriterEntityFactory::createCell(round((float) $list->d_tersier, 3), (new StyleBuilder())->setFormat('0.000')->build()),
                     WriterEntityFactory::createCell(round((float) $list->d_kuarter, 4), (new StyleBuilder())->setFormat('0.0000')->build()),
-                ];
-
-                $rows[] = WriterEntityFactory::createRow($cells);
+                    WriterEntityFactory::createCell($list->berat_primer),
+                    WriterEntityFactory::createCell($list->berat_sekunder),
+                    WriterEntityFactory::createCell($list->berat_tersier),
+                    WriterEntityFactory::createCell($list->berat_kuarter),
+                    WriterEntityFactory::createCell(round((float) $list->brix_primer, 2), $dec2),
+                    WriterEntityFactory::createCell(round((float) $list->brix_sekunder, 2), $dec2),
+                    WriterEntityFactory::createCell(round((float) $list->brix_tersier, 2), $dec2),
+                    WriterEntityFactory::createCell(round((float) $list->brix_kuarter, 2), $dec2),
+                ]);
             }
-
-            // Tulis semua rows dalam chunk sekaligus
             $writer->addRows($rows);
-
-            // Bebaskan memori
             unset($rows);
             gc_collect_cycles();
         });
 
         $writer->close();
 
-        // Return file sebagai download dan hapus setelah dikirim
         return response()->download($tempFile, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Cache-Control' => 'max-age=0',
