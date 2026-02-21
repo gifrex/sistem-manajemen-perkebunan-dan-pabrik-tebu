@@ -136,7 +136,7 @@
           <div 
             @click="selectBlokForBlokActivity('ALL')"
             class="p-2 border-2 rounded-lg cursor-pointer transition-all hover:border-blue-400 hover:shadow-sm"
-            :class="getSelectedBlokForActivity(currentActivityForPlots) === 'ALL' ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-200 hover:bg-gray-50'">
+            :class="(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL') ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-200 hover:bg-gray-50'">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-gray-800">ALL</span>
@@ -144,8 +144,8 @@
               </div>
               {{-- ✅ Radio button SAMA PERSIS dengan blok lain --}}
               <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0"
-                   :class="getSelectedBlokForActivity(currentActivityForPlots) === 'ALL' ? 'bg-blue-500 border-blue-500' : 'border-gray-300 bg-white'">
-                <svg x-show="getSelectedBlokForActivity(currentActivityForPlots) === 'ALL'" 
+                   :class="(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL') ? 'bg-blue-500 border-blue-500' : 'border-gray-300 bg-white'">
+                <svg x-show="(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL')" 
                      class="w-2.5 h-2.5 text-white" 
                      fill="none" 
                      stroke="currentColor" 
@@ -160,14 +160,19 @@
           {{-- Individual Bloks --}}
           <template x-for="blok in filteredBloksForActivity()" :key="blok">
             <div 
-              @click="selectBlokForBlokActivity(blok)"
-              class="p-2 border-2 rounded-lg cursor-pointer transition-all hover:border-blue-400 hover:shadow-sm"
-              :class="getSelectedBlokForActivity(currentActivityForPlots) === blok ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-200 hover:bg-gray-50'">
+              @click="!(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL') && selectBlokForBlokActivity(blok)"
+              class="p-2 border-2 rounded-lg transition-all"
+              :class="{
+                'border-blue-500 bg-blue-50 shadow-sm': (getSelectedBlokForActivity(currentActivityForPlots) || []).includes(blok),
+                'opacity-40 cursor-not-allowed': (getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL'),
+                'cursor-pointer hover:border-blue-400 hover:shadow-sm hover:bg-gray-50': !(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL'),
+                'border-gray-200': !(getSelectedBlokForActivity(currentActivityForPlots) || []).includes(blok)
+              }">
               <div class="flex items-center justify-between">
                 <span class="text-sm font-semibold text-gray-800" x-text="blok"></span>
-                <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0"
-                     :class="getSelectedBlokForActivity(currentActivityForPlots) === blok ? 'bg-blue-500 border-blue-500' : 'border-gray-300 bg-white'">
-                  <svg x-show="getSelectedBlokForActivity(currentActivityForPlots) === blok" 
+                <div class="w-4 h-4 rounded border-2 flex items-center justify-center transition-all flex-shrink-0"
+                     :class="(getSelectedBlokForActivity(currentActivityForPlots) || []).includes(blok) ? 'bg-blue-500 border-blue-500' : 'border-gray-300 bg-white'">
+                  <svg x-show="(getSelectedBlokForActivity(currentActivityForPlots) || []).includes(blok)" 
                        class="w-2.5 h-2.5 text-white" 
                        fill="none" 
                        stroke="currentColor" 
@@ -359,14 +364,16 @@
                 <p class="text-xs font-medium text-gray-800 mt-0.5" x-text="activity.name"></p>
                 
                 {{-- Show Blok for Blok Activity --}}
-                <template x-if="activity.isblokactivity == 1 && getSelectedBlokForActivity(actCode)">
-                  <div class="mt-2">
-                    <span class="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 text-xs font-semibold rounded border border-purple-200">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                      </svg>
-                      Blok: <span class="font-bold" x-text="getSelectedBlokForActivity(actCode)"></span>
-                    </span>
+                <template x-if="activity.isblokactivity == 1 && (getSelectedBlokForActivity(actCode) || []).length > 0">
+                  <div class="mt-2 flex flex-wrap gap-1">
+                    <template x-for="blok in (getSelectedBlokForActivity(actCode) || [])" :key="blok">
+                      <span class="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 text-xs font-semibold rounded border border-purple-200">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        Blok: <span class="font-bold" x-text="blok"></span>
+                      </span>
+                    </template>
                   </div>
                 </template>
               </div>

@@ -582,17 +582,36 @@
       selectBlokForBlokActivity(blok) {
         if (!this.currentActivityForPlots) return;
         
-        const activity = this.selectedActivities[this.currentActivityForPlots];
+        const actCode = this.currentActivityForPlots;
+        const activity = this.selectedActivities[actCode];
         if (!activity || activity.isblokactivity != 1) return;
         
-        this.blokActivityAssignments[this.currentActivityForPlots] = blok;
-        this.plotAssignments[this.currentActivityForPlots] = [];
-        
-        showToast(`Blok "${blok}" selected for ${this.currentActivityForPlots}`, 'success', 2000);
+        if (!this.blokActivityAssignments[actCode]) {
+          this.blokActivityAssignments[actCode] = [];
+        }
+
+        if (blok === 'ALL') {
+          // ALL exclusive: toggle ALL, clear yang lain
+          const isAllSelected = this.blokActivityAssignments[actCode].includes('ALL');
+          this.blokActivityAssignments[actCode] = isAllSelected ? [] : ['ALL'];
+          showToast(isAllSelected ? 'ALL deselected' : 'ALL Bloks selected', 'success', 2000);
+        } else {
+          // Individual: hapus ALL dulu, lalu toggle blok ini
+          let current = this.blokActivityAssignments[actCode].filter(b => b !== 'ALL');
+          const idx = current.indexOf(blok);
+          if (idx > -1) {
+            current.splice(idx, 1);
+            showToast(`Blok "${blok}" deselected`, 'info', 1500);
+          } else {
+            current.push(blok);
+            showToast(`Blok "${blok}" selected`, 'success', 1500);
+          }
+          this.blokActivityAssignments[actCode] = current;
+        }
       },
 
       getSelectedBlokForActivity(actCode) {
-        return this.blokActivityAssignments[actCode] || '';
+        return this.blokActivityAssignments[actCode] || [];
       },
 
       hasAnyBlokActivitySelected() {
@@ -660,7 +679,7 @@
       canProceedStep2() {
         return Object.entries(this.selectedActivities).every(([actCode, activity]) => {
           if (activity.isblokactivity == 1) {
-            return this.blokActivityAssignments[actCode] !== undefined;
+            return (this.blokActivityAssignments[actCode] || []).length > 0;
           }
           return this.plotAssignments[actCode] && this.plotAssignments[actCode].length > 0;
         });
@@ -1180,15 +1199,17 @@
         });
         
         // Handle blok activities
-        Object.entries(this.blokActivityAssignments).forEach(([activityCode, blok]) => {
-          rows.push({
-            nama: activityCode,
-            blok: blok,
-            plot: null,
-            luas: null,
-            material_group_id: '',
-            usingmaterial: '0',
-            batchno: null
+        Object.entries(this.blokActivityAssignments).forEach(([activityCode, bloks]) => {
+          bloks.forEach(blok => {
+            rows.push({
+              nama: activityCode,
+              blok: blok,
+              plot: null,
+              luas: null,
+              material_group_id: '',
+              usingmaterial: '0',
+              batchno: null
+            });
           });
         });
         
