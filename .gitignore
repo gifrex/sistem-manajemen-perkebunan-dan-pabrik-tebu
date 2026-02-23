@@ -20,5 +20,4 @@ yarn-error.log
 /.vscode
 /.zed
 test-api.http
-/.github
 .env.docker
