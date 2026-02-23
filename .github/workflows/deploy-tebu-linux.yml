@@ -1,12 +1,11 @@
-name: Deploy Tebu Apps (Linux Docker via SSM)
+name: Deploy Tebu Apps (Manual Linux Docker via SSM)
 
+# Memicu manual dari tab Actions di GitHub
 on:
-  push:
-    branches: [ "main" ] # Otomatis deploy saat kamu push ke main
-  workflow_dispatch: {} # Tetap bisa dijalankan manual kalau mau
+  workflow_dispatch: {} 
 
 jobs:
-  # TAHAP 1: Memasak Image di Pabrik (GitHub)
+  # --- TAHAP 1: BUILD IMAGE ---
   build-and-push:
     runs-on: ubuntu-latest
     steps:
@@ -24,9 +23,10 @@ jobs:
         with:
           context: .
           push: true
+          # Menggunakan tag latest agar selalu terupdate
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/tebu-app:latest
 
-  # TAHAP 2: Mengirim Perintah ke Meja Makan (EC2 Linux)
+  # --- TAHAP 2: DEPLOY KE AWS ---
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -38,29 +38,38 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Send SSM command
+      - name: Prepare and Send SSM command
         id: send
         run: |
+          # 1. Ubah file docker-compose.yml jadi satu baris kode rahasia (Base64)
+          B64_COMPOSE=$(base64 -w 0 docker-compose.yml)
+
+          # 2. Kirim perintah ke AWS
           CMD_ID=$(aws ssm send-command \
             --region "${{ secrets.AWS_REGION }}" \
             --document-name "AWS-RunShellScript" \
             --instance-ids "${{ secrets.SSM_INSTANCE_ID_LINUX }}" \
-            --parameters 'commands=[
-              "cd /opt/apps/tebu",
-              "sudo docker compose pull",
-              "sudo docker compose up -d"
-            ]' \
+            --parameters "commands=[
+              \"mkdir -p /opt/apps/tebu\",
+              \"cd /opt/apps/tebu\",
+              # Decode kembali file base64 tadi menjadi file .yml asli
+              \"echo $B64_COMPOSE | base64 -d > docker-compose.yml\",
+              \"sudo docker compose pull\",
+              \"sudo docker compose up -d\"
+            ]" \
             --query "Command.CommandId" \
             --output text)
+          
           echo "command_id=$CMD_ID" >> "$GITHUB_OUTPUT"
+          echo "SSM Command sent with ID: $CMD_ID"
 
-      - name: Wait for Output
+      - name: Check Deployment Result
         run: |
           CMD_ID="${{ steps.send.outputs.command_id }}"
           INSTANCE_ID="${{ secrets.SSM_INSTANCE_ID_LINUX }}"
           
-          # Tunggu sebentar sampai perintah selesai dieksekusi
-          sleep 10 
+          # Tunggu sebentar agar server sempat memproses
+          sleep 15
           
           aws ssm get-command-invocation \
             --command-id "$CMD_ID" \
