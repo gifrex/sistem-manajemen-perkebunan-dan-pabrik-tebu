@@ -1,5 +1,13 @@
-vendor/
-node_modules/
-.git/
+.git
+.env
+node_modules
+vendor
+storage/*.php
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
 storage/logs/*
-.env.local
+tests
+Dockerfile
+docker-compose.yml
+.github

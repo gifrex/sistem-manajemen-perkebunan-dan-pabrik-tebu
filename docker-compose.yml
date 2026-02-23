@@ -1,0 +1,27 @@
+services:
+  # --- Aplikasi Laravel ---
+  app:
+    image: sungaibudiwebdev/tebu-app:latest # Mengambil dari Docker Hub, bukan build lokal
+    container_name: tebu-app
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "8080:8080" # Untuk Reverb/Websocket jika perlu
+    env_file:
+      - .env # Mengambil variabel dari file .env di server
+    volumes:
+      - ./storage:/var/www/html/storage # HANYA folder storage yang di-mount (untuk log & upload)
+    networks:
+      - tebu-network
+
+  # --- Redis ---
+  redis:
+    image: redis:7-alpine
+    container_name: tebu-redis
+    restart: unless-stopped
+    networks:
+      - tebu-network
+
+networks:
+  tebu-network:
+    driver: bridge
