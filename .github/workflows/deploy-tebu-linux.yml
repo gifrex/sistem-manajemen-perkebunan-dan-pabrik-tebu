@@ -33,7 +33,7 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -44,7 +44,7 @@ jobs:
       - name: Prepare and Send SSM command
         id: send
         run: |
-          # 1. Ubah file docker-compose.yml jadi satu baris kode rahasia (Base64)
+          # 1. Bungkus file jadi base64
           B64_COMPOSE=$(base64 -w 0 docker-compose.yml)
 
           # 2. Kirim perintah ke AWS
@@ -55,7 +55,6 @@ jobs:
             --parameters "commands=[
               \"mkdir -p /opt/apps/tebu\",
               \"cd /opt/apps/tebu\",
-              # Decode kembali file base64 tadi menjadi file .yml asli
               \"echo $B64_COMPOSE | base64 -d > docker-compose.yml\",
               \"sudo docker compose pull\",
               \"sudo docker compose up -d\"
