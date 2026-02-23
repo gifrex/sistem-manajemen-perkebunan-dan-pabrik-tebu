@@ -32,10 +32,14 @@ RUN chmod +x /usr/local/bin/install-php-extensions && \
 # Install nginx & supervisor
 RUN apk add --no-cache nginx supervisor
 
+# --- Membuat folder log Supervisor ---
+RUN mkdir -p /var/log/supervisor /var/log/nginx /var/cache/nginx \
+    && chown -R www-data:www-data /var/log/supervisor /var/log/nginx /var/cache/nginx
+
 # PHP production config
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
-# Copy konfigurasi (Pastikan folder docker/ ini ada di repo kamu)
+# Copy konfigurasi
 COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 COPY docker/php/custom.ini /usr/local/etc/php/conf.d/custom.ini
 COPY docker/php/www.conf /usr/local/etc/php-fpm.d/www.conf
@@ -49,11 +53,11 @@ COPY . .
 COPY --from=composer-builder /app/vendor ./vendor
 COPY --from=node-builder /app/public/build ./public/build
 
-# Set permissions
+# Set permissions untuk Laravel
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-# Bersihkan sisa-sisa build (Jika tidak pakai .dockerignore)
+# Bersihkan sisa-sisa build
 RUN rm -rf node_modules tests .git docker
 
 EXPOSE 80
