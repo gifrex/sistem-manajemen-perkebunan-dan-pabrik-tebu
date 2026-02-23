@@ -1,12 +1,26 @@
 # ============================================
 # Stage 1: Build frontend assets (Node.js)
 # ============================================
-FROM node:22-alpine AS node-builder
+FROM node:20-alpine AS node-builder
 WORKDIR /app
+
+# Ambil rahasia dari GitHub Actions
+ARG VITE_REVERB_APP_KEY
+ARG VITE_REVERB_HOST
+ARG VITE_REVERB_PORT
+ARG VITE_REVERB_SCHEME
+
 COPY package*.json ./
 RUN npm ci
+
 COPY . .
-RUN npm run build
+
+# Masukkan rahasia ke proses build Vite
+RUN VITE_REVERB_APP_KEY=${VITE_REVERB_APP_KEY} \
+    VITE_REVERB_HOST=${VITE_REVERB_HOST} \
+    VITE_REVERB_PORT=${VITE_REVERB_PORT} \
+    VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME} \
+    npm run build
 
 # ============================================
 # Stage 2: Install PHP dependencies
