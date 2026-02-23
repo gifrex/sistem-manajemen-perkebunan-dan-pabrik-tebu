@@ -18,13 +18,18 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and Push Image
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          # Menggunakan tag latest agar selalu terupdate
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tebu-app:latest
+          tags: sungaibudiwebdev/tebu-app:latest
+          # Mengambil dari GitHub Secrets, bukan ditulis langsung (hardcode)
+          build-args: |
+            VITE_REVERB_APP_KEY=${{ secrets.VITE_REVERB_APP_KEY }}
+            VITE_REVERB_HOST=${{ secrets.VITE_REVERB_HOST }}
+            VITE_REVERB_PORT=${{ secrets.VITE_REVERB_PORT }}
+            VITE_REVERB_SCHEME=${{ secrets.VITE_REVERB_SCHEME }}
 
   # --- TAHAP 2: DEPLOY KE AWS ---
   deploy:
@@ -57,7 +62,9 @@ jobs:
               \"cd /opt/apps/tebu\",
               \"echo $B64_COMPOSE | base64 -d > docker-compose.yml\",
               \"sudo docker compose pull\",
-              \"sudo docker compose up -d\"
+              \"sudo docker compose up -d\",
+              \"sudo docker exec tebu-app chown -R 82:82 storage bootstrap/cache\",
+              \"sudo docker exec tebu-app chmod -R 775 storage bootstrap/cache\"
             ]" \
             --query "Command.CommandId" \
             --output text)
