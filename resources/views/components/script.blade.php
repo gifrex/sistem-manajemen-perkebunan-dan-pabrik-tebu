@@ -22,7 +22,8 @@
             .then(response => response.json())
             .then(data => {
                 const unreadCount = data.unread_count || 0;
-                const isNotificationPage = window.location.pathname.includes('{{ route('info-updates.notifications.index') }}');
+                const isNotificationPage = window.location.pathname.includes(
+                    '{{ route('info-updates.notifications.index') }}');
                 const dialog = document.getElementById('unread-notification-dialog');
 
                 if (dialog) {
@@ -150,7 +151,34 @@
             });
         }
 
+
+        // Tambahkan helper function ini di luar DOMContentLoaded, di script global
+        function showTableLoading() {
+            const tables = document.getElementById("tables");
+            if (!tables) return;
+            const cols = tables.querySelectorAll("thead tr th").length || 9;
+            const overlay = `
+        <tbody id="loading-overlay">
+            <tr>
+                <td colspan="${cols}" class="py-12 text-center">
+                    <div class="flex items-center justify-center gap-3">
+                        <svg class="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-gray-500 text-sm font-medium">Memuat data...</span>
+                    </div>
+                </td>
+            </tr>
+        </tbody>`;
+            // Ganti tbody saja, biarkan thead tetap
+            const existingTbody = tables.querySelector("tbody");
+            if (existingTbody) existingTbody.outerHTML = overlay;
+        }
+
         function fetchData(url = baseUrl) {
+            showTableLoading();
+
             const search = searchInput ? searchInput.value : "";
             const perPage = perPageInput ? perPageInput.value : 10;
             const startDate = startDateInput ? startDateInput.value : "";
@@ -262,10 +290,10 @@
 
 <script>
     window.addEventListener('scroll', function() {
-    const scrollToTopButton = document.getElementById('scrollToTop');
-    if (!scrollToTopButton) return; // Langsung return kalau tidak ada
-    
-    scrollToTopButton.style.display = (window.scrollY > 100) ? 'block' : 'none';
+        const scrollToTopButton = document.getElementById('scrollToTop');
+        if (!scrollToTopButton) return; // Langsung return kalau tidak ada
+
+        scrollToTopButton.style.display = (window.scrollY > 100) ? 'block' : 'none';
     });
 
     function scrollToTop() {

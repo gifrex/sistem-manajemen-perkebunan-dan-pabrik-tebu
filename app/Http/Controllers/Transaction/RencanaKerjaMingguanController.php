@@ -146,6 +146,7 @@ class RencanaKerjaMingguanController extends Controller
         $comp = session('companycode');
         $plots = DB::table('masterlist')
             ->where('companycode', $comp)
+
             ->where('plot', 'like', $blok . '%')
             ->orderByRaw("LEFT(plot, 1), CAST(SUBSTRING(plot, 2) AS UNSIGNED)")
             ->pluck('plot');
@@ -283,6 +284,8 @@ class RencanaKerjaMingguanController extends Controller
             )
             ->where('a.companycode', $companyCode)
             ->where('a.rkmno', $rkmno)
+            ->orderBy('b.blok', 'asc')
+            ->orderBy('b.plot', 'asc')
             ->groupBy(
                 'a.rkmno',
                 'a.startdate',
