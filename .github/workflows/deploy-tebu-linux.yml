@@ -1,4 +1,4 @@
-name: Deploy Tebu Apps (Manual Linux Docker via SSM)
+name: Deploy Tebu Apps (LINUX SSM)
 
 # Memicu manual dari tab Actions di GitHub
 on:
@@ -31,6 +31,9 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
