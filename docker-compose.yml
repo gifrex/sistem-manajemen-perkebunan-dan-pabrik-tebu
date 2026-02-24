@@ -16,7 +16,8 @@ services:
       # Tambahkan ini juga jika kamu ingin file config nginx lokal menimpa yang ada di image
       - ./docker/nginx/default.conf:/etc/nginx/http.d/default.conf:ro
     networks:
-      - tebu-network
+      tebu-network:
+        external: true
 
   # --- Redis ---
   redis:
