@@ -144,7 +144,10 @@ if ($cropType === 'rc') {
 
 // ✅ Query 1: Aggregate untuk total LUAS dan AVG PERCENTAGE
 $activityDataRaw = DB::table('lkhdetailplot as ldp')
-->join('lkhhdr as lh', 'ldp.lkhno', '=', 'lh.lkhno')
+->join('lkhhdr as lh', function($join) {
+    $join->on('ldp.lkhno', '=', 'lh.lkhno')
+         ->on('ldp.companycode', '=', 'lh.companycode'); 
+})
 ->join('masterlist as m', function($join) {
     $join->on('ldp.plot', '=', 'm.plot')
          ->on('ldp.companycode', '=', 'm.companycode')

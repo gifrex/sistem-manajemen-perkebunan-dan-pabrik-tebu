@@ -127,7 +127,7 @@
                                 @endforeach
                             </select>
                             
-                            <div x-show="rkhno" x-transition class="mt-4">
+                            <div x-show="!loading && rkhno && items.length" x-transition class="mt-4">
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Cost Center
                             </label>
@@ -148,6 +148,9 @@
 
                             <!-- hidden untuk controller supaya old/new gampang -->
                             <input type="hidden" name="old_costcenter" x-model="old_costcenter">
+                                <div class="mt-2 text-xs text-gray-600" x-show="flagstatus">
+                                Status: <span class="font-semibold" x-text="flagstatus.replaceAll('_',' ')"></span>
+                                </div>
                             </div>
 
 
@@ -185,7 +188,7 @@
                                     </thead>
 
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        <template x-for="(row, idx) in items" :key="row.itemseq">
+                                        <template x-for="(row, idx) in items" :key="`${row.lkhno}|${row.plot}|${row.itemcode}|${row.itemseq}`">
                                             <tr>
                                                 <td class="px-3 py-2 text-sm text-gray-800" x-text="row.itemseq"></td>
                                                 <td class="px-3 py-2 text-sm text-gray-800" x-text="row.lkhno"></td>
@@ -289,7 +292,7 @@
     <script>
 function koreksiData() {
   return {
-    tipeTransaksi: '',
+    tipeTransaksi: 'USE',
     rkhno: '',
     items: [],
     loading: false,
@@ -298,6 +301,7 @@ function koreksiData() {
     old_costcenter: '',
     new_costcenter: '',
     nouse: '',
+    flagstatus: '',
     costcenterList: [],
 
     onTipeChange() {
@@ -341,12 +345,22 @@ function koreksiData() {
             new_itemcode: x.itemcode, // default item baru = item original
             new_qty: ''              // kosong = skip
           }));
-            // ✅ costcenter
-            this.old_costcenter = data.hdr?.old_costcenter || '';
-            this.new_costcenter = data.hdr?.new_costcenter || '';
+            // ✅ costcenter (trim biar tidak gagal match)
+            this.old_costcenter = (data.hdr?.old_costcenter || '').trim();
+            this.new_costcenter = ((data.hdr?.new_costcenter || '') || this.old_costcenter).trim();
             this.nouse = data.hdr?.nouse || '';
+            this.flagstatus = data.hdr?.flagstatus || '';
+
             // ✅ options dropdown
             this.costcenterList = Array.isArray(data.costcenter) ? data.costcenter : [];
+            this.$nextTick(() => { this.new_costcenter = this.new_costcenter; });
+            // ✅ kalau new_costcenter tidak ada di list, fallback ke old_costcenter
+            if (
+            this.new_costcenter &&
+            !this.costcenterList.some(c => (c.costcentercode || '').trim() === this.new_costcenter)
+            ) {
+            this.new_costcenter = this.old_costcenter || '';
+            }
 
         } else {
           alert('Tidak ada item ditemukan pada RKH ini.');

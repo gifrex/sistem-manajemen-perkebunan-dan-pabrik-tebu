@@ -485,6 +485,57 @@
                 @endif
             </div>
             
+        <!-- koreksi -->
+        {{-- ✅ PANEL DOKUMEN KOREKSI (dari usematerialapproval) --}}
+        @if(!empty($koreksiSummary) && $koreksiSummary->count() > 0)
+        @php
+          $docs = $koreksiSummary->groupBy('approvalno');
+        @endphp
+        
+        <div class="mt-6 bg-white shadow rounded p-3 no-print">
+          <div class="font-semibold text-sm mb-2">
+            Dokumen Koreksi (Use / Retur) — {{ $docs->count() }} Dokumen
+          </div>
+        
+          <table class="w-full text-xs border border-gray-200">
+            <thead class="bg-gray-50 text-gray-700">
+              <tr>
+                <th class="py-2 px-2 border text-left">ApprovalNo</th>
+                <th class="py-2 px-2 border text-left">Itemcode</th>
+                <th class="py-2 px-2 border text-left">Itemname</th>
+                <th class="py-2 px-2 border text-right bg-green-50 text-green-700">USE</th>
+                <th class="py-2 px-2 border text-right bg-red-50 text-red-700">RETUR</th>
+                <th class="py-2 px-2 border text-right bg-blue-50">NETTO</th>
+              </tr>
+            </thead>
+        
+            <tbody class="text-gray-700">
+              @foreach($docs as $approvalno => $rows)
+                @php $rowspan = $rows->count(); $i = 0; @endphp
+        
+                @foreach($rows as $r)
+                <tr class="hover:bg-gray-50">
+                  @if($i === 0)
+                    <td class="py-2 px-2 border font-semibold align-top" rowspan="{{ $rowspan }}">
+                      {{ $approvalno }}
+                      <div class="text-[10px] text-gray-500">{{ $rowspan }} item</div>
+                    </td>
+                  @endif
+        
+                  <td class="py-2 px-2 border font-medium">{{ $r->itemcode }}</td>
+                  <td class="py-2 px-2 border">{{ $r->itemname ?? '-' }}</td>
+                  <td class="py-2 px-2 border text-right">{{ number_format((float)$r->qty_use, 2) }}</td>
+                  <td class="py-2 px-2 border text-right">{{ number_format((float)$r->qty_retur, 2) }}</td>
+                  <td class="py-2 px-2 border text-right font-semibold">{{ number_format((float)$r->qty_netto, 2) }}</td>
+                </tr>
+                @php $i++; @endphp
+                @endforeach
+              @endforeach
+            </tbody>
+          </table>
+        </div>
+        @endif
+        <!-- koreksi -->
         </div>
         
         </x-layout>

@@ -274,7 +274,85 @@ class GudangController extends Controller
     public function detail(Request $request)
     {   
         if( request()->getHost() == 'sugarcane.sblampung.com' ){$islokal = 'LIVE';}else{$islokal = 'TESTING';}
+        //tambahan koreksi
+        $koreksiSummary = DB::table('usematerialapproval')
+        ->where('companycode', session('companycode'))
+        ->where('rkhno', $request->rkhno)
+        ->select('approvalno', 'itemcode') // Kolom yang masuk groupBy sebaiknya didefinisikan jelas
+        ->selectRaw("
+            MAX(itemname) as itemname,
+            SUM(CASE WHEN LOWER(type) = 'use' THEN qty ELSE 0 END) as qty_use,
+            SUM(CASE WHEN LOWER(type) = 'retur' THEN qty ELSE 0 END) as qty_retur,
+            (SUM(CASE WHEN LOWER(type) = 'use' THEN qty ELSE 0 END) - 
+             SUM(CASE WHEN LOWER(type) = 'retur' THEN qty ELSE 0 END)) as qty_netto
+        ")
+        ->groupBy('approvalno', 'itemcode')
+        ->orderBy('approvalno', 'asc')
+        ->orderBy('itemcode', 'asc')
+        ->get();
 
+        $koreksiRows = DB::table('usematerialapproval')
+        ->where('companycode', session('companycode'))
+        ->where('rkhno', $request->rkhno)
+        ->orderBy('itemcode')
+        ->orderBy('type')      // biar USE/RETUR ngumpul
+        ->orderBy('approvalno')
+        ->get();
+        //tambahan koreksi
+
+        $base = DB::table('usemateriallst')
+        ->where('companycode', session('companycode'))
+        ->where('rkhno', $request->rkhno)
+        ->selectRaw("
+            itemcode,
+            MAX(itemname) as itemname,
+            SUM(qty) as base_use,
+            SUM(COALESCE(qtyretur,0)) as base_retur
+        ")
+        ->groupBy('itemcode')
+        ->get()
+        ->keyBy('itemcode');
+
+        $koreksi = DB::table('usematerialapproval')
+        ->where('companycode', session('companycode'))
+        ->where('rkhno', $request->rkhno)
+        ->selectRaw("
+            itemcode,
+            MAX(itemname) as itemname,
+            SUM(CASE WHEN type='USE' THEN qty ELSE 0 END) as koreksi_use,
+            SUM(CASE WHEN type='RETUR' THEN qty ELSE 0 END) as koreksi_retur
+        ")
+        ->groupBy('itemcode')
+        ->get()
+        ->keyBy('itemcode');
+        $allCodes = $base->keys()->merge($koreksi->keys())->unique()->sort()->values();
+
+        $finalSummary = $allCodes->map(function($code) use ($base, $koreksi){
+            $b = $base->get($code);
+            $k = $koreksi->get($code);
+
+            $baseUse   = (float)($b->base_use ?? 0);
+            $baseRetur = (float)($b->base_retur ?? 0);
+
+            $korUse    = (float)($k->koreksi_use ?? 0);
+            $korRetur  = (float)($k->koreksi_retur ?? 0);
+
+            $useFinal   = $baseUse + $korUse;
+            $returFinal = $baseRetur + $korRetur;
+
+            return (object)[
+                'itemcode'      => $code,
+                'itemname'      => $k->itemname ?? $b->itemname ?? '-',
+                'base_use'      => $baseUse,
+                'base_retur'    => $baseRetur,
+                'koreksi_use'   => $korUse,
+                'koreksi_retur' => $korRetur,
+                'use_final'     => $useFinal,
+                'retur_final'   => $returFinal,
+                'pemakaian'     => $useFinal - $returFinal,
+            ];
+        });
+        //tambahan koreksi
         $usematerialhdr = new usematerialhdr;
         $usemateriallst = new usemateriallst;
         $dosage = new HerbisidaDosage;
@@ -402,7 +480,10 @@ class GudangController extends Controller
             'costcenter' => $costcenter,
             'detailmaterial' => $detailmaterial,
             'islokal' => $islokal,
-            'usematerialapproval' => $usematerialapproval
+            'usematerialapproval' => $usematerialapproval,
+            'finalSummary' => $finalSummary,
+            'koreksiSummary' => $koreksiSummary,
+            'koreksiRows' => $koreksiRows ?? null
         ]);
     }
     
@@ -482,19 +563,6 @@ class GudangController extends Controller
     ->select('a.companycode','a.rkhno','a.flagstatus','b.rkhdate','c.name as mandor_name','d.nouse')
     ->orderBy('b.rkhdate','desc')
     ->get();
-    
-    $companyinv = Company::where('companycode', session('companycode'))->first();
-    
-    $response = Http::withoutVerifying()->withOptions(['headers' => ['Accept' => 'application/json']])
-            ->asJson()
-            ->get('https://rosebrand.sungaibudigroup.com/app/im-purchasing/purchasing/bpb/costcenter_api', [
-                'connection' => '172.17.1.39',
-                'company' => $companyinv->companyinventory,
-                'factory' => $companyinv->companyinventory
-            ]);
-
-    $costcenter = collect($response->json('costcenter'));
-
 
     // Ambil daftar semua item untuk dropdown pemakaian baru
     $itemList = Herbisida::where('companycode', session('companycode'))
@@ -511,10 +579,10 @@ class GudangController extends Controller
     ]);
 }
 
-// AJAX: Get items by RKH
+//AJAX
 public function getItemsByRkh(Request $request)
 {
-    $rkhno = $request->rkhno;
+    $rkhno = $request->input('rkhno');
     $companycode = session('companycode');
 
     $items = usemateriallst::where('companycode', $companycode)
@@ -524,27 +592,36 @@ public function getItemsByRkh(Request $request)
 
     $formattedItems = $items->map(function($item) {
         return [
-            'itemseq' => $item->itemseq,
+            'itemseq'  => $item->itemseq,
             'itemcode' => $item->itemcode,
             'itemname' => $item->itemname ?? '',
-            'plot'=> $item->plot,
-            'lkhno'=> $item->lkhno,
-            'qty' => $item->qty,
-            'uom' => $item->uom ?? '',
+            'plot'     => $item->plot,
+            'lkhno'    => $item->lkhno,
+            'qty'      => $item->qty,
+            'uom'      => $item->uom ?? '',
+            'flagstatus' => $first->flagstatus ?? ''
         ];
     });
 
-    // ✅ ambil header untuk costcenter + factoryinv + nouse
-    $hdr = usematerialhdr::where('companycode', $companycode)
-        ->where('rkhno', $rkhno)
-        ->first();
+    // ✅ Ambil “header view” dari sumber yang sudah pasti punya factoryinv/costcenter/nouse (selectusematerial)
+    $first = collect((new usematerialhdr)->selectusematerial($companycode, $rkhno, 1))->first();
+    if (!$first) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Data RKH tidak ditemukan.',
+            'items' => [],
+            'hdr' => null,
+            'costcenter' => [],
+        ], 404);
+    }
 
-    $oldCC = $hdr->costcenter ?? '';
-    $nouse = $hdr->nouse ?? '';
-    $factoryinv = $hdr->factoryinv ?? null;
+    $oldCC = $first->costcenter ?? '';
+    $nouse = $first->nouse ?? '';
+    $factoryinv = $first->factoryinv ?? null;
 
-    // ✅ ambil list costcenter dari inventory berdasarkan factoryinv
     $costcenterList = [];
+    $companyinv = null;
+
     if ($factoryinv) {
         $companyinv = Company::where('companycode', $companycode)->first();
 
@@ -552,23 +629,40 @@ public function getItemsByRkh(Request $request)
             'https://rosebrand.sungaibudigroup.com/app/im-purchasing/purchasing/bpb/costcenter_api',
             [
                 'connection' => '172.17.1.39',
-                'company' => $companyinv->companyinventory,
+                'company' => $companyinv->companyinventory ?? null,
                 'factory' => $factoryinv,
             ]
         );
 
-        $costcenterList = $resp->json('costcenter') ?? [];
+        if ($resp->successful()) {
+            $costcenterList = $resp->json('costcenter') ?? [];
+        } else {
+            Log::warning('getItemsByRkh costcenter_api failed', [
+                'status' => $resp->status(),
+                'body' => substr($resp->body(), 0, 200),
+            ]);
+        }
     }
+
+    Log::info('getItemsByRkh debug (after fix)', [
+        'rkhno' => $rkhno,
+        'companycode' => $companycode,
+        'factoryinv' => $factoryinv,
+        'companyinventory' => $companyinv->companyinventory ?? null,
+        'costcenter_count' => count($costcenterList),
+        'items_count' => $items->count(),
+    ]);
 
     return response()->json([
         'success' => true,
         'items' => $formattedItems,
         'hdr' => [
             'old_costcenter' => $oldCC,
-            'new_costcenter' => $oldCC, // ✅ awalnya sama persis
+            'new_costcenter' => $oldCC,
             'nouse' => $nouse,
+            'factoryinv' => $factoryinv,
         ],
-        'costcenter' => $costcenterList, // ✅ options dropdown
+        'costcenter' => $costcenterList,
     ]);
 }
 
@@ -1531,7 +1625,8 @@ public function submit(Request $request)
                 'costcenter' => $request->costcenter,
                 'isi' => array_values($apiPayload),
                 'userid' => substr(auth()->user()->userid, 0, 10),
-                'rkhdate' => $rkhdate
+                'rkhdate' => $rkhdate,
+                'type' => $isFromApproval ? 'KS' : ''
             ]);
 
         // Check jika API gagal
