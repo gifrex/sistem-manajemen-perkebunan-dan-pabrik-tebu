@@ -1,16 +1,20 @@
 services:
-  # --- Aplikasi Laravel ---
   app:
-    image: sungaibudiwebdev/tebu-app:latest # Mengambil dari Docker Hub, bukan build lokal
+    image: sungaibudiwebdev/tebu-app:latest
     container_name: tebu-app
     restart: unless-stopped
     ports:
       - "80:80"
-      - "8080:8080" # Untuk Reverb/Websocket jika perlu
+      - "443:443"        # <--- WAJIB: Tambahkan ini untuk HTTPS
+      - "8080:8080"
     env_file:
-      - .env # Mengambil variabel dari file .env di server
+      - .env
     volumes:
-      - ./storage:/var/www/html/storage # HANYA folder storage yang di-mount (untuk log & upload)
+      - ./storage:/var/www/html/storage
+      # Tambahkan baris di bawah ini agar container bisa baca SSL
+      - /etc/letsencrypt:/etc/letsencrypt:ro 
+      # Tambahkan ini juga jika kamu ingin file config nginx lokal menimpa yang ada di image
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - tebu-network
 
