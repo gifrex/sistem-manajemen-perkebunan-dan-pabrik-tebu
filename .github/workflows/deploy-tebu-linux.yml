@@ -1,4 +1,4 @@
-name: Deploy Tebu Apps (LINUX SSM)
+name: Deploy Production (Linux SSM)
 
 # Memicu manual dari tab Actions di GitHub
 on:
