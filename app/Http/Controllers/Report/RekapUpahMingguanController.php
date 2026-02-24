@@ -304,7 +304,7 @@ class RekapUpahMingguanController extends Controller
                     $join->on('a.lkhno', '=', 'dw.lkhno')
                         ->on('a.companycode', '=', 'dw.companycode');
                 })
-                ->join('tenagakerja as tk', 'dw.tenagakerjaid', '=', 'tk.tenagakerjaid')
+                // ->join('tenagakerja as tk', 'dw.tenagakerjaid', '=', 'tk.tenagakerjaid')
                 ->leftJoin('activity as c', 'a.activitycode', '=', 'c.activitycode')
                 ->leftJoin(
                     DB::raw('(SELECT lkhno, companycode, MIN(plot) as first_plot 
@@ -337,7 +337,8 @@ class RekapUpahMingguanController extends Controller
                     'a.totalworkers',
                     'c.activityname',
                     'dw.tenagakerjaid',
-                    'tk.nama as namatenagakerja',
+                    DB::raw("(SELECT nama FROM tenagakerja WHERE tenagakerjaid = dw.tenagakerjaid LIMIT 1) as namatenagakerja"),
+                    // 'tk.nama as namatenagakerja',
                     'dw.upahharian as upah',
                     'dw.totalupah as total',
                     'e.lifecyclestatus',
@@ -353,7 +354,7 @@ class RekapUpahMingguanController extends Controller
                 ) AS batchdate")
                 )
                 ->orderBy('a.lkhno', 'asc')
-                ->orderBy('tk.nama', 'asc')
+                ->orderBy('dw.tenagakerjaid', 'asc')
                 ->get();
 
             // Tambahkan plot details ke setiap item
