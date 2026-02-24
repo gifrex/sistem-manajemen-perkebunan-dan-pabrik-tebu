@@ -5,21 +5,17 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      - "443:443"        # <--- WAJIB: Tambahkan ini untuk HTTPS
+      - "443:443"
       - "8080:8080"
     env_file:
       - .env
     volumes:
       - ./storage:/var/www/html/storage
-      # Tambahkan baris di bawah ini agar container bisa baca SSL
-      - /etc/letsencrypt:/etc/letsencrypt:ro 
-      # Tambahkan ini juga jika kamu ingin file config nginx lokal menimpa yang ada di image
+      - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./docker/nginx/default.conf:/etc/nginx/http.d/default.conf:ro
     networks:
-      tebu-network:
-        external: true
+      - tebu-network
 
-  # --- Redis ---
   redis:
     image: redis:7-alpine
     container_name: tebu-redis
@@ -29,4 +25,4 @@ services:
 
 networks:
   tebu-network:
-    driver: bridge
+    external: true
