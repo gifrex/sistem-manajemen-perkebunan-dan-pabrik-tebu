@@ -49,8 +49,9 @@ jobs:
       - name: Prepare and Send SSM command
         id: send
         run: |
-          # 1. Bungkus file jadi base64
+          # 1. Bungkus kedua file jadi base64
           B64_COMPOSE=$(base64 -w 0 docker-compose.yml)
+          B64_NGINX=$(base64 -w 0 docker/nginx/default.conf) # Tambahkan ini
 
           # 2. Kirim perintah ke AWS
           CMD_ID=$(aws ssm send-command \
@@ -58,11 +59,12 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --instance-ids "${{ secrets.SSM_INSTANCE_ID_LINUX }}" \
             --parameters "commands=[
-              \"mkdir -p /opt/apps/tebu\",
+              \"mkdir -p /opt/apps/tebu/docker/nginx\", # Buat folder strukturnya
               \"cd /opt/apps/tebu\",
               \"echo $B64_COMPOSE | base64 -d > docker-compose.yml\",
+              \"echo $B64_NGINX | base64 -d > docker/nginx/default.conf\", # Tulis file nginx config
               \"sudo docker compose pull\",
-              \"sudo docker compose up -d\",
+              \"sudo docker compose up -d --force-recreate\",
               \"sudo docker exec tebu-app chown -R 82:82 storage bootstrap/cache\",
               \"sudo docker exec tebu-app chmod -R 775 storage bootstrap/cache\"
             ]" \
