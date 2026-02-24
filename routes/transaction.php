@@ -20,7 +20,7 @@ use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\RekapLkhReportCon
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\OperatorRekapReportController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\OperatorReportController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Utility\RkhUtilityController;
-use App\Http\Controllers\Transaction\RencanaKerjaHarian\MaterialUsageController;
+use App\Http\Controllers\Transaction\RencanaKerjaHarian\Domain\MaterialUsageController;
 
 Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(function () {
 
