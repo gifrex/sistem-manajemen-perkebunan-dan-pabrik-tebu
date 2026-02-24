@@ -59,10 +59,10 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --instance-ids "${{ secrets.SSM_INSTANCE_ID_LINUX }}" \
             --parameters "commands=[
-              \"mkdir -p /opt/apps/tebu/docker/nginx\", # Buat folder strukturnya
+              \"mkdir -p /opt/apps/tebu/docker/nginx\",
               \"cd /opt/apps/tebu\",
               \"echo $B64_COMPOSE | base64 -d > docker-compose.yml\",
-              \"echo $B64_NGINX | base64 -d > docker/nginx/default.conf\", # Tulis file nginx config
+              \"echo $B64_NGINX | base64 -d > docker/nginx/default.conf\",
               \"sudo docker compose pull\",
               \"sudo docker compose up -d --force-recreate\",
               \"sudo docker exec tebu-app chown -R 82:82 storage bootstrap/cache\",
