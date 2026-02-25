@@ -4,8 +4,6 @@ services:
     container_name: tebu-app
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
       - "8080:8080"
     env_file:
       - .env
@@ -15,6 +13,7 @@ services:
       - ./docker/nginx/default.conf:/etc/nginx/http.d/default.conf:ro
     networks:
       - tebu-network
+      - web-network
 
   redis:
     image: redis:7-alpine
@@ -25,4 +24,6 @@ services:
 
 networks:
   tebu-network:
+    external: true
+  web-network:
     external: true
