@@ -195,6 +195,11 @@ return [
                 'route' => 'transaction.mapping-bsm.index',
                 'permission' => 'transaction.mappingbsm.view',
             ],
+            [
+                'name' => 'Koreksi',
+                'route' => 'transaction.gudang.koreksi',
+                'permission' => 'transaction.gudang.view',
+            ],
         ],
     ],
 

@@ -505,7 +505,6 @@
                 <th class="py-2 px-2 border text-left">Itemname</th>
                 <th class="py-2 px-2 border text-right bg-green-50 text-green-700">USE</th>
                 <th class="py-2 px-2 border text-right bg-red-50 text-red-700">RETUR</th>
-                <th class="py-2 px-2 border text-right bg-blue-50">NETTO</th>
               </tr>
             </thead>
         
@@ -517,7 +516,10 @@
                 <tr class="hover:bg-gray-50">
                   @if($i === 0)
                     <td class="py-2 px-2 border font-semibold align-top" rowspan="{{ $rowspan }}">
-                      {{ $approvalno }}
+                      {{ $approvalno }} 
+                        <span class="ml-2 inline-block px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-[10px] font-semibold">
+                            {{ str_replace('_',' ', $r->flagstatus ?? '-') }}
+                        </span>
                       <div class="text-[10px] text-gray-500">{{ $rowspan }} item</div>
                     </td>
                   @endif
@@ -526,7 +528,6 @@
                   <td class="py-2 px-2 border">{{ $r->itemname ?? '-' }}</td>
                   <td class="py-2 px-2 border text-right">{{ number_format((float)$r->qty_use, 2) }}</td>
                   <td class="py-2 px-2 border text-right">{{ number_format((float)$r->qty_retur, 2) }}</td>
-                  <td class="py-2 px-2 border text-right font-semibold">{{ number_format((float)$r->qty_netto, 2) }}</td>
                 </tr>
                 @php $i++; @endphp
                 @endforeach
