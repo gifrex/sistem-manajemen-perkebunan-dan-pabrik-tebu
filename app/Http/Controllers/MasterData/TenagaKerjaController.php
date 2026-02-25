@@ -268,11 +268,11 @@ class TenagaKerjaController extends Controller
         try {
             $spreadsheet = IOFactory::load($file->getPathname());
             $sheet = $spreadsheet->getActiveSheet();
-            $rowsa = $sheet->toArray();
+            $rows = $sheet->toArray();
 
             // Remove keterangan (row 1-7) dan header row (row 7)
             // Data dimulai dari row 8, tapi karena array index 0, maka row 8 = index 7
-            $dataRows = array_slice($rowsa, 7); // Ambil dari index 7 ke bawah (row 8 dst)
+            $dataRows = array_slice($rows, 7); // Ambil dari index 7 ke bawah (row 8 dst)
             
             if ($dataRows === null || count($dataRows) == 0) {
                 return redirect()->back()->with('error', 'File tidak berisi data.');
