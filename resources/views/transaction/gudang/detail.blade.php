@@ -157,12 +157,12 @@
                     <table class="min-w-full p-2 bg-white shadow rounded text-xs no-print">
                     <thead class="text-gray-700">
                     <tr>
-                        <th class="py-2 px-2 border-b text-left">Item</th>
-                        <th class="py-2 px-2 border-b text-center">Plot</th>
-                        <th class="py-2 px-2 border-b text-right">Luas</th>
-                        <th class="py-2 px-2 border-b text-right">Dosage</th>
-                        <th class="py-2 px-2 border-b text-right">Qty</th>
-                        <th class="py-2 px-2 border-b text-center">LKH</th>
+                        <th class="py-0.5 px-2 border-b text-left">Item</th>
+                        <th class="py-0.5 px-2 border-b text-center">Plot</th>
+                        <th class="py-0.5 px-2 border-b text-right">Luas</th>
+                        <th class="py-0.5 px-2 border-b text-right">Dosage</th>
+                        <th class="py-0.5 px-2 border-b text-right">Qty</th>
+                        <th class="py-0.5 px-2 border-b text-center">LKH</th>
                     </tr>
                     </thead>
 
@@ -185,17 +185,17 @@
                         @endphp
 
                         <tr class="border-b hover:bg-gray-50">
-                        <td class="py-2 px-2">
+                        <td class="py-0.5 px-2">
                             <b>{{ $ap->itemcode }}</b> — {{ $ap->itemname ?? '' }}
                         </td>
 
-                        <td class="py-2 px-2 text-center">{{ $ap->plot }}</td>
+                        <td class="py-0.5 px-2 text-center">{{ $ap->plot }}</td>
 
-                        <td class="py-2 px-2 text-right">
+                        <td class="py-0.5 px-2 text-right">
                             {{ $old->luasrkh ?? '-' }}
                         </td>
 
-                        <td class="py-2 px-2 text-right">
+                        <td class="py-0.5 px-2 text-right">
                             @if($dosChanged)
                             {{ number_format($oldDos, 2, '.', '') }} → {{ number_format($newDos, 2, '.', '') }}
                             @else
@@ -203,7 +203,7 @@
                             @endif
                         </td>
 
-                        <td class="py-2 px-2 text-right">
+                        <td class="py-0.5 px-2 text-right">
                             @if($qtyChanged)
                             {{ number_format($oldQty, 2, '.', '') }} → {{ number_format($newQty, 2, '.', '') }}
                             @else
@@ -211,7 +211,7 @@
                             @endif
                         </td>
 
-                        <td class="py-2 px-2 text-center">{{ $ap->lkhno }}</td>
+                        <td class="py-0.5 px-2 text-center">{{ $ap->lkhno }}</td>
                         </tr>
 
                      @endforeach
@@ -225,14 +225,14 @@
                 <table class='min-w-full md:w-1/3 p-2 bg-white shadow rounded text-xs no-print'>
                     <thead class="text-gray-700">
                         <tr>
-                            <th class="py-2 px-2 border-b text-center">Herbisida - Item</th>
-                            <th class="py-2 px-2 border-b text-center">Plot</th>
-                            <th class="py-2 px-2 border-b text-center">Luas</th>
-                            <th class="py-2 px-2 border-b text-center">Dosage (HA)</th>
-                            <th class="py-2 px-2 border-b text-center">Qty Disiapkan</th>
-                            <th class="py-2 px-2 border-b text-center">Qty Retur</th>
-                            <th class="py-2 px-2 border-b text-center">Nomor LKH</th>
-                            <th class="py-2 px-2 border-b text-center">Nomor Retur</th>
+                            <th class="py-0.5 px-2 border-b text-center">Herbisida - Item</th>
+                            <th class="py-0.5 px-2 border-b text-center">Plot</th>
+                            <th class="py-0.5 px-2 border-b text-center">Luas</th>
+                            <th class="py-0.5 px-2 border-b text-center">Dosage (HA)</th>
+                            <th class="py-0.5 px-2 border-b text-center">Qty Disiapkan</th>
+                            <th class="py-0.5 px-2 border-b text-center">Qty Retur</th>
+                            <th class="py-0.5 px-2 border-b text-center">Nomor LKH</th>
+                            <th class="py-0.5 px-2 border-b text-center">Nomor Retur</th>
                         </tr>
                     </thead>
                     <tbody class="text-gray-600">
@@ -252,7 +252,7 @@
                         @endphp
                     
                         <tr class="border-b hover:bg-gray-50">
-                            <td class="py-2 px-2">
+                            <td class="py-0.5 px-2">
                                 @php
                                 // Ambil activitycode dari $plots jika $d->activitycode kosong
                                 if (empty($d->activitycode)) {
@@ -300,15 +300,15 @@
                                     class="selected-itemcode" value="{{ $d->itemcode }}">
                             </td>
                     
-                            <td class="py-2 px-2 text-center text-right">
+                            <td class="py-0.5 px-2 text-center text-right">
                                 <span class="labelplot">{{ $d->plot }}</span>
                             </td>
                     
-                            <td class="py-2 px-2 text-center text-right">
+                            <td class="py-0.5 px-2 text-center text-right">
                                 <span class="labelplot">{{ $d->luasrkh }}</span>
                             </td>
                     
-                            <td class="py-2 px-2">
+                            <td class="py-0.5 px-2">
                                 <div class="flex justify-end items-center">
                                     <input type="text" name="dosage[{{ $d->lkhno }}][{{ $d->itemcode }}][{{ $d->plot }}]"
                                     value="{{ number_format($d->dosageperha, 2) }}"
@@ -317,7 +317,7 @@
                                 </div>
                             </td>
                     
-                            <td class="py-2 px-2 text-center text-right">
+                            <td class="py-0.5 px-2 text-center text-right">
                                 @php
                                 // (ini hanya kalau kamu sudah punya $stdDosage & $activitycode)
                                 // tinggal panggil • ({{ number_format($exp, 2) }})
@@ -336,15 +336,15 @@
                                         
                             </td>
                     
-                            <td class="py-2 px-2 text-center text-right">
+                            <td class="py-0.5 px-2 text-center text-right">
                                 {{ $d->qtyretur ?? 0 }}
                             </td>
                     
-                            <td class="py-2 px-2 text-center">
+                            <td class="py-0.5 px-2 text-center">
                                 {{ $d->lkhno }}
                             </td>
                     
-                            <td class="py-2 px-2 text-center">
+                            <td class="py-0.5 px-2 text-center">
                                 @if (empty($d->noretur) && $d->qtyretur>0 && strtoupper($details[0]->flagstatus) != 'ACTIVE')
                                     <a href="{{ route('transaction.gudang.retur', [
                                             'retur' => $d->qtyretur,
@@ -402,23 +402,23 @@
             <table class="w-full md:w-2/3 mx-auto mt-6 bg-white shadow rounded text-xs border border-gray-200" @if(strtoupper($details[0]->flagstatus ?? '') === 'WAIT_APPROVAL') hidden @endif>
                 <thead class="bg-gray-100 text-gray-700 uppercase">
                     <tr>
-                        <th class="py-2 px-3 border-b">Itemcode</th>
-                        <th class="py-2 px-3 border-b">Item Name</th>
-                        <th class="py-2 px-3 border-b">Unit</th>
-                        <th class="py-2 px-3 border-b">Total Qty</th>
-                        <th class="py-2 px-3 border-b">Perhitungan</th>
-                        <th class="py-2 px-3 border-b bg-red-50">Total Retur</th>
-                        <th class="py-2 px-3 border-b bg-green-50">Total Pemakaian</th>
+                        <th class="py-0.5 px-3 border-b">Itemcode</th>
+                        <th class="py-0.5 px-3 border-b">Item Name</th>
+                        <th class="py-0.5 px-3 border-b">Unit</th>
+                        <th class="py-0.5 px-3 border-b">Total Qty</th>
+                        <th class="py-0.5 px-3 border-b">Perhitungan</th>
+                        <th class="py-0.5 px-3 border-b bg-red-50">Total Retur</th>
+                        <th class="py-0.5 px-3 border-b bg-green-50">Total Pemakaian</th>
                     </tr>
                 </thead>
                 <tbody id="totals-body" class="divide-y divide-gray-200 text-gray-700">
                     @foreach($totals as $code => $row)
                         <tr class="hover:bg-gray-50 align-top">
-                            <td class="py-2 px-3 font-medium">{{ $code }}</td>
-                            <td class="py-2 px-3">{{ $row['itemname'] }}</td>
-                            <td class="py-2 px-3">{{ $row['unit'] }}</td>
-                            <td class="py-2 px-3 text-right">{{ number_format($row['qty'], 2) }}</td>
-                            <td class="py-2 px-3 text-center text-gray-500">
+                            <td class="py-0.5 px-3 font-medium">{{ $code }}</td>
+                            <td class="py-0.5 px-3">{{ $row['itemname'] }}</td>
+                            <td class="py-0.5 px-3">{{ $row['unit'] }}</td>
+                            <td class="py-0.5 px-3 text-right">{{ number_format($row['qty'], 2) }}</td>
+                            <td class="py-0.5 px-3 text-center text-gray-500">
                                 {{ implode(' + ', $row['parts']) }}
                             </td>
                         </tr>
@@ -430,7 +430,7 @@
             <div class="flex justify-center mt-4 no-print">
             <select @if( !empty($details[0]->costcenter)) disabled @endif
                 name="costcenter"
-                class="w-full max-w-md border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full max-w-md border rounded px-3 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label="Pilih cost center"
                 required
             >
@@ -451,7 +451,7 @@
                 <div class="flex justify-center mt-4">
                     <button @if($details->whereNotNull('nouse')->count()<1 == false) @endif 
                         type="submit"
-                        class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded shadow transition"
+                        class="bg-green-600 hover:bg-green-700 text-white font-semibold py-0.5 px-6 rounded shadow transition"
                     >
                         Penyerahan
                     </button>
@@ -462,13 +462,13 @@
             <!-- Kembali Button - Moved inside container with closer spacing -->
             <div class="flex justify-center mt-3">
                 <a href="{{ route('transaction.gudang.index') }}" 
-                   class="bg-white inline-block bg-gray-200 text-gray-800 hover:bg-gray-300 font-semibold py-2 px-4 rounded shadow transition no-print">
+                   class="bg-white inline-block bg-gray-200 text-gray-800 hover:bg-gray-300 font-semibold py-0.5 px-4 rounded shadow transition no-print">
                     ← Kembali
                 </a>&nbsp;
                 @if(strtoupper($details[0]->flagstatus) != 'ACTIVE' && strtoupper($details[0]->flagstatus) != 'WAIT_APPROVAL')
                 <button type="button"
                     onclick="window.print()"
-                    class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 rounded shadow no-print">
+                    class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-800 font-semibold py-0.5 px-4 rounded shadow no-print">
                     🖨️ Cetak
                 </button>&nbsp;
                 @endif
@@ -478,7 +478,7 @@
                   @csrf
                   <input type="hidden" name="rkhno" value="{{ $details[0]->rkhno }}">
                   <button type="submit"
-                    class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded shadow transition no-print">
+                    class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-0.5 px-4 rounded shadow transition no-print">
                     Retur Semua ({{ $returEligible }})
                   </button>
                 </form>
@@ -493,18 +493,18 @@
         @endphp
         
         <div class="mt-6 bg-white shadow rounded p-3 no-print">
-          <div class="font-semibold text-sm mb-2">
-            Dokumen Koreksi (Use / Retur) — {{ $docs->count() }} Dokumen
+          <div class="font-semibold text-sm mb-2 text-center">
+            Dokumen Koreksi — {{ $docs->count() }} Dokumen
           </div>
         
           <table class="w-full text-xs border border-gray-200">
             <thead class="bg-gray-50 text-gray-700">
               <tr>
-                <th class="py-2 px-2 border text-left">ApprovalNo</th>
-                <th class="py-2 px-2 border text-left">Itemcode</th>
-                <th class="py-2 px-2 border text-left">Itemname</th>
-                <th class="py-2 px-2 border text-right bg-green-50 text-green-700">USE</th>
-                <th class="py-2 px-2 border text-right bg-red-50 text-red-700">RETUR</th>
+                <th class="py-0.5 px-2 border text-left">ApprovalNo</th>
+                <th class="py-0.5 px-2 border text-left">Itemcode</th>
+                <th class="py-0.5 px-2 border text-left">Itemname</th>
+                <th class="py-0.5 px-2 border text-right bg-green-50 text-green-700">USE</th>
+                <th class="py-0.5 px-2 border text-right bg-red-50 text-red-700">RETUR</th>
               </tr>
             </thead>
         
@@ -515,7 +515,7 @@
                 @foreach($rows as $r)
                 <tr class="hover:bg-gray-50">
                   @if($i === 0)
-                    <td class="py-2 px-2 border font-semibold align-top" rowspan="{{ $rowspan }}">
+                    <td class="py-0.5 px-2 border font-semibold align-top" rowspan="{{ $rowspan }}">
                       {{ $approvalno }} 
                         <span class="ml-2 inline-block px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-[10px] font-semibold">
                             {{ str_replace('_',' ', $r->flagstatus ?? '-') }}
@@ -524,10 +524,10 @@
                     </td>
                   @endif
         
-                  <td class="py-2 px-2 border font-medium">{{ $r->itemcode }}</td>
-                  <td class="py-2 px-2 border">{{ $r->itemname ?? '-' }}</td>
-                  <td class="py-2 px-2 border text-right">{{ number_format((float)$r->qty_use, 2) }}</td>
-                  <td class="py-2 px-2 border text-right">{{ number_format((float)$r->qty_retur, 2) }}</td>
+                  <td class="py-0.5 px-2 border font-medium">{{ $r->itemcode }}</td>
+                  <td class="py-0.5 px-2 border">{{ $r->itemname ?? '-' }}</td>
+                  <td class="py-0.5 px-2 border text-right">{{ number_format((float)$r->qty_use, 2) }}</td>
+                  <td class="py-0.5 px-2 border text-right">{{ number_format((float)$r->qty_retur, 2) }}</td>
                 </tr>
                 @php $i++; @endphp
                 @endforeach
@@ -536,6 +536,43 @@
           </table>
         </div>
         @endif
+        
+
+        {{-- ✅ RINGKASAN TOTAL PER ITEM (gabungan semua dokumen koreksi) --}}
+        @if(isset($totByItem) && $totByItem->count() > 0)
+        <div class="mt-4 bg-white shadow rounded p-3 no-print">
+            <div class="font-semibold text-sm mb-2 text-center">
+            TOTAL KOREKSI
+            </div>
+
+            <table class="w-full text-xs border border-gray-200">
+            <thead class="bg-gray-50 text-gray-700">
+                <tr>
+                <th class="py-0.5 px-2 border text-left">Itemcode</th>
+                <th class="py-0.5 px-2 border text-left">Itemname</th>
+                <th class="py-0.5 px-2 border text-right bg-green-50 text-green-700">Total USE</th>
+                <th class="py-0.5 px-2 border text-right bg-red-50 text-red-700">Total RETUR</th>
+                <th class="py-0.5 px-2 border text-right bg-blue-50 text-blue-700">Netto</th>
+                </tr>
+            </thead>
+
+            <tbody class="text-gray-700">
+                @foreach($totByItem as $t)
+                <tr class="hover:bg-gray-50">
+                    <td class="py-0.5 px-2 border font-medium">{{ $t->itemcode }}</td>
+                    <td class="py-0.5 px-2 border">{{ $t->itemname }}</td>
+                    <td class="py-0.5 px-2 border text-right">{{ number_format((float)$t->qty_use, 2) }}</td>
+                    <td class="py-0.5 px-2 border text-right">{{ number_format((float)$t->qty_retur, 2) }}</td>
+                    <td class="py-0.5 px-2 border text-right font-semibold">
+                    {{ number_format((float)$t->qty_netto, 2) }}
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+            </table>
+        </div>
+        @endif
+
         <!-- koreksi -->
         </div>
         
@@ -604,13 +641,13 @@
       $('#totals-body').html(
         Object.entries(totals).map(([code, r]) => `
           <tr class="hover:bg-gray-50 align-top">
-            <td class="py-2 px-3 font-medium">${code}</td>
-            <td class="py-2 px-3">${r.itemname || '-'}</td>
-            <td class="py-2 px-3">${r.unit || '-'}</td>
-            <td class="py-2 px-3 text-right">${fmt2(r.qty)}</td>
-            <td class="py-2 px-3 text-center text-gray-500">${r.parts.join(' + ')}</td>
-            <td class="py-2 px-3 text-right bg-red-50 font-semibold text-red-700">${fmt2(r.retur)}</td>
-            <td class="py-2 px-3 text-right bg-green-50 font-semibold text-green-700">${fmt2(r.pemakaian)}</td>
+            <td class="py-0.5 px-3 font-medium">${code}</td>
+            <td class="py-0.5 px-3">${r.itemname || '-'}</td>
+            <td class="py-0.5 px-3">${r.unit || '-'}</td>
+            <td class="py-0.5 px-3 text-right">${fmt2(r.qty)}</td>
+            <td class="py-0.5 px-3 text-center text-gray-500">${r.parts.join(' + ')}</td>
+            <td class="py-0.5 px-3 text-right bg-red-50 font-semibold text-red-700">${fmt2(r.retur)}</td>
+            <td class="py-0.5 px-3 text-right bg-green-50 font-semibold text-green-700">${fmt2(r.pemakaian)}</td>
           </tr>
         `).join('')
       );
