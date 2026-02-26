@@ -487,7 +487,7 @@
             
         <!-- koreksi -->
         {{-- ✅ PANEL DOKUMEN KOREKSI (dari usematerialapproval) --}}
-        @if(!empty($koreksiSummary) && $koreksiSummary->count() > 0)
+        @if($koreksiSummary->isNotEmpty())
         @php
           $docs = $koreksiSummary->groupBy('approvalno');
         @endphp
@@ -539,7 +539,7 @@
         
 
         {{-- ✅ RINGKASAN TOTAL PER ITEM (gabungan semua dokumen koreksi) --}}
-        @if(isset($totByItem) && $totByItem->count() > 0)
+        @if($totByItem->isNotEmpty())
         <div class="mt-4 bg-white shadow rounded p-3 no-print">
             <div class="font-semibold text-sm mb-2 text-center">
             TOTAL KOREKSI

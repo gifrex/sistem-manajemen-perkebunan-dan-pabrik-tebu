@@ -275,42 +275,48 @@ class GudangController extends Controller
     {   
         if( request()->getHost() == 'sugarcane.sblampung.com' ){$islokal = 'LIVE';}else{$islokal = 'TESTING';}
         //tambahan koreksi
-        $koreksiSummary = DB::table('usematerialapproval')
-        ->where('companycode', session('companycode'))
-        ->where('rkhno', $request->rkhno)
-        ->select('approvalno', 'itemcode') // Kolom yang masuk groupBy sebaiknya didefinisikan jelas
-        ->selectRaw("
-            MAX(itemname) as itemname,
-            SUM(CASE WHEN LOWER(type) = 'use' THEN qty ELSE 0 END) as qty_use,
-            SUM(CASE WHEN LOWER(type) = 'retur' THEN qty ELSE 0 END) as qty_retur,
-            flagstatus
-        ")
-        ->groupBy('approvalno', 'itemcode', 'flagstatus')
-        ->orderBy('approvalno', 'asc')
-        ->orderBy('itemcode', 'asc')
-        ->get();
         
-        $totByItem = $koreksiSummary
-        ->groupBy('itemcode')
-        ->map(function ($rows) {
-            return (object)[
-                'itemcode'  => $rows->first()->itemcode,
-                'itemname'  => $rows->first()->itemname ?? '',
-                'qty_use'   => $rows->sum(fn($r) => (float)$r->qty_use),
-                'qty_retur' => $rows->sum(fn($r) => (float)$r->qty_retur),
-                'qty_netto' => $rows->sum(fn($r) => (float)$r->qty_use) - $rows->sum(fn($r) => (float)$r->qty_retur),
-            ];
-        })
-        ->sortBy('itemcode')
-        ->values();
+        $koreksiSummary = DB::table('usematerialapproval')
+            ->where('companycode', session('companycode'))
+            ->where('rkhno', $request->rkhno)
+            ->select('approvalno', 'itemcode')
+            ->selectRaw("
+                MAX(itemname) as itemname,
+                SUM(CASE WHEN LOWER(type) = 'use' THEN qty ELSE 0 END) as qty_use,
+                SUM(CASE WHEN LOWER(type) = 'retur' THEN qty ELSE 0 END) as qty_retur,
+                flagstatus
+            ")
+            ->groupBy('approvalno', 'itemcode', 'flagstatus')
+            ->orderBy('approvalno', 'asc')
+            ->orderBy('itemcode', 'asc')
+            ->get();
 
-        $koreksiRows = DB::table('usematerialapproval')
-        ->where('companycode', session('companycode'))
-        ->where('rkhno', $request->rkhno)
-        ->orderBy('itemcode')
-        ->orderBy('type')      // biar USE/RETUR ngumpul
-        ->orderBy('approvalno')
-        ->get();
+        $totByItem = collect();
+        $koreksiRows = collect();
+
+        if ($koreksiSummary->isNotEmpty()) {
+            $totByItem = $koreksiSummary
+                ->groupBy('itemcode')
+                ->map(function ($rows) {
+                    return (object)[
+                        'itemcode'  => $rows->first()->itemcode,
+                        'itemname'  => $rows->first()->itemname ?? '',
+                        'qty_use'   => $rows->sum(fn($r) => (float)$r->qty_use),
+                        'qty_retur' => $rows->sum(fn($r) => (float)$r->qty_retur),
+                        'qty_netto' => $rows->sum(fn($r) => (float)$r->qty_use) - $rows->sum(fn($r) => (float)$r->qty_retur),
+                    ];
+                })
+                ->sortBy('itemcode')
+                ->values();
+
+            $koreksiRows = DB::table('usematerialapproval')
+                ->where('companycode', session('companycode'))
+                ->where('rkhno', $request->rkhno)
+                ->orderBy('itemcode')
+                ->orderBy('type')
+                ->orderBy('approvalno')
+                ->get();
+        }
         //tambahan koreksi
 
         $base = DB::table('usemateriallst')
@@ -498,7 +504,7 @@ class GudangController extends Controller
             'finalSummary' => $finalSummary,
             'koreksiSummary' => $koreksiSummary,
             'koreksiRows' => $koreksiRows ?? null,
-            'totByItem' => $totByItem
+            'totByItem' => $totByItem ?? null
         ]);
     }
     
