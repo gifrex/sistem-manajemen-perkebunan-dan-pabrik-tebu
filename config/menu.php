@@ -464,4 +464,20 @@ return [
             ],
         ],
     ],
+
+    // ============================================
+    // DEVELOPER
+    // ============================================
+    [
+        'name' => 'Developer',
+        'icon' => 'code',
+        'permission' => 'developer.menu.view',
+        'children' => [
+            [
+                'name' => 'Log Viewer',
+                'url' => '/log-viewer',
+                'permission' => 'developer.logviewer.view',
+            ],
+        ],
+    ],
 ];
