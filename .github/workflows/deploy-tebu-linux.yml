@@ -67,8 +67,8 @@ jobs:
               \"sudo docker compose up -d --force-recreate\",
               \"sudo docker exec tebu-app chown -R 82:82 storage bootstrap/cache\",
               \"sudo docker exec tebu-app chmod -R 775 storage bootstrap/cache\",
-              \"sudo docker exec tebu-app php artisan optimize:clear\",
-              \"sudo docker exec tebu-app php artisan log-viewer:publish --force\"
+              \"sudo docker exec tebu-app php artisan vendor:publish --tag=log-viewer-assets --force\",
+              \"sudo docker exec tebu-app php artisan optimize:clear\"
             ]" \
             --query "Command.CommandId" \
             --output text)
