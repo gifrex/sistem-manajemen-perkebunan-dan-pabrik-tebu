@@ -480,4 +480,21 @@ return [
             ],
         ],
     ],
+    [
+        'name' => 'Settings',
+        'icon' => 'cog',
+        'permission' => 'settings.menu.view',
+        'children' => [
+            [
+                'name' => 'Tabel Harga Panen',
+                'route' => 'settings.harga-panen.index',
+                'permission' => 'settings.harga-panen.index',
+            ],
+           [
+                'name' => 'Target Kontraktor',
+                'route' => 'settings.target-kontraktor.index',
+                'permission' => 'settings.target-kontraktor.index',
+            ],
+        ],
+    ]
 ];
