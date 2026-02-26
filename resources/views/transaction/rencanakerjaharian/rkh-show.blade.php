@@ -421,7 +421,7 @@
       Kembali
     </button>
 
-    @if($rkhHeader->status !== 'Completed')
+    @if($rkhHeader->status !== 'Completed' && $rkhHeader->approvalstatus != '1')
       <button
         onclick="window.location.href = '{{ route('transaction.rencanakerjaharian.edit', $rkhHeader->rkhno) }}';"
         class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase transition-colors flex items-center border-2 border-blue-700"
