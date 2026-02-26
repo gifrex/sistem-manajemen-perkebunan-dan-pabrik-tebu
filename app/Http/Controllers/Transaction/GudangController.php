@@ -369,7 +369,6 @@ class GudangController extends Controller
                 'use_final'     => $useFinal,
                 'retur_final'   => $returFinal,
                 'pemakaian'     => $useFinal - $returFinal,
-                'totByItem '    => $totByItem 
             ];
         });
         //tambahan koreksi
@@ -503,7 +502,7 @@ class GudangController extends Controller
             'usematerialapproval' => $usematerialapproval,
             'finalSummary' => $finalSummary,
             'koreksiSummary' => $koreksiSummary,
-            'koreksiRows' => $koreksiRows ?? null,
+            'koreksiRows' => $koreksiRows,
             'totByItem' => $totByItem
         ]);
     }
