@@ -504,7 +504,7 @@ class GudangController extends Controller
             'finalSummary' => $finalSummary,
             'koreksiSummary' => $koreksiSummary,
             'koreksiRows' => $koreksiRows ?? null,
-            'totByItem' => $totByItem ?? null
+            'totByItem' => $totByItem
         ]);
     }
     
