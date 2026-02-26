@@ -25,12 +25,12 @@ class TargetKontraktorController extends Controller
                 'tk.tahun',
                 'tk.target',
                 'tk.companycode',
-                'k.nama', // <-- sesuaikan nama field nama di tabel kontraktor
+                'k.namakontraktor', // <-- sesuaikan nama field nama di tabel kontraktor
             );
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('k.nama', 'like', "%{$search}%") // <-- sesuaikan
+                $q->where('k.namakontraktor', 'like', "%{$search}%") // <-- sesuaikan
                     ->orWhere('tk.bulan', 'like', "%{$search}%")
                     ->orWhere('tk.tahun', 'like', "%{$search}%");
             });
@@ -45,11 +45,11 @@ class TargetKontraktorController extends Controller
         // Dropdown kontraktor sesuai companycode
         $kontraktorList = DB::table('kontraktor')
             ->where('companycode', $companycode)
-            ->select('id', 'nama') // <-- sesuaikan nama field
-            ->orderBy('nama')
+            ->select('id', 'namakontraktor') // <-- sesuaikan nama field
+            ->orderBy('id', 'asc')
             ->get();
 
-        return view('settings.target-kontraktor.index', [
+        return view('settings.targetkontraktor.index', [
             'result'          => $result,
             'kontraktorList'  => $kontraktorList,
             'search'          => $search,
@@ -92,8 +92,6 @@ class TargetKontraktorController extends Controller
             'bulan'        => $request->bulan,
             'tahun'        => $request->tahun,
             'target'       => $request->target,
-            'createdby'    => Auth::user()->userid,
-            'createddate'  => now(),
         ]);
 
         return redirect()->back()->with('success', 'Target kontraktor berhasil ditambahkan.');
@@ -133,8 +131,6 @@ class TargetKontraktorController extends Controller
                 'bulan'        => $request->bulan,
                 'tahun'        => $request->tahun,
                 'target'       => $request->target,
-                'updateby'     => Auth::user()->userid,
-                'updateddate'  => now(),
             ]);
 
         return redirect()->back()->with('success', 'Target kontraktor berhasil diperbarui.');
