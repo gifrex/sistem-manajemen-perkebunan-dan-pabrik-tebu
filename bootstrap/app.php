@@ -36,6 +36,8 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->trustProxies(at: '*');
+        
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'mandor.access' => \App\Http\Middleware\MandorAccessManagement::class,

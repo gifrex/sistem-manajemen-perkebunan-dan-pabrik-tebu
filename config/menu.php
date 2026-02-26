@@ -195,6 +195,11 @@ return [
                 'route' => 'transaction.mapping-bsm.index',
                 'permission' => 'transaction.mappingbsm.view',
             ],
+            [
+                'name' => 'Koreksi',
+                'route' => 'transaction.gudang.koreksi',
+                'permission' => 'transaction.gudang.view',
+            ],
         ],
     ],
 
@@ -456,6 +461,22 @@ return [
                 'name' => 'Announcements',
                 'route' => 'info-updates.announcements.admin.index',
                 'permission' => 'infoupdates.announcement.view',
+            ],
+        ],
+    ],
+
+    // ============================================
+    // DEVELOPER
+    // ============================================
+    [
+        'name' => 'Developer',
+        'icon' => 'code',
+        'permission' => 'developer.menu.view',
+        'children' => [
+            [
+                'name' => 'Log Viewer',
+                'route' => 'log-viewer.index',
+                'permission' => 'developer.logviewer.view',
             ],
         ],
     ],
