@@ -7,6 +7,8 @@ services:
       - "8080:8080"
     env_file:
       - .env
+    environment:
+      - TZ=Asia/Jakarta
     volumes:
       - ./storage:/var/www/html/storage
       - /etc/letsencrypt:/etc/letsencrypt:ro
@@ -19,6 +21,8 @@ services:
     image: redis:7-alpine
     container_name: tebu-redis
     restart: unless-stopped
+    environment:
+      - TZ=Asia/Jakarta
     networks:
       - tebu-network
 
