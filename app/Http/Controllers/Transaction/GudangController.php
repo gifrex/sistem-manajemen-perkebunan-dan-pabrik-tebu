@@ -1041,7 +1041,7 @@ public function koreksi_submit(Request $request)
             'flagstatus' => 'ACTIVE'
         ]);
         
-        $companyinv = company::where('companycode', session('companycode'))->first();
+        $companyinv = Company::where('companycode', session('companycode'))->first();
         if( request()->getHost() == 'sugarcane.sblampung.com' ){$koneksi = '172.17.1.39';}else{$koneksi = 'TESTING';}
         if( session('companycode') == 'TBL4' ){$koneksi = 'TESTING';}
         Log::info('RETUR API PAYLOAD SUMMARY', [
@@ -1612,7 +1612,7 @@ public function submit(Request $request)
 
     // ✅ API Call - SETELAH COMMIT
     try {
-        $companyinv = company::where('companycode', session('companycode'))->first();
+        $companyinv = Company::where('companycode', session('companycode'))->first();
         if( request()->getHost() == 'sugarcane.sblampung.com' ){$koneksi = '172.17.1.39';}else{$koneksi = 'TESTING';}
         if( session('companycode') == 'TBL4' ){$koneksi = 'TESTING';}
         Log::info('SUBMIT API PAYLOAD SUMMARY', [
