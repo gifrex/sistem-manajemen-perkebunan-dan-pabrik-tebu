@@ -475,7 +475,7 @@ return [
         'children' => [
             [
                 'name' => 'Log Viewer',
-                'url' => '/log-viewer',
+                'route' => 'log-viewer.index',
                 'permission' => 'developer.logviewer.view',
             ],
         ],
