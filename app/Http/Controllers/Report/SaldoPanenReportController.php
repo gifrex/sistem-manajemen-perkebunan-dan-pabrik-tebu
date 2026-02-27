@@ -10,229 +10,239 @@ use Carbon\Carbon;
 
 class SaldoPanenReportController extends Controller
 {
-    /**
-     * Display Saldo Panen Report
-     */
+    const PANEN_ACTIVITIES = ['4.3.3', '4.4.3', '4.5.2'];
+
     public function index(Request $request)
     {
         $companycode = Session::get('companycode');
-        $selectedDate = $request->input('date', date('Y-m-d'));
-        
-        // Get mandor list for filter
+
+        // Mandor list: role jabatan = 7
         $mandors = DB::table('user')
             ->where('companycode', $companycode)
-            ->where('idjabatan', 3) // Mandor
+            ->where('idjabatan', 5)
             ->where('isactive', 1)
+            ->select('userid', 'name')
             ->orderBy('name')
             ->get();
-        
+
         return view('report.saldo-panen.index', [
-            'title' => 'Report Saldo Panen',
-            'navbar' => 'Report',
-            'nav' => 'Saldo Panen',
-            'selectedDate' => $selectedDate,
-            'mandors' => $mandors
+            'title'   => 'Saldo Panen',
+            'navbar'  => 'Report',
+            'nav'     => 'Saldo Panen',
+            'mandors' => $mandors,
         ]);
     }
-    
-    /**
-     * Get Saldo Panen Data (API endpoint)
-     */
+
     public function getData(Request $request)
     {
+        $companycode = Session::get('companycode');
+
+        $startDate  = $request->input('start_date');
+        $endDate    = $request->input('end_date');
+        $mandorId   = $request->input('mandor_id');   // null = all
+        $statusFilter = $request->input('status', 'ongoing'); // ongoing|complete|all
+
+        if (!$startDate || !$endDate) {
+            return response()->json(['success' => false, 'message' => 'Tanggal harus diisi']);
+        }
+
         try {
-            $companycode = Session::get('companycode');
-            $date = $request->input('date', date('Y-m-d'));
-            $mandorId = $request->input('mandor_id');
-            $lifecycle = $request->input('lifecycle');
-            $progressFilter = $request->input('progress_filter');
-            $search = $request->input('search');
-            
-            // Build query
-            $query = $this->buildSaldoPanenQuery($companycode, $date);
-            
-            // Apply filters
-            if ($mandorId) {
-                $query->where('last_mandor_id', $mandorId);
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end   = Carbon::parse($endDate)->endOfDay();
+
+            // ----------------------------------------------------------------
+            // STEP 1: Get all batches where tanggalpanen falls in date range
+            //         These are batches that were being harvested in this period
+            // ----------------------------------------------------------------
+            $batchQuery = DB::table('batch as b')
+                ->join('masterlist as m', function ($j) {
+                    $j->on('b.plot', '=', 'm.plot')
+                      ->on('b.companycode', '=', 'm.companycode');
+                })
+                ->where('b.companycode', $companycode)
+                ->whereNotNull('b.tanggalpanen')
+                ->whereBetween('b.tanggalpanen', [$start->toDateString(), $end->toDateString()])
+                ->select([
+                    'b.id as batch_id',
+                    'b.batchno',
+                    'b.plot',
+                    'm.blok',
+                    'b.batcharea',
+                    'b.tanggalpanen',
+                    'b.lifecyclestatus',
+                    'b.isactive',
+                    'b.closedat',
+                ]);
+
+            $batches = $batchQuery->get();
+
+            if ($batches->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'data'    => [],
+                    'summary' => $this->emptyHeader(),
+                ]);
             }
-            
-            if ($lifecycle) {
-                $query->where('b.lifecyclestatus', $lifecycle);
+
+            $batchIds  = $batches->pluck('batch_id')->toArray();
+            $batchMap  = $batches->keyBy('batch_id');
+
+            // ----------------------------------------------------------------
+            // STEP 2: Get approved panen LKH detail per batch within date range
+            //         Using batchid (surrogate FK) — opsi A
+            // ----------------------------------------------------------------
+            $harvestRows = DB::table('lkhdetailplot as ldp')
+                ->join('lkhhdr as lh', 'ldp.lkhhdrid', '=', 'lh.id')
+                ->where('lh.companycode', $companycode)
+                ->where('lh.approvalstatus', '1')
+                ->whereIn('lh.activitycode', self::PANEN_ACTIVITIES)
+                ->whereIn('ldp.batchid', $batchIds)
+                ->whereBetween('lh.lkhdate', [$start->toDateString(), $end->toDateString()])
+                ->select([
+                    'ldp.batchid',
+                    'lh.mandorid',
+                    DB::raw('SUM(ldp.luashasil) as total_hc'),
+                ])
+                ->groupBy('ldp.batchid', 'lh.mandorid')
+                ->get();
+
+            // Group: batchid → [mandorid → total_hc]
+            $harvestByBatch = [];
+            foreach ($harvestRows as $row) {
+                $harvestByBatch[$row->batchid][$row->mandorid] = (float) $row->total_hc;
             }
-            
-            if ($search) {
-                $query->where(function($q) use ($search) {
-                    $q->where('m.plot', 'like', "%{$search}%")
-                      ->orWhere('b.batchno', 'like', "%{$search}%");
-                });
-            }
-            
-            $saldoData = $query->get();
-            
-            // Apply progress filter (post-query because it's calculated)
-            if ($progressFilter) {
-                $saldoData = $saldoData->filter(function($item) use ($progressFilter) {
-                    $progress = $item->progress;
-                    switch ($progressFilter) {
-                        case 'low':
-                            return $progress < 50;
-                        case 'medium':
-                            return $progress >= 50 && $progress < 90;
-                        case 'high':
-                            return $progress >= 90;
-                        default:
-                            return true;
+
+            // ----------------------------------------------------------------
+            // STEP 3: Get mandor names
+            // ----------------------------------------------------------------
+            $mandorIds = $harvestRows->pluck('mandorid')->unique()->filter()->toArray();
+            $mandorNames = DB::table('user')
+                ->whereIn('userid', $mandorIds)
+                ->pluck('name', 'userid');
+
+            // ----------------------------------------------------------------
+            // STEP 4: Build per-plot rows, keyed by mandorid
+            // ----------------------------------------------------------------
+            // Structure: mandorid → [ plot_rows ]
+            $grouped = [];
+
+            foreach ($batches as $batch) {
+                $bid = $batch->batch_id;
+
+                if (!isset($harvestByBatch[$bid])) {
+                    // No approved panen LKH for this batch in range
+                    // Still show if status filter allows, under "unknown" mandor
+                    $mandorRows = [null => 0.0];
+                } else {
+                    $mandorRows = $harvestByBatch[$bid];
+                }
+
+                foreach ($mandorRows as $mid => $totalHC) {
+                    $batchArea = (float) $batch->batcharea;
+
+                    // STC = batcharea (all area before today's work)
+                    // HC  = total harvested in range by this mandor
+                    // BC  = batcharea - total ALL approved HC (not just this mandor)
+                    $totalHCAllMandors = array_sum($harvestByBatch[$bid] ?? []);
+                    $bc = max(0, $batchArea - $totalHCAllMandors);
+
+                    // Status
+                    // complete = batch.isactive = 0
+                    // ongoing  = isactive = 1 && tanggalpanen NOT NULL && bc > 0
+                    $status = $batch->isactive == 0 ? 'complete' : 'ongoing';
+
+                    // Apply filters
+                    if ($statusFilter !== 'all' && $status !== $statusFilter) {
+                        continue;
                     }
-                });
+                    if ($mandorId && $mid !== $mandorId) {
+                        continue;
+                    }
+
+                    $grouped[$mid ?? 'unknown'][] = [
+                        'plot'          => $batch->plot,
+                        'blok'          => $batch->blok,
+                        'batchno'       => $batch->batchno,
+                        'lifecyclestatus' => $batch->lifecyclestatus,
+                        'batcharea'     => $batchArea,
+                        'tanggalpanen'  => $batch->tanggalpanen,
+                        'hc'            => round($totalHC, 2),
+                        'hc_all'        => round($totalHCAllMandors, 2),
+                        'stc'           => round($batchArea - $totalHCAllMandors + $totalHC, 2),
+                        'bc'            => round($bc, 2),
+                        'status'        => $status,
+                    ];
+                }
             }
-            
-            // Calculate summary
-            $summary = $this->calculateSummary($saldoData);
-            
-            // Format data
-            $formattedData = $this->formatSaldoData($saldoData);
-            
+
+            // ----------------------------------------------------------------
+            // STEP 5: Build output array grouped by mandor
+            // ----------------------------------------------------------------
+            $result = [];
+            foreach ($grouped as $mid => $plots) {
+                $result[] = [
+                    'mandorid'   => $mid,
+                    'mandorname' => $mid === 'unknown' ? '-' : ($mandorNames[$mid] ?? $mid),
+                    'plots'      => collect($plots)->sortBy(['blok', 'plot'])->values()->toArray(),
+                    'total_hc'   => round(collect($plots)->sum('hc'), 2),
+                    'total_bc'   => round(collect($plots)->sum('bc'), 2),
+                    'total_area' => round(collect($plots)->sum('batcharea'), 2),
+                ];
+            }
+
+            // Sort by mandor name
+            usort($result, fn($a, $b) => strcmp($a['mandorname'], $b['mandorname']));
+
+            // ----------------------------------------------------------------
+            // STEP 6: Header summary (company-wide, ignoring mandor filter)
+            // ----------------------------------------------------------------
+            $allBatchIds    = $batchIds;
+            $allHCByBatch   = DB::table('lkhdetailplot as ldp')
+                ->join('lkhhdr as lh', 'ldp.lkhhdrid', '=', 'lh.id')
+                ->where('lh.companycode', $companycode)
+                ->where('lh.approvalstatus', '1')
+                ->whereIn('lh.activitycode', self::PANEN_ACTIVITIES)
+                ->whereIn('ldp.batchid', $allBatchIds)
+                ->whereBetween('lh.lkhdate', [$start->toDateString(), $end->toDateString()])
+                ->select('ldp.batchid', DB::raw('SUM(ldp.luashasil) as total_hc'))
+                ->groupBy('ldp.batchid')
+                ->pluck('total_hc', 'batchid');
+
+            $totalPlots    = $batches->count();
+            $completePlots = $batches->where('isactive', 0)->count();
+            $ongoingPlots  = $batches->where('isactive', 1)->count();
+
+            $summary = [
+                'total_plots'    => $totalPlots,
+                'ongoing_plots'  => $ongoingPlots,
+                'complete_plots' => $completePlots,
+                'total_hc'       => round($allHCByBatch->sum(), 2),
+                'total_area'     => round($batches->sum('batcharea'), 2),
+            ];
+
             return response()->json([
                 'success' => true,
-                'date' => $date,
-                'date_formatted' => Carbon::parse($date)->format('d F Y'),
-                'data' => $formattedData,
+                'data'    => $result,
                 'summary' => $summary,
-                'company_info' => $this->getCompanyInfo($companycode)
             ]);
-            
+
         } catch (\Exception $e) {
-            \Log::error("Error getting Saldo Panen data: " . $e->getMessage());
+            \Log::error('SaldoPanenReport error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memuat data: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
             ], 500);
         }
     }
-    
-    /**
-     * Build base query for Saldo Panen
-     */
-    private function buildSaldoPanenQuery($companycode, $date)
+
+    private function emptyHeader(): array
     {
-        return DB::table('masterlist as m')
-            ->join('batch as b', function($join) use ($companycode) {
-                $join->on('m.activebatchno', '=', 'b.batchno')
-                    ->where('b.companycode', '=', $companycode);
-            })
-            ->leftJoin(DB::raw('(
-                SELECT 
-                    ldp.plot,
-                    ldp.batchno,
-                    SUM(ldp.luashasil) as total_dipanen,
-                    MAX(lh.lkhdate) as last_harvest_date,
-                    MAX(lh.mandorid) as last_mandor_id
-                FROM lkhdetailplot ldp
-                JOIN lkhhdr lh ON ldp.lkhno = lh.lkhno AND ldp.companycode = lh.companycode
-                WHERE ldp.companycode = "' . $companycode . '"
-                    AND lh.approvalstatus = "1"
-                    AND lh.lkhdate <= "' . $date . '"
-                GROUP BY ldp.plot, ldp.batchno
-            ) as harvest_summary'), function($join) {
-                $join->on('m.plot', '=', 'harvest_summary.plot')
-                    ->on('b.batchno', '=', 'harvest_summary.batchno');
-            })
-            ->leftJoin('user as mandor', 'harvest_summary.last_mandor_id', '=', 'mandor.userid')
-            ->where('m.companycode', $companycode)
-            ->where('m.isactive', 1)
-            ->where('b.isactive', 1)
-            ->whereNotNull('b.tanggalpanen')
-            ->where('b.tanggalpanen', '<=', $date)
-            ->select([
-                'm.plot',
-                'm.blok',
-                'b.batchno',
-                'b.batcharea',
-                'b.tanggalpanen',
-                'b.lifecyclestatus',
-                'b.kodevarietas',
-                DB::raw('COALESCE(harvest_summary.total_dipanen, 0) as total_dipanen'),
-                DB::raw('(b.batcharea - COALESCE(harvest_summary.total_dipanen, 0)) as sisa'),
-                DB::raw('CASE 
-                    WHEN b.batcharea > 0 THEN (COALESCE(harvest_summary.total_dipanen, 0) / b.batcharea * 100)
-                    ELSE 0 
-                END as progress'),
-                DB::raw('DATEDIFF("' . $date . '", b.tanggalpanen) + 1 as hari_panen'),
-                'harvest_summary.last_harvest_date',
-                'harvest_summary.last_mandor_id',
-                'mandor.name as last_mandor_name',
-                DB::raw('CASE 
-                    WHEN harvest_summary.last_harvest_date = "' . $date . '" THEN "PANEN HARI INI"
-                    WHEN harvest_summary.last_harvest_date IS NULL THEN "BELUM PERNAH PANEN"
-                    WHEN COALESCE(harvest_summary.total_dipanen, 0) >= b.batcharea THEN "SELESAI"
-                    ELSE "ONGOING"
-                END as status_label')
-            ])
-            ->orderBy('m.blok')
-            ->orderBy('m.plot');
-    }
-    
-    /**
-     * Calculate summary statistics
-     */
-    private function calculateSummary($data)
-    {
-        $totalPlots = $data->count();
-        $totalLuasBatch = $data->sum('batcharea');
-        $totalDipanen = $data->sum('total_dipanen');
-        $totalSisa = $data->sum('sisa');
-        $avgProgress = $totalPlots > 0 ? $data->avg('progress') : 0;
-        
-        $panenHariIni = $data->where('status_label', 'PANEN HARI INI')->count();
-        $selesai = $data->where('status_label', 'SELESAI')->count();
-        $ongoing = $data->where('status_label', 'ONGOING')->count();
-        
         return [
-            'total_plots' => $totalPlots,
-            'total_luas_batch' => $totalLuasBatch,
-            'total_dipanen' => $totalDipanen,
-            'total_sisa' => $totalSisa,
-            'avg_progress' => $avgProgress,
-            'panen_hari_ini' => $panenHariIni,
-            'selesai' => $selesai,
-            'ongoing' => $ongoing
+            'total_plots'    => 0,
+            'ongoing_plots'  => 0,
+            'complete_plots' => 0,
+            'total_hc'       => 0,
+            'total_area'     => 0,
         ];
-    }
-    
-    /**
-     * Format saldo data for response
-     */
-    private function formatSaldoData($data)
-    {
-        return $data->map(function($item) {
-            return [
-                'blok' => $item->blok,
-                'plot' => $item->plot,
-                'batchno' => $item->batchno,
-                'lifecycle' => $item->lifecyclestatus,
-                'kodevarietas' => $item->kodevarietas,
-                'tanggal_panen' => Carbon::parse($item->tanggalpanen)->format('d/m/Y'),
-                'batcharea' => number_format((float)$item->batcharea, 2),
-                'total_dipanen' => number_format((float)$item->total_dipanen, 2),
-                'sisa' => number_format((float)$item->sisa, 2),
-                'progress' => number_format((float)$item->progress, 1),
-                'hari_panen' => (int)$item->hari_panen,
-                'last_harvest_date' => $item->last_harvest_date ? Carbon::parse($item->last_harvest_date)->format('d/m/Y') : '-',
-                'last_mandor_name' => $item->last_mandor_name ?? '-',
-                'status_label' => $item->status_label
-            ];
-        })->values();
-    }
-    
-    /**
-     * Get company info
-     */
-    private function getCompanyInfo($companycode)
-    {
-        $company = DB::table('company')
-            ->where('companycode', $companycode)
-            ->first();
-        
-        return $company ? "{$company->companycode} - {$company->name}" : $companycode;
     }
 }
