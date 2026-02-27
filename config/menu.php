@@ -252,6 +252,11 @@ return [
                 'permission' => 'report.suratjalantimbangan.view',
             ],
             [
+                'name' => 'Saldo Panen',
+                'route' => 'report.saldo-panen.index',
+                'permission' => 'report.saldopanen.view',
+            ],
+            [
                 'name' => 'Panen Track Plot',
                 'route' => 'report.panen-track-plot.index',
                 'permission' => 'report.panentrackplot.view',
