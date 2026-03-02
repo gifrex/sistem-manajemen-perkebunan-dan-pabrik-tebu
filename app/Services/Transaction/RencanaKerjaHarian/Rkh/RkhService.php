@@ -215,6 +215,12 @@ class RkhService
             throw new \Exception('RKH not found');
         }
 
+        if ($header->approvalstatus === '1') {
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                'RKH sudah fully approved, tidak dapat diedit'
+            );
+        }
+
         // Authorization check
         $this->authorizeActivityGroup($header->activitygroup, $companycode);
 
@@ -254,26 +260,32 @@ class RkhService
     {
         return DB::transaction(function() use ($rkhno, $dto, $companycode, $userid) {
             
-            // ✅ FIX: Get header dulu untuk ambil rkhhdrid
+            // Get header dulu untuk ambil rkhhdrid
             $existingHeader = $this->rkhRepo->getHeaderForEdit($companycode, $rkhno);
             
             if (!$existingHeader) {
                 throw new \Exception("RKH {$rkhno} tidak ditemukan");
             }
+
+            if ($existingHeader->approvalstatus === '1') {
+                throw new \Illuminate\Auth\Access\AuthorizationException(
+                    'RKH sudah fully approved, tidak dapat diedit'
+                );
+            }
             
             $rkhhdrid = $existingHeader->id;
             
-            // ✅ FIX: Build components sama kayak create
+            // Build components sama kayak create
             $activityGroup = $this->getPrimaryActivityGroup($dto['rows']);
             $workers = $this->groupWorkersByActivity($dto['workers'] ?? []);
             $kendaraan = $this->groupKendaraanByActivity($dto['kendaraan'] ?? []);
             $approvalData = $this->getApprovalDataForUpdate($dto['rows'], $companycode);
             
-            // ✅ FIX: Calculate totals
+            // Calculate totals
             $totalLuas = collect($dto['rows'])->sum('luas');
             $totalManpower = collect($workers)->sum('jumlahtenagakerja');
             
-            // ✅ Update header dengan approval reset
+            // Update header dengan approval reset
             $headerData = array_merge([
                 'rkhdate' => $dto['rkhdate'],
                 'totalluas' => $totalLuas,
@@ -287,22 +299,22 @@ class RkhService
             
             $this->rkhRepo->updateHeader($companycode, $rkhno, $headerData);
             
-            // ✅ Delete old details
+            // Delete old details
             $this->rkhRepo->deleteDetails($companycode, $rkhno);
             
-            // ✅ Build & insert new details
+            // Build & insert new details
             $details = $this->buildRkhDetails($dto['rows'], $companycode, $rkhno, $dto['rkhdate'], $rkhhdrid);
             
             if (!empty($details)) {
                 $this->rkhRepo->insertDetails($details);
             }
             
-            // ✅ Replace workers
+            // Replace workers
             if (!empty($workers)) {
                 $this->workerRepo->replaceWorkersForRkh($companycode, $rkhno, $rkhhdrid, $workers);
             }
             
-            // ✅ Replace kendaraan
+            // Replace kendaraan
             if (!empty($kendaraan)) {
                 $this->kendaraanRepo->replaceKendaraanForRkh($companycode, $rkhno, $rkhhdrid, $kendaraan);
             }

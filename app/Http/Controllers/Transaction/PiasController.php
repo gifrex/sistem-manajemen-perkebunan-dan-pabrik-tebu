@@ -33,18 +33,25 @@ class PiasController extends Controller
     }
  
     public function home(Request $request)
-    {   
-        $perPage = (int) $request->input('perPage', 15);
-        
-        // Default tanggal: 2 bulan ke belakang sampai hari ini
-        $startDate = $request->input('start_date', now()->subMonths(2)->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->format('Y-m-d'));
-        
-        // Search query
-        $search = $request->input('search');
-        
+{
+    $perPage = (int) $request->input('perPage', 15);
+    $startDate = $request->input('start_date', now()->subMonths(2)->format('Y-m-d'));
+    $endDate = $request->input('end_date', now()->format('Y-m-d'));
+    $search = $request->input('search');
+
+    Log::info('PIAS HOME DEBUG PARAMS', [
+        'user' => optional(auth()->user())->userid ?? null,
+        'companycode' => session('companycode'),
+        'perPage' => $perPage,
+        'startDate' => $startDate,
+        'endDate' => $endDate,
+        'search' => $search,
+        'query_string' => $request->query(),
+    ]);
+
+    try {
         $rkhhdr = new Rkhhdr;
-        
+
         $selected = $rkhhdr::query()
             ->leftJoin('user as u', 'u.userid', '=', 'rkhhdr.mandorid')
             ->leftJoin('piashdr as ph', function ($join) {
@@ -60,27 +67,36 @@ class PiasController extends Controller
                       ->whereColumn('rkhlst.companycode', 'rkhhdr.companycode')
                       ->where('rkhlst.activitycode', '5.2.1');
             })
-            // Filter tanggal
             ->whereDate('rkhhdr.rkhdate', '>=', $startDate)
             ->whereDate('rkhhdr.rkhdate', '<=', $endDate);
-        
-        // Filter search
+
         if ($search) {
             $selected->where(function($query) use ($search) {
                 $query->where('rkhhdr.rkhno', 'like', "%{$search}%")
                       ->orWhere('u.name', 'like', "%{$search}%");
             });
         }
-        
+
         $selected->select([
                 'rkhhdr.*',
                 DB::raw('u.name as mandor_name'),
             ])
             ->selectRaw('CASE WHEN ph.rkhno IS NULL THEN 0 ELSE 1 END as is_generated')
             ->orderByDesc('rkhhdr.rkhdate');
-        
+
+        // LOG SQL sebelum dieksekusi
+        Log::info('PIAS HOME SQL', [
+            'sql' => $selected->toSql(),
+            'bindings' => $selected->getBindings(),
+        ]);
+
         $data = $selected->paginate($perPage)->appends($request->query());
-        
+
+        Log::info('PIAS HOME RESULT', [
+            'total' => $data->total(),
+            'count' => $data->count(),
+        ]);
+
         return view('transaction.pias.home', [
             'title'     => 'Pias',
             'data'      => $data,
@@ -89,12 +105,22 @@ class PiasController extends Controller
             'endDate'   => $endDate,
             'search'    => $search,
         ]);
+    } catch (\Throwable $e) {
+        Log::error('PIAS HOME ERROR', [
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        abort(500, 'PIAS HOME ERROR (cek laravel.log)');
     }
+}
 
     public function detail(Request $request)
     {   
-        $rkhhdr = new rkhhdr;
-        $rkhlst = new rkhlst;
+        $rkhhdr = new Rkhhdr;
+        $rkhlst = new RkhLst;
         $piashdr = new piashdr;
         $piaslst = new piaslst;
 

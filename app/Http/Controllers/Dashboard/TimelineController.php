@@ -171,12 +171,11 @@ $activityDataRaw = DB::table('lkhdetailplot as ldp')
 ->groupBy('ldp.plot', 'lh.activitycode')
 ->get();
 
-
 // ✅ Query 2: Detail per LKH dengan persentase
 $activityDetailRaw = DB::table('lkhdetailplot as ldp')
-->leftJoin('testgpshdr as d', function($join){
-    $join->on('a.plot','=','d.plot')
-         ->on('a.companycode','=','d.companycode');
+->join('lkhhdr as lh', function($join) {
+    $join->on('ldp.lkhno', '=', 'lh.lkhno')
+         ->on('ldp.companycode', '=', 'lh.companycode'); // 
 })
 ->join('masterlist as m', function($join) {
     $join->on('ldp.plot', '=', 'm.plot')

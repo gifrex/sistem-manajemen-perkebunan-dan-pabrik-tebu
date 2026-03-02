@@ -195,6 +195,11 @@ return [
                 'route' => 'transaction.mapping-bsm.index',
                 'permission' => 'transaction.mappingbsm.view',
             ],
+            [
+                'name' => 'Koreksi',
+                'route' => 'transaction.gudang.koreksi',
+                'permission' => 'transaction.gudang.view',
+            ],
         ],
     ],
 
@@ -245,6 +250,11 @@ return [
                 'name' => 'Surat Jalan & Timbangan',
                 'route' => 'report.report-surat-jalan-timbangan.index',
                 'permission' => 'report.suratjalantimbangan.view',
+            ],
+            [
+                'name' => 'Saldo Panen',
+                'route' => 'report.saldo-panen.index',
+                'permission' => 'report.saldopanen.view',
             ],
             [
                 'name' => 'Panen Track Plot',
@@ -459,4 +469,37 @@ return [
             ],
         ],
     ],
+
+    // ============================================
+    // DEVELOPER
+    // ============================================
+    [
+        'name' => 'Developer',
+        'icon' => 'code',
+        'permission' => 'developer.menu.view',
+        'children' => [
+            [
+                'name' => 'Log Viewer',
+                'route' => 'log-viewer.index',
+                'permission' => 'developer.logviewer.view',
+            ],
+        ],
+    ],
+    [
+        'name' => 'Settings',
+        'icon' => 'cog',
+        'permission' => 'settings.menu.view',
+        'children' => [
+            [
+                'name' => 'Tabel Harga Panen',
+                'route' => 'settings.harga-panen.index',
+                'permission' => 'settings.harga-panen.index',
+            ],
+           [
+                'name' => 'Target Kontraktor',
+                'route' => 'settings.target-kontraktor.index',
+                'permission' => 'settings.target-kontraktor.index',
+            ],
+        ],
+    ]
 ];

@@ -23,6 +23,8 @@ class Approval extends Model
         'idjabatanapproval1',
         'idjabatanapproval2',
         'idjabatanapproval3',
+        'idjabatanapproval4',
+        'idjabatanapproval5',
         'inputby',
         'updateby',
         'createdat',
@@ -30,13 +32,15 @@ class Approval extends Model
     ];
 
     protected $casts = [
-        'id' => 'integer',
-        'jumlahapproval' => 'integer',
+        'id'                 => 'integer',
+        'jumlahapproval'     => 'integer',
         'idjabatanapproval1' => 'integer',
         'idjabatanapproval2' => 'integer',
         'idjabatanapproval3' => 'integer',
-        'createdat' => 'datetime',
-        'updatedat' => 'datetime',
+        'idjabatanapproval4' => 'integer',
+        'idjabatanapproval5' => 'integer',
+        'createdat'          => 'datetime',
+        'updatedat'          => 'datetime',
     ];
 
     // Relationships
@@ -58,5 +62,15 @@ class Approval extends Model
     public function jabatanApproval3()
     {
         return $this->belongsTo(Jabatan::class, 'idjabatanapproval3', 'idjabatan');
+    }
+
+    public function jabatanApproval4()
+    {
+        return $this->belongsTo(Jabatan::class, 'idjabatanapproval4', 'idjabatan');
+    }
+
+    public function jabatanApproval5()
+    {
+        return $this->belongsTo(Jabatan::class, 'idjabatanapproval5', 'idjabatan');
     }
 }

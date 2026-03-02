@@ -1,36 +1,48 @@
 <?php
+
 namespace App\Providers;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\View;
-use App\View\Composers\NavigationComposer;
+
+use App\Models\User;
 use Inertia\Inertia;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Gate; // <-- Tambahkan ini
+use Illuminate\Support\ServiceProvider;
+use App\View\Composers\NavigationComposer;
 
 class AppServiceProvider extends ServiceProvider
 {
-   /**
-    * Register any application services.
-    */
-   public function register(): void
-   {
-       //
-   }
-   
-   public function boot(): void
-   {
-       Model::preventLazyLoading();
-       
-       // Share navigation data ke view yang butuh sidebar
-       // Approach hybrid: semua view kecuali yang tidak butuh
-       View::composer('*', NavigationComposer::class);
-       
-       // Share common data untuk Inertia
-       Inertia::share([
-           'app' => [
-               'name' => config('app.name'),
-               'url' => config('app.url'),
-               'logo_url' => asset('img/logo-tebu.png'),
-           ]
-       ]);
-   }
+    /**
+     * Register any application services.
+     */
+    public function register(): void
+    {
+        //
+    }
+
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
+    {
+        Model::preventLazyLoading();
+
+        // 1. PENGAMANAN LOG VIEWER (SANGAT PENTING)
+        // Mengecek apakah user yang login memiliki idjabatan = 7 (Admin)
+        Gate::define('viewLogViewer', function ($user) {
+            return $user && (int) $user->idjabatan === 7;
+        });
+
+        // 2. Share navigation data ke view yang butuh sidebar
+        View::composer('*', NavigationComposer::class);
+
+        // 3. Share common data untuk Inertia
+        Inertia::share([
+            'app' => [
+                'name' => config('app.name'),
+                'url' => config('app.url'),
+                'logo_url' => asset('img/logo-tebu.png'),
+            ]
+        ]);
+    }
 }

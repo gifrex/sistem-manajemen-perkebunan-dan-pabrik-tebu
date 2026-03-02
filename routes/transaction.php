@@ -20,7 +20,7 @@ use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\RekapLkhReportCon
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\OperatorRekapReportController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\OperatorReportController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Utility\RkhUtilityController;
-use App\Http\Controllers\Transaction\RencanaKerjaHarian\MaterialUsageController;
+use App\Http\Controllers\Transaction\RencanaKerjaHarian\Domain\MaterialUsageController;
 
 Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(function () {
 
@@ -209,9 +209,7 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
         Route::any('gudang/retur', [GudangController::class, 'retur'])->name('gudang.retur');
         Route::any('gudang/returall', [GudangController::class, 'returAll'])->name('gudang.returall');
         Route::get('gudang/report', [GudangController::class, 'report'])->name('gudang.report');
-        Route::get('gudang/koreksi', [GudangController::class, 'koreksi'])->name('gudang.koreksi');
-        Route::get('gudang/koreksi-home', [GudangController::class, 'koreksi_home'])->name('gudang.koreksi');
-        Route::get('gudang/koreksi-insert', [GudangController::class, 'koreksi_insert'])->name('gudang.koreksi.insert');
+        Route::get('gudang/koreksi-insert', [GudangController::class, 'koreksi_insert'])->name('gudang.koreksi');
         Route::post('gudang/koreksi-submit', [GudangController::class, 'koreksi_submit'])->name('gudang.koreksi.submit');
         
         Route::post('gudang/get-items-by-rkh', [GudangController::class, 'getItemsByRkh'])->name('gudang.getItemsByRkh');

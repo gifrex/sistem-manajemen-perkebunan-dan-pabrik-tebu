@@ -140,8 +140,10 @@
                             >
                                 <option value="">-- Pilih Cost Center --</option>
                                 <template x-for="c in costcenterList" :key="c.costcentercode">
-                                <option :value="c.costcentercode"
-                                        x-text="`${c.costcenterdesc} (${c.costcentercode})`">
+                                <option
+                                    :value="(c.costcentercode || '').trim()"
+                                    :selected="(c.costcentercode || '').trim() === (new_costcenter || '').trim()"
+                                    x-text="`${c.costcenterdesc} (${c.costcentercode})`">
                                 </option>
                                 </template>
                             </select>
@@ -353,7 +355,7 @@ function koreksiData() {
 
             // ✅ options dropdown
             this.costcenterList = Array.isArray(data.costcenter) ? data.costcenter : [];
-            this.$nextTick(() => { this.new_costcenter = this.new_costcenter; });
+
             // ✅ kalau new_costcenter tidak ada di list, fallback ke old_costcenter
             if (
             this.new_costcenter &&

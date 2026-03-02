@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('web')->group(base_path('routes/infoupdates.php'));
             Route::middleware('web')->group(base_path('routes/approval.php'));
             Route::middleware('web')->group(base_path('routes/it-support.php'));
+            Route::middleware('web')->group(base_path('routes/settings.php'));
             
             Route::middleware('api')
                 ->prefix('api')
@@ -35,6 +36,8 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->trustProxies(at: '*');
+        
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'mandor.access' => \App\Http\Middleware\MandorAccessManagement::class,
