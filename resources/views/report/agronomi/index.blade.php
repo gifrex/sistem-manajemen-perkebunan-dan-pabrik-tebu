@@ -71,14 +71,16 @@
                                         d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z"
                                         clip-rule="evenodd" />
                                 </svg>
-                                <span>Pilih Tanggal</span>
+                                <span id="date-label">
+                                    {{ $startDate }} s/d {{ $endDate }}
+                                </span>
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
 
-                            <div class="absolute left-0 z-10 mt-2 w-80 rounded-lg bg-white border border-gray-200 shadow-xl hidden"
+                            <div class="absolute left-0 z-10 mt-2 w-56 rounded-lg bg-white border border-gray-200 shadow-xl hidden"
                                 id="menu-dropdown">
                                 <div class="p-4 space-y-4">
                                     <div>
@@ -97,10 +99,16 @@
                                             class="w-full px-3 py-2 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-200">
                                     </div>
 
-                                    {{-- <button type="submit" name="filter"
-                                        class="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200">
-                                        Terapkan Filter
-                                    </button> --}}
+                                    <button type="button" id="btn-apply-filter"
+                                        onclick="
+                                                document.getElementById('menu-dropdown').classList.add('hidden');
+                                                document.getElementById('date-label').textContent =
+                                                    document.getElementById('start_date').value + ' s/d ' +
+                                                    document.getElementById('end_date').value;
+                                            "
+                                        class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-all duration-200">
+                                        Terapkan
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -181,10 +189,31 @@
                                 Bulan Pengamatan</th>
                             <th
                                 class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Bulan Panen</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Umur Panen</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Tanggal ZPK</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
                                 No. Urut</th>
                             <th
                                 class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
                                 Jumlah Batang</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Jumlah Batang Primer</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Jumlah Batang Sekunder</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Jumlah Batang Tersier</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Jumlah Batang Kuarter</th>
                             <th
                                 class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
                                 Panjang GAP</th>
@@ -230,10 +259,34 @@
                             <th
                                 class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
                                 Diameter Kuarter</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Berat Batang Primer</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Berat Batang Sekunder</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Berat Batang Tersier</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Berat Batang Kuarter</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Brix Batang Primer</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Brix Batang Sekunder</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Brix Batang Tersier</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Brix Batang Kuarter</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200">
-                        @foreach ($agronomi as $item)
+                        @forelse ($agronomi as $item)
                             <tr class="hover:bg-blue-50 transition-colors duration-150">
                                 <td class="py-3 px-4 text-center text-gray-700">{{ $item->no }}.</td>
                                 <td class="py-3 px-4 text-center text-gray-700 font-medium">{{ $item->nosample }}</td>
@@ -253,8 +306,15 @@
                                 <td class="py-3 px-4 text-center text-gray-700">{{ $item->tanggalpengamatan ?? '-' }}
                                 </td>
                                 <td class="py-3 px-4 text-center text-gray-700">{{ $item->bulanPengamatan }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->bulanpanen ?? '-' }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->umurpanen ?? '-' }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->tanggalzpk ?? '-' }}</td>
                                 <td class="py-3 px-4 text-center text-gray-700">{{ $item->nourut }}</td>
                                 <td class="py-3 px-4 text-center text-gray-700">{{ $item->jumlahbatang }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->bat_primer }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->bat_sekunder }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->bat_tersier }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->bat_kuarter }}</td>
                                 <td class="py-3 px-4 text-center text-gray-700">{{ $item->pan_gap }}</td>
                                 <td class="py-3 px-4 text-center text-gray-700">
                                     <span
@@ -285,8 +345,58 @@
                                 <td class="py-3 px-4 text-center text-gray-700">{{ $item->d_sekunder }}</td>
                                 <td class="py-3 px-4 text-center text-gray-700">{{ $item->d_tersier }}</td>
                                 <td class="py-3 px-4 text-center text-gray-700">{{ $item->d_kuarter }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->berat_primer }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->berat_sekunder }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->berat_tersier }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->berat_kuarter }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->brix_primer }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->brix_sekunder }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->brix_tersier }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->brix_kuarter }}</td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td colspan="29" class="p-0 border-0">
+                                    <div
+                                        style="
+                                            position: sticky;
+                                            left: 0;
+                                            width: calc(100vw - 330px);
+                                            max-width: calc(100vw - 330px);
+                                            display: flex;
+                                            flex-direction: column;
+                                            align-items: center;
+                                            justify-content: center;
+                                            gap: 12px;
+                                            padding: 64px 16px;
+                                        ">
+                                        <div
+                                            style="
+                                                width: 64px;
+                                                height: 64px;
+                                                border-radius: 9999px;
+                                                background-color: #f3f4f6;
+                                                display: flex;
+                                                align-items: center;
+                                                justify-content: center;
+                                            ">
+                                            <svg style="width:32px;height:32px;color:#9ca3af" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="1.5"
+                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <div style="text-align:center">
+                                            <p style="color:#4b5563;font-weight:600;font-size:0.875rem">Tidak ada data
+                                                ditemukan</p>
+                                            <p style="color:#9ca3af;font-size:0.75rem;margin-top:4px">Coba ubah rentang
+                                                tanggal atau kata kunci pencarian</p>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>

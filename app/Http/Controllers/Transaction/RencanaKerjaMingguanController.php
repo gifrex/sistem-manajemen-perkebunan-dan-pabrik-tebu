@@ -89,10 +89,10 @@ class RencanaKerjaMingguanController extends Controller
         }
 
         if ($request->ajax()) {
-            return view('transaction.rkm.index', compact('title', 'search', 'perPage', 'rkm'));
+            return view('transaction.rkm.index', compact('title', 'search', 'perPage', 'rkm', 'startDate', 'endDate'));
         }
 
-        return view('transaction.rkm.index', compact('title', 'search', 'perPage', 'rkm'));
+        return view('transaction.rkm.index', compact('title', 'search', 'perPage', 'rkm', 'startDate', 'endDate'));
     }
 
     public function create(Request $request)
