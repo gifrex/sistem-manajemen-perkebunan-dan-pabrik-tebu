@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\View;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 class ReportController extends Controller
 {
@@ -80,6 +79,10 @@ class ReportController extends Controller
             'agrolst.*',
             'agrohdr.varietas',
             'agrohdr.kat',
+            'agrohdr.tanggaltanam',
+            'agrohdr.bulanpanen',
+            'agrohdr.umurpanen',
+            'agrohdr.tanggalzpk',
             'agrohdr.tanggaltanam',
             'company.name as compName',
             'blok.blok as blokName',
