@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Approval;
 
 use App\Http\Controllers\Controller;
-use App\Repositories\Approval\RkhApprovalRepository;
+use App\Repositories\Approval\AbsenApprovalRepository;
 use App\Repositories\Approval\LkhApprovalRepository;
 use App\Repositories\Approval\OtherApprovalRepository;
-use App\Repositories\Approval\AbsenApprovalRepository;
+use App\Repositories\Approval\RkhApprovalRepository;
+use App\Repositories\Approval\UpahMingguanApprovalRepository;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth; 
-use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 
 /**
  * ApprovalDashboardController
@@ -24,17 +25,20 @@ class ApprovalDashboardController extends Controller
     protected $lkhRepository;
     protected $otherRepository;
     protected $absenRepository;
+    protected $upahRepository;
 
     public function __construct(
         RkhApprovalRepository $rkhRepository,
         LkhApprovalRepository $lkhRepository,
         OtherApprovalRepository $otherRepository,
-        AbsenApprovalRepository $absenRepository
+        AbsenApprovalRepository $absenRepository,
+        UpahMingguanApprovalRepository $upahRepository
     ) {
         $this->rkhRepository = $rkhRepository;
         $this->lkhRepository = $lkhRepository;
         $this->otherRepository = $otherRepository;
         $this->absenRepository = $absenRepository;
+        $this->upahRepository = $upahRepository;
     }
 
     /**
@@ -52,18 +56,19 @@ class ApprovalDashboardController extends Controller
 
         // Default: all_date = true
         $filterDate = $request->input('filter_date');
-        $allDate    = $request->input('all_date', true); // <-- default true
+        $allDate = $request->input('all_date', true); // <-- default true
 
         $filters = [
-            'date'     => $filterDate,
+            'date' => $filterDate,
             'all_date' => $allDate
         ];
 
-        $pendingRKH   = $this->getPendingRKHWithDetails($companycode, $currentUser, $filters);
-        $pendingLKH   = $this->getPendingLKHWithDetails($companycode, $currentUser, $filters);
+        $pendingRKH = $this->getPendingRKHWithDetails($companycode, $currentUser, $filters);
+        $pendingLKH = $this->getPendingLKHWithDetails($companycode, $currentUser, $filters);
         $pendingAbsen = $this->getPendingAbsenWithDetails($companycode, $currentUser, $filters);
         $pendingOther = $this->getPendingOtherWithDetails($companycode, $currentUser, $filters);
         $othersDetail = $this->setOtherDetail($pendingOther);
+        $pendingUpah = $this->getPendingUpahWithDetails($companycode, $currentUser, $filters);
 
         // Load activity groups user punya akses
         $userActivityGroups = DB::table('useractivity as ua')
@@ -76,17 +81,17 @@ class ApprovalDashboardController extends Controller
             ->get();
 
         return view('approval.index', [
-            'title'              => 'Approval Center',
-            'navbar'             => 'Input',
-            'nav'                => 'Approval',
-            'pendingRKH'         => $pendingRKH,
-            'pendingLKH'         => $pendingLKH,
-            'pendingOther'       => $pendingOther,
-            'pendingAbsen'       => $pendingAbsen,
-            'userInfo'           => $this->getUserInfo($currentUser),
-            'filterDate'         => $filterDate,
-            'allDate'            => $allDate,
-            'otherDetail'        => $othersDetail,
+            'title' => 'Approval Center',
+            'navbar' => 'Input',
+            'nav' => 'Approval',
+            'pendingRKH' => $pendingRKH,
+            'pendingLKH' => $pendingLKH,
+            'pendingOther' => $pendingOther,
+            'pendingAbsen' => $pendingAbsen,
+            'userInfo' => $this->getUserInfo($currentUser),
+            'filterDate' => $filterDate,
+            'allDate' => $allDate,
+            'otherDetail' => $othersDetail,
             'userActivityGroups' => $userActivityGroups, // <-- tambah ini
         ]);
     }
@@ -108,10 +113,10 @@ class ApprovalDashboardController extends Controller
             $filters
         );
 
-        return $pendingRKH->map(function($rkh) use ($companycode) {
+        return $pendingRKH->map(function ($rkh) use ($companycode) {
             $rkh->activities_list = $this->rkhRepository->getActivitiesSummary($companycode, $rkh->rkhno);
-            $rkh->has_material    = $this->rkhRepository->hasMaterial($companycode, $rkh->rkhno);
-            $rkh->has_kendaraan   = $this->rkhRepository->hasKendaraan($companycode, $rkh->rkhno);
+            $rkh->has_material = $this->rkhRepository->hasMaterial($companycode, $rkh->rkhno);
+            $rkh->has_kendaraan = $this->rkhRepository->hasKendaraan($companycode, $rkh->rkhno);
             return $rkh;
         });
     }
@@ -133,8 +138,8 @@ class ApprovalDashboardController extends Controller
             $filters
         );
 
-        return $pendingLKH->map(function($lkh) use ($companycode) {
-            $lkh->has_material  = $this->lkhRepository->hasMaterial($companycode, $lkh->lkhno);
+        return $pendingLKH->map(function ($lkh) use ($companycode) {
+            $lkh->has_material = $this->lkhRepository->hasMaterial($companycode, $lkh->lkhno);
             $lkh->has_kendaraan = $this->lkhRepository->hasKendaraan($companycode, $lkh->lkhno);
             return $lkh;
         });
@@ -157,7 +162,7 @@ class ApprovalDashboardController extends Controller
         );
 
         // Enrich with decoded JSON and real batch areas
-        return $pendingOther->map(function($approval) use ($companycode) {
+        return $pendingOther->map(function ($approval) use ($companycode) {
             // Decode JSON fields for Split/Merge
             if ($approval->sourceplots) {
                 $approval->sourceplots_array = json_decode($approval->sourceplots, true);
@@ -250,17 +255,118 @@ class ApprovalDashboardController extends Controller
         );
     }
 
-    private function setOtherDetail( $otherDetail )
+    private function getPendingUpahWithDetails(string $companycode, object $currentUser, array $filters)
+    {
+        $idjabatan = $currentUser->idjabatan;
+
+        $query = DB::table('approvaltransaction as at')
+            ->join('pembayaranupahhdr as p', function ($j) {
+                $j->on('p.transno', '=', 'at.transactionnumber')
+                    ->on('p.companycode', '=', 'at.companycode');
+            })
+            ->leftJoin('user as u', function ($j) {
+                $j->on('u.userid', '=', 'p.mandoruserid')
+                    ->on('u.companycode', '=', 'p.companycode');
+            })
+            ->leftJoin('activity as ac', 'ac.activitycode', '=', 'p.activitycode')
+            ->whereIn('at.approvalcategoryid', function ($q) use ($companycode) {
+                $q->select('id')
+                    ->from('approval')
+                    ->where('companycode', $companycode)
+                    ->where('category', 'Approval Pembayaran Upah Mingguan');
+            })
+            ->where('at.companycode', $companycode)
+            ->whereNull('at.approvalstatus')
+            ->where(function ($q) use ($idjabatan) {
+                $q->where(function ($q2) use ($idjabatan) {
+                    $q2->where('at.approval1idjabatan', $idjabatan)
+                        ->whereNull('at.approval1flag');
+                })->orWhere(function ($q2) use ($idjabatan) {
+                    $q2->where('at.approval2idjabatan', $idjabatan)
+                        ->where('at.approval1flag', '1')
+                        ->whereNull('at.approval2flag');
+                })->orWhere(function ($q2) use ($idjabatan) {
+                    $q2->where('at.approval3idjabatan', $idjabatan)
+                        ->where('at.approval2flag', '1')
+                        ->whereNull('at.approval3flag');
+                })->orWhere(function ($q2) use ($idjabatan) {
+                    $q2->where('at.approval4idjabatan', $idjabatan)
+                        ->where('at.approval3flag', '1')
+                        ->whereNull('at.approval4flag');
+                })->orWhere(function ($q2) use ($idjabatan) {
+                    $q2->where('at.approval5idjabatan', $idjabatan)
+                        ->where('at.approval4flag', '1')
+                        ->whereNull('at.approval5flag');
+                });
+            })
+            ->when(!($filters['all_date'] ?? true) && !empty($filters['date']), function ($q) use ($filters) {
+                $q->whereDate('p.generatedate', $filters['date']);
+            })
+            ->select(
+                'at.approvalno',
+                'at.transactionnumber as transno',
+                'at.jumlahapproval',
+                'at.approvalstatus',
+                'at.approval1idjabatan',
+                'at.approval1flag',
+                'at.approval2idjabatan',
+                'at.approval2flag',
+                'at.approval3idjabatan',
+                'at.approval3flag',
+                'at.approval4idjabatan',
+                'at.approval4flag',
+                'at.approval5idjabatan',
+                'at.approval5flag',
+                'p.startdate',
+                'p.enddate',
+                'p.grandtotal',
+                'p.jenistenagakerja',
+                'p.generatedate',
+                'ac.activityname',
+                'u.name as mandorname',
+                DB::raw("
+                    CASE
+                        WHEN at.approval1idjabatan = {$idjabatan} AND at.approval1flag IS NULL THEN 1
+                        WHEN at.approval2idjabatan = {$idjabatan} AND at.approval1flag = '1' AND at.approval2flag IS NULL THEN 2
+                        WHEN at.approval3idjabatan = {$idjabatan} AND at.approval2flag = '1' AND at.approval3flag IS NULL THEN 3
+                        WHEN at.approval4idjabatan = {$idjabatan} AND at.approval3flag = '1' AND at.approval4flag IS NULL THEN 4
+                        WHEN at.approval5idjabatan = {$idjabatan} AND at.approval4flag = '1' AND at.approval5flag IS NULL THEN 5
+                        ELSE NULL
+                    END as approval_level
+                ")
+            )
+            ->orderByDesc('p.generatedate')
+            ->get();
+
+        if ($query->isNotEmpty()) {
+            $transNos = $query->pluck('transno')->toArray();
+            $workerCounts = DB::table('pembayaranupahlst')
+                ->whereIn('transno', $transNos)
+                ->where('companycode', $companycode)
+                ->groupBy('transno')
+                ->select('transno', DB::raw('COUNT(DISTINCT tenagakerjaid) as totalworkers'))
+                ->pluck('totalworkers', 'transno');
+
+            foreach ($query as $item) {
+                $item->totalworkers = $workerCounts[$item->transno] ?? 0;
+                $item->jenis_label = $item->jenistenagakerja == 1 ? 'Harian' : 'Borongan';
+            }
+        }
+
+        return $query;
+    }
+
+    private function setOtherDetail($otherDetail)
     {
         $detail = array();
-        if( count($otherDetail) > 0 ){
-            foreach( $otherDetail as $item ){
-                if ( $item->category == "Use Material" OR $item->category == "Use Koreksi" OR $item->category == "Retur Koreksi" ){
+        if (count($otherDetail) > 0) {
+            foreach ($otherDetail as $item) {
+                if ($item->category == "Use Material" OR $item->category == "Use Koreksi" OR $item->category == "Retur Koreksi") {
                     $materialDetail = $this->otherRepository->getApprovalUseMaterialDetail(
-                        $item->companycode, 
+                        $item->companycode,
                         $item->approvalno
                     );
-                    
+
                     // HANYA SIMPAN JIKA ADA ISI
                     if (!empty($materialDetail)) {
                         $detail[$item->approvalno] = $materialDetail;

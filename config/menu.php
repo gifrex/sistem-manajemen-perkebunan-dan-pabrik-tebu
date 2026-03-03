@@ -362,6 +362,22 @@ return [
     ],
 
     // ============================================
+    // FINANCE
+    // ============================================
+    [
+        'name' => 'Finance',
+        'icon' => 'finance',
+        'permission' => 'finance.menu.view',
+        'children' => [
+            [
+                'name' => 'Pembayaran Upah Mingguan',
+                'route' => 'finance.pembayaran-upah-mingguan.index',
+                'permission' => 'finance.pembayaranupahmingguan.view',
+            ],
+        ],
+    ],
+
+    // ============================================
     // PABRIK
     // ============================================
     [
@@ -495,7 +511,7 @@ return [
                 'route' => 'settings.harga-panen.index',
                 'permission' => 'settings.harga-panen.index',
             ],
-           [
+            [
                 'name' => 'Target Kontraktor',
                 'route' => 'settings.target-kontraktor.index',
                 'permission' => 'settings.target-kontraktor.index',

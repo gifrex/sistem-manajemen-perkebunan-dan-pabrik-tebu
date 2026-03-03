@@ -9,10 +9,10 @@ use App\Services\PermissionService;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',  
-        commands: __DIR__.'/../routes/console.php',
-        channels: __DIR__.'/../routes/channels.php',
+        web: __DIR__ . '/../routes/web.php',
+        api: __DIR__ . '/../routes/api.php',
+        commands: __DIR__ . '/../routes/console.php',
+        channels: __DIR__ . '/../routes/channels.php',
         health: '/up',
         using: function () {
             // Web routes with web middleware
@@ -29,7 +29,8 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware('web')->group(base_path('routes/approval.php'));
             Route::middleware('web')->group(base_path('routes/it-support.php'));
             Route::middleware('web')->group(base_path('routes/settings.php'));
-            
+            Route::middleware('web')->group(base_path('routes/finance.php'));
+
             Route::middleware('api')
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
@@ -37,17 +38,17 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->trustProxies(at: '*');
-        
+
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'mandor.access' => \App\Http\Middleware\MandorAccessManagement::class,
         ]);
-        
+
         // Apply mandor access management globally to web routes
         $middleware->web(append: [
             \App\Http\Middleware\MandorAccessManagement::class,
         ]);
-        
+
         // CSRF exceptions
         $middleware->validateCsrfTokens(except: [
             'dashboard/mapsapi',

@@ -109,7 +109,6 @@
 
         let timeout = null;
 
-        // Config untuk multiple export URLs
         const exportConfigs = {
             'hpt-export': {
                 baseUrl: '{{ route('transaction.hpt.exportExcel') }}',
@@ -119,16 +118,14 @@
                 baseUrl: '{{ route('transaction.agronomi.exportExcel') }}',
                 buttonSelector: '[data-export="agronomi"]'
             }
-            // Tambahkan config lainnya di sini
         };
 
-        // Function untuk update semua URL export
         function updateAllExportUrls() {
             const startDate = startDateInput ? startDateInput.value : "";
             const endDate = endDateInput ? endDateInput.value : "";
             const search = searchInput ? searchInput.value : "";
 
-            // Loop melalui semua config export
+
             Object.keys(exportConfigs).forEach(configKey => {
                 const config = exportConfigs[configKey];
                 let exportUrl = config.baseUrl;
@@ -142,7 +139,6 @@
                     exportUrl += '?' + params.join('&');
                 }
 
-                // Update semua tombol export dengan config ini
                 document.querySelectorAll(config.buttonSelector).forEach(button => {
                     button.onclick = function() {
                         window.location.href = exportUrl;
@@ -151,8 +147,6 @@
             });
         }
 
-
-        // Tambahkan helper function ini di luar DOMContentLoaded, di script global
         function showTableLoading() {
             const tables = document.getElementById("tables");
             if (!tables) return;
@@ -171,7 +165,7 @@
                 </td>
             </tr>
         </tbody>`;
-            // Ganti tbody saja, biarkan thead tetap
+
             const existingTbody = tables.querySelector("tbody");
             if (existingTbody) existingTbody.outerHTML = overlay;
         }
@@ -211,13 +205,15 @@
                         pages.innerHTML = newPagination.innerHTML;
                     }
 
-                    // Update semua URL export setelah data berhasil di-load
+
                     updateAllExportUrls();
                 })
                 .catch(error => console.error("AJAX Fetch Error:", error));
         }
 
-        // Event listeners
+        window._triggerAjaxFetch = fetchData;
+
+
         if (searchInput) {
             searchInput.addEventListener("input", () => {
                 clearTimeout(timeout);
@@ -238,31 +234,24 @@
             });
         }
 
-        if (startDateInput) {
-            startDateInput.addEventListener("change", function() {
+        const applyFilterBtn = document.getElementById("btn-apply-filter");
+        if (applyFilterBtn) {
+            applyFilterBtn.addEventListener("click", function() {
                 fetchData();
                 updateAllExportUrls();
             });
         }
 
-        if (endDateInput) {
-            endDateInput.addEventListener("change", function() {
-                fetchData();
-                updateAllExportUrls();
-            });
-        }
-
-        // Inisialisasi URL export pertama kali
-        updateAllExportUrls();
 
         document.addEventListener("click", function(event) {
             const target = event.target.closest("#pagination-links a");
             if (target) {
                 event.preventDefault();
-                const url = target.href;
-                fetchData(url);
+                fetchData(target.href);
             }
         });
+
+        updateAllExportUrls();
     });
 </script>
 
@@ -291,7 +280,7 @@
 <script>
     window.addEventListener('scroll', function() {
         const scrollToTopButton = document.getElementById('scrollToTop');
-        if (!scrollToTopButton) return; // Langsung return kalau tidak ada
+        if (!scrollToTopButton) return;
 
         scrollToTopButton.style.display = (window.scrollY > 100) ? 'block' : 'none';
     });
