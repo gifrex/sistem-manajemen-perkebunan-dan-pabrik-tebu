@@ -88,6 +88,7 @@ class ApprovalDashboardController extends Controller
             'pendingLKH' => $pendingLKH,
             'pendingOther' => $pendingOther,
             'pendingAbsen' => $pendingAbsen,
+            'pendingUpah' => $pendingUpah,
             'userInfo' => $this->getUserInfo($currentUser),
             'filterDate' => $filterDate,
             'allDate' => $allDate,
