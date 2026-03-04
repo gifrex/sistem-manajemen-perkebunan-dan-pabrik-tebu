@@ -269,12 +269,12 @@
 
   <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
     <span class="inline-block w-4 h-4 rounded-full" style="background:#86efac;border:2px solid #fff;"></span>
-    <span>Sudah ada activity, belum selesai (fill hijau muda)</span>
+    <span>Activitas sudah dilakukan (fill hijau muda)</span>
   </div>
 
   <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
     <span class="inline-block w-4 h-4 rounded-full" style="background:#0f766e;border:2px solid #fff;"></span>
-    <span>Semua stage selesai (fill hijau tua)</span>
+    <span>Aktivitas selesai dilakukan (fill hijau tua)</span>
   </div>
 
   <!-- Ring legend -->
@@ -283,6 +283,11 @@
     <span>Ring orange: sudah ZPK &gt; 35 hari</span>
   </div>
   
+  <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
+    <span class="inline-block w-4 h-4 rounded-full" style="background:#3b82f6;border:2px solid #fff;"></span>
+    <span>Siap panen (ZPK 25–35 hari)</span>
+  </div>
+
   <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
     <span class="inline-block w-4 h-4 rounded-full" style="background:#fef3c7;border:3px solid #facc15;"></span>
     <span>Ring kuning: sudah ZPK &lt; 25 hari</span>
@@ -296,8 +301,9 @@
   <!-- Filter legend -->
   <div class="flex items-center gap-2 bg-white border rounded px-2 py-1 md:col-span-3">
     <span class="inline-block w-4 h-4 rounded-full" style="background:#000;border:2px solid #fff;opacity:.30;"></span>
-    <span>Hitam redup: plot tidak match dengan filter activity</span>
+    <span>Hitam redup: belum memenuhi kriteria aktivitas</span>
   </div>
+  
 </div>
 
 
@@ -450,9 +456,23 @@
 
     // 🔑 Tentukan warna plot berdasarkan umur, ZPK, dan panen
 function getPlotColor(d) {
-  // 1) kalau tidak ada activity sama sekali → cream
+  // 0) kalau tidak ada activity sama sekali → cream
   const hasAnyActivity = Array.isArray(d.activities) && d.activities.length > 0;
   if (!hasAnyActivity) return '#fef3c7';
+
+  // cari ZPK (4.2.1) dan hitung hari sejak ZPK
+  let daysSinceZpk = null;
+  const zpkAct = d.activities.find(a => a.code === '4.2.1');
+  if (zpkAct && zpkAct.tanggal) {
+    const zpkDate = new Date(zpkAct.tanggal);
+    const today   = new Date();
+    daysSinceZpk  = (today - zpkDate) / (1000 * 60 * 60 * 24);
+  }
+
+  // ✅ 1) siap panen → fill biru (ada activity + ZPK 25-35 hari)
+  if (daysSinceZpk !== null && daysSinceZpk > 25 && daysSinceZpk < 35) {
+    return '#3b82f6'; // biru (tailwind blue-500)
+  }
 
   // 2) kalau SEMUA activity sudah 100% → hijau tua
   const allDone = d.activities.every(a => (parseFloat(a.percentage || 0) >= 100));
