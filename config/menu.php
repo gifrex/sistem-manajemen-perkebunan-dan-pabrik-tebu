@@ -242,6 +242,11 @@ return [
                 'permission' => 'report.panentebu.view',
             ],
             [
+                'name' => 'Rekapitulasi Premi Target Kontraktor',
+                'route' => 'report.rekapitulasi-premi-report.index',
+                'permission' => 'report.rekapitulasipremi.view',
+            ],
+            [
                 'name' => 'Surat Jalan',
                 'route' => 'report.report-surat-jalan.index',
                 'permission' => 'report.suratjalan.view',
