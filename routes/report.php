@@ -6,6 +6,7 @@ use App\Http\Controllers\Report\AbsenReportController;
 use App\Http\Controllers\Report\BiayaPerPlotController;
 use App\Http\Controllers\Report\MasterLahanReportController;
 use App\Http\Controllers\Report\PanenTebuController;
+use App\Http\Controllers\Report\RekapPremiTargetKontraktorController;
 use App\Http\Controllers\Report\PanenTrackPlotReportController;
 use App\Http\Controllers\Report\PivotController;
 use App\Http\Controllers\Report\RekapUpahMingguanController;
@@ -78,6 +79,15 @@ Route::middleware('auth')->prefix('report')->name('report.')->group(function () 
         Route::get('panen-tebu-report/history-data', [PanenTebuController::class, 'getHistoryData'])->name('panen-tebu-report.history-data');
         Route::get('panen-tebu-report/show/{nodoc}', [PanenTebuController::class, 'show'])->name('panen-tebu-report.show');
         Route::delete('panen-tebu-report/{nodoc}', [PanenTebuController::class, 'destroy'])->name('panen-tebu-report.destroy');
+    });
+
+    // ============================================================================
+    // REKAP PREMI TARGET KONTRAKTOR
+    // ============================================================================
+    Route::middleware('permission:report.rekapitulasipremi.view')->group(function () {
+        Route::match(['GET', 'POST'], 'rekapitulasi-premi-report', [RekapPremiTargetKontraktorController::class, 'index'])->name('rekapitulasi-premi-report.index');
+        Route::post('rekapitulasi-premi-report/search', [RekapPremiTargetKontraktorController::class, 'search'])->name('rekapitulasi-premi-report.search');
+        Route::post('rekapitulasi-premi-report/proses', [RekapPremiTargetKontraktorController::class, 'proses'])->name('rekapitulasi-premi-report.proses');
     });
 
     // ============================================================================
