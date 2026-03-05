@@ -160,6 +160,10 @@ self.addEventListener('fetch', event => {
     if (!url.startsWith('http')) {
         return;
     }
+
+    if (url.includes('amazonaws.com')) {
+        return;
+    }
     
     // CRITICAL: Bypass SW untuk service worker file itself
     if (url.includes('/sw.js')) {
