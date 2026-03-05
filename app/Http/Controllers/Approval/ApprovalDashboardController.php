@@ -258,103 +258,11 @@ class ApprovalDashboardController extends Controller
 
     private function getPendingUpahWithDetails(string $companycode, object $currentUser, array $filters)
     {
-        $idjabatan = $currentUser->idjabatan;
-
-        $query = DB::table('approvaltransaction as at')
-            ->join('pembayaranupahhdr as p', function ($j) {
-                $j->on('p.transno', '=', 'at.transactionnumber')
-                    ->on('p.companycode', '=', 'at.companycode');
-            })
-            ->leftJoin('user as u', function ($j) {
-                $j->on('u.userid', '=', 'p.mandoruserid')
-                    ->on('u.companycode', '=', 'p.companycode');
-            })
-            ->leftJoin('activity as ac', 'ac.activitycode', '=', 'p.activitycode')
-            ->whereIn('at.approvalcategoryid', function ($q) use ($companycode) {
-                $q->select('id')
-                    ->from('approval')
-                    ->where('companycode', $companycode)
-                    ->where('category', 'Approval Pembayaran Upah Mingguan');
-            })
-            ->where('at.companycode', $companycode)
-            ->whereNull('at.approvalstatus')
-            ->where(function ($q) use ($idjabatan) {
-                $q->where(function ($q2) use ($idjabatan) {
-                    $q2->where('at.approval1idjabatan', $idjabatan)
-                        ->whereNull('at.approval1flag');
-                })->orWhere(function ($q2) use ($idjabatan) {
-                    $q2->where('at.approval2idjabatan', $idjabatan)
-                        ->where('at.approval1flag', '1')
-                        ->whereNull('at.approval2flag');
-                })->orWhere(function ($q2) use ($idjabatan) {
-                    $q2->where('at.approval3idjabatan', $idjabatan)
-                        ->where('at.approval2flag', '1')
-                        ->whereNull('at.approval3flag');
-                })->orWhere(function ($q2) use ($idjabatan) {
-                    $q2->where('at.approval4idjabatan', $idjabatan)
-                        ->where('at.approval3flag', '1')
-                        ->whereNull('at.approval4flag');
-                })->orWhere(function ($q2) use ($idjabatan) {
-                    $q2->where('at.approval5idjabatan', $idjabatan)
-                        ->where('at.approval4flag', '1')
-                        ->whereNull('at.approval5flag');
-                });
-            })
-            ->when(!($filters['all_date'] ?? true) && !empty($filters['date']), function ($q) use ($filters) {
-                $q->whereDate('p.generatedate', $filters['date']);
-            })
-            ->select(
-                'at.approvalno',
-                'at.transactionnumber as transno',
-                'at.jumlahapproval',
-                'at.approvalstatus',
-                'at.approval1idjabatan',
-                'at.approval1flag',
-                'at.approval2idjabatan',
-                'at.approval2flag',
-                'at.approval3idjabatan',
-                'at.approval3flag',
-                'at.approval4idjabatan',
-                'at.approval4flag',
-                'at.approval5idjabatan',
-                'at.approval5flag',
-                'p.startdate',
-                'p.enddate',
-                'p.grandtotal',
-                'p.jenistenagakerja',
-                'p.generatedate',
-                'ac.activityname',
-                'u.name as mandorname',
-                DB::raw("
-                    CASE
-                        WHEN at.approval1idjabatan = {$idjabatan} AND at.approval1flag IS NULL THEN 1
-                        WHEN at.approval2idjabatan = {$idjabatan} AND at.approval1flag = '1' AND at.approval2flag IS NULL THEN 2
-                        WHEN at.approval3idjabatan = {$idjabatan} AND at.approval2flag = '1' AND at.approval3flag IS NULL THEN 3
-                        WHEN at.approval4idjabatan = {$idjabatan} AND at.approval3flag = '1' AND at.approval4flag IS NULL THEN 4
-                        WHEN at.approval5idjabatan = {$idjabatan} AND at.approval4flag = '1' AND at.approval5flag IS NULL THEN 5
-                        ELSE NULL
-                    END as approval_level
-                ")
-            )
-            ->orderByDesc('p.generatedate')
-            ->get();
-
-        if ($query->isNotEmpty()) {
-            $transNos = $query->pluck('transno')->toArray();
-            $workerCounts = DB::table('pembayaranupahlst')
-                ->whereIn('transno', $transNos)
-                ->where('companycode', $companycode)
-                ->groupBy('transno')
-                ->select('transno', DB::raw('COUNT(DISTINCT tenagakerjaid) as totalworkers'))
-                ->pluck('totalworkers', 'transno');
-
-            foreach ($query as $item) {
-                $item->totalworkers = $workerCounts[$item->transno] ?? 0;
-                $item->jenis_label = $item->jenistenagakerja == 1 ? 'Harian' : 'Borongan';
-            }
-        }
-
-        return $query;
+        return $this->upahRepository->getPendingApprovals(
+            $companycode,
+            $currentUser->idjabatan,
+            $filters
+        );
     }
 
     private function setOtherDetail($otherDetail)

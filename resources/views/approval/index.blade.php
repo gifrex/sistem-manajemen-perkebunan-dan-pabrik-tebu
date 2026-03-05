@@ -502,7 +502,8 @@
                                             </svg>
                                         </div>
                                         <div>
-                                            <p class="font-semibold text-slate-900 text-sm">{{ $upah->transno }}</p>
+                                            <button type="button" @click="openUpahDetail('{{ $upah->transno }}')"
+                                                class="font-semibold text-slate-900 hover:text-blue-600 text-sm transition-colors text-left">{{ $upah->transno }}</button>
                                             <div class="flex items-center gap-2 mt-0.5">
                                                 <span class="text-xs text-slate-400">Generate:
                                                     {{ \Carbon\Carbon::parse($upah->generatedate)->format('d M Y') }}</span>
@@ -606,6 +607,17 @@
                                             Decline
                                         </button>
                                     </form>
+                                    <button type="button" @click="openUpahDetail('{{ $upah->transno }}')"
+                                        class="inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700 text-sm font-medium rounded-lg border border-slate-200 transition-colors active:scale-[0.98]"
+                                        title="Lihat Detail">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    </button>
                                 </div>
 
                             </div>
@@ -847,18 +859,61 @@
             </div>
 
         </div>
+
+        @include('approval.upahmingguan.detail')
     </div>
 
     <script>
+        const upahDetailRouteTemplate = '{{ route('approval.upah-mingguan.detail', ['transno' => '__TRANSNO__']) }}';
+
         function approvalData() {
             return {
-                activeTab: '{{ $pendingRKH->count() > 0 ? 'rkh' : ($pendingLKH->count() > 0 ? 'lkh' : ($pendingAbsen->count() > 0 ? 'absen' : ($pendingOther->count() > 0 ? 'other' : 'rkh'))) }}',
+                activeTab: '{{ $pendingRKH->count() > 0 ? 'rkh' : ($pendingLKH->count() > 0 ? 'lkh' : ($pendingAbsen->count() > 0 ? 'absen' : ($pendingUpah->count() > 0 ? 'upah' : ($pendingOther->count() > 0 ? 'other' : 'rkh')))) }}',
                 rkhCount: {{ $pendingRKH->count() }},
                 lkhCount: {{ $pendingLKH->count() }},
                 absenCount: {{ $pendingAbsen->count() }},
                 upah: {{ $pendingUpah->count() }},
                 otherCount: {{ $pendingOther->count() }},
                 allDateChecked: {{ $allDate ? 'true' : 'false' }},
+
+                upahModal: {
+                    open: false,
+                    loading: false,
+                    error: null,
+                    transno: null,
+                    data: null,
+                },
+
+                openUpahDetail(transno) {
+                    this.upahModal.open = true;
+                    this.upahModal.loading = true;
+                    this.upahModal.error = null;
+                    this.upahModal.data = null;
+                    this.upahModal.transno = transno;
+
+                    const url = upahDetailRouteTemplate.replace('__TRANSNO__', encodeURIComponent(transno));
+
+                    fetch(url, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(r => r.json())
+                        .then(json => {
+                            if (json.success) {
+                                this.upahModal.data = json;
+                            } else {
+                                this.upahModal.error = json.message || 'Gagal memuat data';
+                            }
+                        })
+                        .catch(() => {
+                            this.upahModal.error = 'Terjadi kesalahan jaringan';
+                        })
+                        .finally(() => {
+                            this.upahModal.loading = false;
+                        });
+                },
             };
         }
     </script>
