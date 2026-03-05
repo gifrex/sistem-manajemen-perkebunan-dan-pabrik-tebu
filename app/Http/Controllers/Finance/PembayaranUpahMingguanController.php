@@ -99,6 +99,7 @@ class PembayaranUpahMingguanController extends Controller
                 'p.enddate',
                 'p.generatedate',
                 'p.mandoruserid',
+                'p.approvalstatus as approval_status',
                 'ac.activityname',
                 'u.name as mandorname'
             )
@@ -156,6 +157,22 @@ class PembayaranUpahMingguanController extends Controller
                 ->select('ph.transno', DB::raw('COUNT(DISTINCT lh.lkhno) as lkhcount'))
                 ->pluck('lkhcount', 'transno');
 
+            // ── Approval progress dari approvaltransaction ───────────────────────
+            $approvalRows = DB::table('approvaltransaction')
+                ->whereIn('transactionnumber', $transNos)
+                ->where('companycode', $companycode)
+                ->select(
+                    'transactionnumber',
+                    'jumlahapproval',
+                    'approval1flag',
+                    'approval2flag',
+                    'approval3flag',
+                    'approval4flag',
+                    'approval5flag',
+                )
+                ->get()
+                ->keyBy('transactionnumber');
+
             foreach ($rum as $idx => $item) {
                 $item->no = ($rum->currentPage() - 1) * $rum->perPage() + $idx + 1;
                 $item->plots = $plots[$item->transno] ?? '';
@@ -164,6 +181,23 @@ class PembayaranUpahMingguanController extends Controller
                 $item->grandtotal = $item->grandtotal == 0
                     ? '-'
                     : Number::currency($item->grandtotal, 'IDR', 'id');
+                // approval_status sudah diambil dari p.approvalstatus: APPROVED / DRAFT / DECLINED
+                $item->approval_status = $item->approval_status ?? 'DRAFT';
+
+                // Hitung progress approval
+                $aRow = $approvalRows[$item->transno] ?? null;
+                if ($aRow) {
+                    $total = intval($aRow->jumlahapproval ?? 0);
+                    $done = 0;
+                    for ($i = 1; $i <= 5; $i++) {
+                        $col = "approval{$i}flag";
+                        if (($aRow->$col ?? null) === '1')
+                            $done++;
+                    }
+                    $item->approval_progress = "{$done}/{$total}";
+                } else {
+                    $item->approval_progress = null;
+                }
             }
         }
 
@@ -194,7 +228,7 @@ class PembayaranUpahMingguanController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // GENERATE
+    // GENERATE — validasi, pre-check, dan persiapan data
     // ─────────────────────────────────────────────────────────────────────────────
     public function generate(Request $request)
     {
@@ -217,11 +251,7 @@ class PembayaranUpahMingguanController extends Controller
         $existing = DB::table('pembayaranupahhdr')
             ->where('companycode', $companycode)
             ->where('jenistenagakerja', $tk)
-            ->where(
-                fn($q) =>
-                $q->whereDate('startdate', '<=', $endDate)
-                    ->whereDate('enddate', '>=', $startDate)
-            )
+            ->where(fn($q) => $q->whereDate('startdate', '<=', $endDate)->whereDate('enddate', '>=', $startDate))
             ->select('transno', 'startdate', 'enddate')
             ->first();
 
@@ -281,20 +311,52 @@ class PembayaranUpahMingguanController extends Controller
                 ->get()->groupBy('lkhno');
         }
 
-        $resolveUpah = function (string $activitycode, string $lkhdate) use ($upahBoronganAll): float {
-            $rows = $upahBoronganAll[$activitycode] ?? collect();
-            $match = $rows->first(
-                fn($row) =>
-                $row->effectivedate <= $lkhdate &&
-                (is_null($row->enddate) || $row->enddate >= $lkhdate)
-            );
-            return $match ? floatval($match->amount) : 0.0;
-        };
+        $lkhByGroup = $lkhList->groupBy(fn($l) => $l->mandorid . '|' . $l->activitycode);
 
+        try {
+            $generatedNos = $this->executeGenerate(
+                $lkhByGroup,
+                $workersByLkh,
+                $plotsByLkh,
+                $upahBoronganAll,
+                $companycode,
+                $tenagakerjarum,
+                $startDate,
+                $endDate,
+                $tk,
+                $userid
+            );
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
+        }
+
+        $count = count($generatedNos);
+        $noList = implode(', ', $generatedNos);
+        return response()->json([
+            'success' => true,
+            'message' => "Generate berhasil! {$count} transaksi dibuat: <strong>{$noList}</strong>",
+            'transno' => $generatedNos,
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // EXECUTE GENERATE — DB transaction: insert hdr, lst, dan approval
+    // ─────────────────────────────────────────────────────────────────────────────
+    private function executeGenerate(
+        $lkhByGroup,
+        $workersByLkh,
+        $plotsByLkh,
+        $upahBoronganAll,
+        string $companycode,
+        string $tenagakerjarum,
+        string $startDate,
+        string $endDate,
+        int $tk,
+        string $userid
+    ): array {
         DB::beginTransaction();
         try {
             $now = Carbon::now();
-            $lkhByGroup = $lkhList->groupBy(fn($l) => $l->mandorid . '|' . $l->activitycode);
             $generatedNos = [];
             $usedTransnos = [];
 
@@ -318,9 +380,14 @@ class PembayaranUpahMingguanController extends Controller
                             ];
                         }
                     } else {
-                        $upah = $resolveUpah($lkh->activitycode, $lkh->lkhdate);
+                        $upahRows = $upahBoronganAll[$activitycode] ?? collect();
+                        $upah = $upahRows->first(
+                            fn($row) => $row->effectivedate <= $lkh->lkhdate &&
+                            (is_null($row->enddate) || $row->enddate >= $lkh->lkhdate)
+                        );
+                        $upahAmount = $upah ? floatval($upah->amount) : 0.0;
                         foreach ($plotsByLkh[$lkh->lkhno] ?? [] as $p) {
-                            $total = $upah * floatval($p->luashasil ?? 0);
+                            $total = $upahAmount * floatval($p->luashasil ?? 0);
                             $grandTotal += $total;
                             $listInserts[] = [
                                 'transno' => $transno,
@@ -366,17 +433,10 @@ class PembayaranUpahMingguanController extends Controller
             }
 
             DB::commit();
-
-            $count = count($generatedNos);
-            $noList = implode(', ', $generatedNos);
-            return response()->json([
-                'success' => true,
-                'message' => "Generate berhasil! {$count} transaksi dibuat: <strong>{$noList}</strong>",
-                'transno' => $generatedNos,
-            ]);
+            return $generatedNos;
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
+            throw $e;
         }
     }
 
@@ -387,9 +447,12 @@ class PembayaranUpahMingguanController extends Controller
     {
         $companycode = session('companycode');
 
-        $header = DB::table('pembayaranupahhdr')
-            ->where('transno', $transno)
-            ->where('companycode', $companycode)
+        $header = DB::table('pembayaranupahhdr as p')
+            ->leftJoin('activity as ac', 'ac.activitycode', '=', 'p.activitycode')
+            ->leftJoin('user as u', fn($j) => $j->on('u.userid', '=', 'p.mandoruserid')->on('u.companycode', '=', 'p.companycode'))
+            ->where('p.transno', $transno)
+            ->where('p.companycode', $companycode)
+            ->select('p.*', 'ac.activityname', 'u.name as mandorname')
             ->first();
 
         if (!$header) {
@@ -564,13 +627,14 @@ class PembayaranUpahMingguanController extends Controller
             $filterMandors = array_filter(explode(',', $filterMandors));
         }
 
-        // ── 1. Headers ──────────────────────────────────────────────────────────
+        // ── 1. Headers — hanya yang sudah APPROVED ──────────────────────────────
         $headers = DB::table('pembayaranupahhdr as p')
             ->leftJoin('user as u', fn($j) => $j->on('u.userid', '=', 'p.mandoruserid')
                 ->on('u.companycode', '=', 'p.companycode'))
             ->leftJoin('activity as ac', 'ac.activitycode', '=', 'p.activitycode')
             ->where('p.companycode', $companycode)
             ->where('p.jenistenagakerja', $tk)
+            ->where('p.approvalstatus', 'APPROVED')
             ->when($startDate, fn($q) => $q->whereDate('p.generatedate', '>=', $startDate))
             ->when($endDate, fn($q) => $q->whereDate('p.generatedate', '<=', $endDate))
             ->when(!empty($filterMandors), fn($q) => $q->whereIn('p.mandoruserid', $filterMandors))
@@ -610,10 +674,8 @@ class PembayaranUpahMingguanController extends Controller
                 ->orderBy('pl.transno')->orderBy('pl.tanggal')->orderBy('tkj.nama')
                 ->get()
                 ->groupBy('transno');
-
-            $upahMap = collect(); // tidak dipakai pada harian
         } else {
-            // Borongan: tanpa join extra, upah di-resolve di PHP
+            // Borongan: tanpa join extra
             $detailMap = DB::table('pembayaranupahlst as pl')
                 ->whereIn('pl.transno', $transNos)
                 ->where('pl.companycode', $companycode)
@@ -621,16 +683,6 @@ class PembayaranUpahMingguanController extends Controller
                 ->orderBy('pl.transno')->orderBy('pl.tenagakerjaid')
                 ->get()
                 ->groupBy('transno');
-
-            // Semua upah borongan yang relevan, dikelompokkan per activitycode
-            $activitycodes = $headers->pluck('activitycode')->unique()->toArray();
-            $upahMap = DB::table('upahborongan')
-                ->where('companycode', $companycode)
-                ->whereIn('activitycode', $activitycodes)
-                ->select('activitycode', 'amount', 'effectivedate', 'enddate')
-                ->orderByDesc('effectivedate')
-                ->get()
-                ->groupBy('activitycode');
         }
 
         // ── 3. Build & stream spreadsheet ───────────────────────────────────────
@@ -639,7 +691,7 @@ class PembayaranUpahMingguanController extends Controller
             . '_sd_' . ($endDate ?? date('Ymd')) . '.xlsx';
 
         return response()->streamDownload(
-            fn() => $this->buildSpreadsheet($headers, $detailMap, $upahMap, $tk, $tenagakerjarum, $startDate, $endDate),
+            fn() => $this->buildSpreadsheet($headers, $detailMap, $tk, $tenagakerjarum, $startDate, $endDate),
             $filename,
             [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -655,7 +707,6 @@ class PembayaranUpahMingguanController extends Controller
     private function buildSpreadsheet(
         $headers,
         $detailMap,
-        $upahMap,
         int $tk,
         string $tenagakerjarum,
         ?string $startDate,
@@ -766,50 +817,48 @@ class PembayaranUpahMingguanController extends Controller
             $subtotal = 0;
             $no = 1;
             $items = $detailMap[$transno] ?? collect();
+            $dataStartRow = $row;
+            $rowData = [];
 
             if ($isHarian) {
                 foreach ($items as $item) {
                     $total = floatval($item->total ?? 0);
                     $subtotal += $total;
-                    $sheet->fromArray([
+                    $rowData[] = [
                         $no++,
                         $item->tenagakerjaid,
                         $item->namaworker ?? '-',
                         Carbon::parse($item->tanggal)->format('d-m-Y'),
-                        $total
-                    ], null, "A{$row}");
-                    $sheet->getStyle("E{$row}")->getNumberFormat()->setFormatCode($numFmt);
-                    $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                    $sheet->getStyle("D{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                    if ($no % 2 === 0)
-                        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($sStripe);
-                    $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($sBorderThin);
-                    $row++;
+                        $total,
+                    ];
                 }
             } else {
-                $upahRows = $upahMap[$hdr->activitycode] ?? collect();
                 foreach ($items as $item) {
-                    $matched = $upahRows->first(
-                        fn($r) =>
-                        $r->effectivedate <= $item->tanggal &&
-                        (is_null($r->enddate) || $r->enddate >= $item->tanggal)
-                    );
                     $total = floatval($item->total ?? 0);
                     $subtotal += $total;
-                    $sheet->fromArray([
+                    $rowData[] = [
                         $no++,
                         $item->plot,
                         Carbon::parse($item->tanggal)->format('d-m-Y'),
-                        $total
-                    ], null, "A{$row}");
-                    $sheet->getStyle("D{$row}")->getNumberFormat()->setFormatCode($numFmt);
-                    $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                    $sheet->getStyle("C{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                    if ($no % 2 === 0)
-                        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($sStripe);
-                    $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($sBorderThin);
-                    $row++;
+                        $total,
+                    ];
                 }
+            }
+
+            if ($rowData) {
+                $sheet->fromArray($rowData, null, "A{$row}");
+                $dataEndRow = $row + count($rowData) - 1;
+                // Apply styles ke seluruh range sekaligus (jauh lebih cepat dari per-baris)
+                $sheet->getStyle("A{$row}:{$lastCol}{$dataEndRow}")->applyFromArray($sBorderThin);
+                $sheet->getStyle("{$totalCol}{$row}:{$totalCol}{$dataEndRow}")->getNumberFormat()->setFormatCode($numFmt);
+                $sheet->getStyle("A{$row}:A{$dataEndRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $dateCol = $isHarian ? 'D' : 'C';
+                $sheet->getStyle("{$dateCol}{$row}:{$dateCol}{$dataEndRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                // Stripe setiap baris genap
+                for ($r = $dataStartRow + 1; $r <= $dataEndRow; $r += 2) {
+                    $sheet->getStyle("A{$r}:{$lastCol}{$r}")->applyFromArray($sStripe);
+                }
+                $row = $dataEndRow + 1;
             }
 
             // Subtotal
