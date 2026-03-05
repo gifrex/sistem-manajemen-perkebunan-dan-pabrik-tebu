@@ -7,15 +7,25 @@ use App\Repositories\Approval\UpahMingguanApprovalRepository;
 use App\Services\Approval\UpahMingguanApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 
+/**
+ * UpahMingguanApprovalController
+ *
+ * Thin controller - only handles HTTP layer
+ * All business logic in UpahMingguanApprovalService
+ */
 class UpahMingguanApprovalController extends Controller
 {
+    protected $service;
+    protected $repository;
+
     public function __construct(
-        protected UpahMingguanApprovalService $service,
-        protected UpahMingguanApprovalRepository $repository
+        UpahMingguanApprovalService $service,
+        UpahMingguanApprovalRepository $repository
     ) {
+        $this->service = $service;
+        $this->repository = $repository;
     }
 
     /**
@@ -31,138 +41,118 @@ class UpahMingguanApprovalController extends Controller
         ]);
 
         $companycode = Session::get('companycode');
-        $user = Auth::user();
+        $currentUser = Auth::user();
 
         $result = $this->service->processApproval(
             $request->transno,
             $companycode,
             (int) $request->level,
             $request->action,
-            ['userid' => $user->userid, 'idjabatan' => $user->idjabatan]
+            [
+                'userid' => $currentUser->userid,
+                'idjabatan' => $currentUser->idjabatan,
+            ]
         );
 
-        if ($request->expectsJson()) {
-            return response()->json($result, $result['success'] ? 200 : 422);
+        if ($result['success']) {
+            return back()->with('success', $result['message']);
+        } else {
+            return back()->with('error', $result['message']);
         }
-
-        return back()->with($result['success'] ? 'success' : 'error', $result['message']);
     }
 
     /**
-     * Get approval detail (JSON)
+     * Get approval detail
      * GET /approval/upah-mingguan/{transno}/detail
+     * Supports JSON (for modal) when Accept: application/json
      */
     public function detail(string $transno)
     {
         $companycode = Session::get('companycode');
+
         $result = $this->service->getApprovalDetail($transno, $companycode);
 
         if (!$result['success']) {
-            return response()->json($result, 404);
+            if (request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $result['message']], 404);
+            }
+            return back()->with('error', $result['message']);
         }
 
-        return response()->json($result);
-    }
+        if (request()->wantsJson()) {
+            $data = $result['data'];
+            $header = $data['header'];
+            $history = $data['history'];
+            $workers = $data['workers'];
+            $status = $data['status'];
 
-    /**
-     * List pending approvals for current user's jabatan
-     * GET /approval/upah-mingguan
-     */
-    public function index(Request $request)
-    {
-        $companycode = Session::get('companycode');
-        $user = Auth::user();
-        $idjabatan = $user->idjabatan;
+            // Format workers for JSON
+            $workersFormatted = $workers->map(function ($w) {
+                return [
+                    'tenagakerjaid' => $w->tenagakerjaid,
+                    'worker_name' => $w->worker_name ?? '-',
+                    'totalupah' => $w->totalupah ?? 0,
+                    'totalupah_fmt' => \Illuminate\Support\Number::currency($w->totalupah ?? 0, 'IDR', 'id'),
+                ];
+            });
 
-        // Find which level this jabatan handles
-        $pending = DB::table('approvaltransaction as at')
-            ->join('pembayaranupahhdr as p', fn($j) =>
-                $j->on('p.transno', '=', 'at.transactionnumber')
-                    ->on('p.companycode', '=', 'at.companycode'))
-            ->leftJoin('user as u', fn($j) =>
-                $j->on('u.userid', '=', 'p.mandoruserid')
-                    ->on('u.companycode', '=', 'p.companycode'))
-            ->leftJoin('activity as ac', 'ac.activitycode', '=', 'p.activitycode')
-            ->where('at.companycode', $companycode)
-            ->where('at.approvalstatus', null) // still pending
-            ->where(function ($q) use ($idjabatan) {
-                // Level 1
-                $q->where(fn($q2) =>
-                    $q2->where('at.approval1idjabatan', $idjabatan)
-                        ->whereNull('at.approval1flag'))
-                    // Level 2
-                    ->orWhere(fn($q2) =>
-                        $q2->where('at.approval2idjabatan', $idjabatan)
-                            ->where('at.approval1flag', '1')
-                            ->whereNull('at.approval2flag'))
-                    // Level 3
-                    ->orWhere(fn($q2) =>
-                        $q2->where('at.approval3idjabatan', $idjabatan)
-                            ->where('at.approval2flag', '1')
-                            ->whereNull('at.approval3flag'))
-                    // Level 4
-                    ->orWhere(fn($q2) =>
-                        $q2->where('at.approval4idjabatan', $idjabatan)
-                            ->where('at.approval3flag', '1')
-                            ->whereNull('at.approval4flag'))
-                    // Level 5
-                    ->orWhere(fn($q2) =>
-                        $q2->where('at.approval5idjabatan', $idjabatan)
-                            ->where('at.approval4flag', '1')
-                            ->whereNull('at.approval5flag'));
-            })
-            ->select(
-                'at.approvalno',
-                'at.transactionnumber as transno',
-                'at.jumlahapproval',
-                'at.approvalstatus',
-                'at.approval1flag',
-                'at.approval2flag',
-                'at.approval3flag',
-                'at.approval4flag',
-                'at.approval5flag',
-                'at.approval1idjabatan',
-                'at.approval2idjabatan',
-                'at.approval3idjabatan',
-                'at.approval4idjabatan',
-                'at.approval5idjabatan',
-                'p.startdate',
-                'p.enddate',
-                'p.grandtotal',
-                'p.jenistenagakerja',
-                'ac.activityname',
-                'u.name as mandorname'
-            )
-            ->orderByDesc('at.createdat')
-            ->paginate(15);
+            // Format history for JSON
+            $historyData = null;
+            if ($history) {
+                $levels = [];
+                for ($i = 1; $i <= ($history->jumlahapproval ?? 0); $i++) {
+                    $levels[] = [
+                        'level' => $i,
+                        'jabatan' => $history->{"jabatan{$i}_name"} ?? '-',
+                        'user' => $history->{"approval{$i}_user_name"} ?? null,
+                        'flag' => $history->{"approval{$i}flag"} ?? null,
+                        'date' => $history->{"approval{$i}date"} ?? null,
+                    ];
+                }
+                $historyData = [
+                    'jumlahapproval' => $history->jumlahapproval,
+                    'levels' => $levels,
+                ];
+            }
 
-        // Resolve which level is actionable for current user
-        foreach ($pending as $row) {
-            $row->actionable_level = $this->resolveActionableLevel($row, $idjabatan);
+            return response()->json([
+                'success' => true,
+                'trx' => $data['trx'],
+                'header' => $header,
+                'history' => $historyData,
+                'workers' => $workersFormatted,
+                'status' => $status,
+            ]);
         }
 
-        return view('approval.upahmingguan.index', [
-            'title' => 'Approval Pembayaran Upah Mingguan',
+        return view('approval.upahmingguan.detail', [
+            'title' => 'Upah Mingguan Approval Detail',
             'navbar' => 'Approval',
-            'nav' => 'Upah Mingguan',
-            'pending' => $pending,
+            'nav' => 'Upah Mingguan Approval',
+            'data' => $result['data'],
         ]);
     }
 
-    private function resolveActionableLevel(object $row, int $idjabatan): ?int
+    /**
+     * Get approval history (JSON)
+     * GET /approval/upah-mingguan/{transno}/history
+     */
+    public function history(string $transno)
     {
-        for ($i = 1; $i <= ($row->jumlahapproval ?? 5); $i++) {
-            $jabCol = "approval{$i}idjabatan";
-            $flagCol = "approval{$i}flag";
-            if (($row->$jabCol ?? null) == $idjabatan && ($row->$flagCol ?? null) === null) {
-                // Make sure previous level is approved
-                if ($i === 1)
-                    return 1;
-                $prev = "approval" . ($i - 1) . "flag";
-                if (($row->$prev ?? null) === '1')
-                    return $i;
-            }
+        $companycode = Session::get('companycode');
+
+        $history = $this->repository->getApprovalHistory($companycode, $transno);
+
+        if (!$history) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data approval tidak ditemukan',
+            ], 404);
         }
-        return null;
+
+        return response()->json([
+            'success' => true,
+            'data' => $history,
+        ]);
     }
 }

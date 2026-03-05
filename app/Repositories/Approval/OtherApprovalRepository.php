@@ -26,34 +26,35 @@ class OtherApprovalRepository
     {
         $query = DB::table('approvaltransaction as at')
             ->join('approval as am', 'at.approvalcategoryid', '=', 'am.id')
-            ->leftJoin('plottransaction as pt', function($join) use ($companycode) {
+            ->leftJoin('plottransaction as pt', function ($join) use ($companycode) {
                 $join->on('at.transactionnumber', '=', 'pt.transactionnumber')
                     ->where('pt.companycode', '=', $companycode);
             })
-            ->leftJoin('openrework as rw', function($join) use ($companycode) {
+            ->leftJoin('openrework as rw', function ($join) use ($companycode) {
                 $join->on('at.transactionnumber', '=', 'rw.transactionnumber')
                     ->where('rw.companycode', '=', $companycode);
             })
             ->leftJoin('user as u', 'at.inputby', '=', 'u.userid')
             ->where('at.companycode', $companycode)
-            ->where(function($query) use ($idjabatan) {
+            ->where('am.category', '!=', 'Approval Pembayaran Upah Mingguan')
+            ->where(function ($query) use ($idjabatan) {
                 // Level 1: Waiting for first approval
-                $query->where(function($q) use ($idjabatan) {
+                $query->where(function ($q) use ($idjabatan) {
                     $q->where('at.approval1idjabatan', $idjabatan)
-                      ->whereNull('at.approval1flag');
+                        ->whereNull('at.approval1flag');
                 })
-                // Level 2: Level 1 approved, waiting for level 2
-                ->orWhere(function($q) use ($idjabatan) {
+                    // Level 2: Level 1 approved, waiting for level 2
+                    ->orWhere(function ($q) use ($idjabatan) {
                     $q->where('at.approval2idjabatan', $idjabatan)
-                      ->where('at.approval1flag', '1')
-                      ->whereNull('at.approval2flag');
+                        ->where('at.approval1flag', '1')
+                        ->whereNull('at.approval2flag');
                 })
-                // Level 3: Level 1 & 2 approved, waiting for level 3
-                ->orWhere(function($q) use ($idjabatan) {
+                    // Level 3: Level 1 & 2 approved, waiting for level 3
+                    ->orWhere(function ($q) use ($idjabatan) {
                     $q->where('at.approval3idjabatan', $idjabatan)
-                      ->where('at.approval1flag', '1')
-                      ->where('at.approval2flag', '1')
-                      ->whereNull('at.approval3flag');
+                        ->where('at.approval1flag', '1')
+                        ->where('at.approval2flag', '1')
+                        ->whereNull('at.approval3flag');
                 });
             });
 
@@ -64,30 +65,30 @@ class OtherApprovalRepository
         }
 
         return $query->select([
-                'at.*',
-                'am.category',
-                'u.name as inputby_name',
-                // Split/Merge fields
-                'pt.transactiontype',
-                'pt.sourceplots',
-                'pt.resultplots',
-                'pt.sourcebatches',
-                'pt.resultbatches',
-                'pt.areamap',
-                'pt.dominantplot',
-                'pt.splitmergedreason',
-                // Open Rework fields
-                'rw.plots as rework_plots',
-                'rw.activities as rework_activities',
-                'rw.reason as rework_reason',
-                DB::raw("DATE_FORMAT(COALESCE(pt.transactiondate, rw.requestdate), '%d/%m/%Y') as formatted_date"),
-                DB::raw('CASE
-                    WHEN at.approval1idjabatan = '.$idjabatan.' AND at.approval1flag IS NULL THEN 1
-                    WHEN at.approval2idjabatan = '.$idjabatan.' AND at.approval1flag = "1" AND at.approval2flag IS NULL THEN 2
-                    WHEN at.approval3idjabatan = '.$idjabatan.' AND at.approval1flag = "1" AND at.approval2flag = "1" AND at.approval3flag IS NULL THEN 3
+            'at.*',
+            'am.category',
+            'u.name as inputby_name',
+            // Split/Merge fields
+            'pt.transactiontype',
+            'pt.sourceplots',
+            'pt.resultplots',
+            'pt.sourcebatches',
+            'pt.resultbatches',
+            'pt.areamap',
+            'pt.dominantplot',
+            'pt.splitmergedreason',
+            // Open Rework fields
+            'rw.plots as rework_plots',
+            'rw.activities as rework_activities',
+            'rw.reason as rework_reason',
+            DB::raw("DATE_FORMAT(COALESCE(pt.transactiondate, rw.requestdate), '%d/%m/%Y') as formatted_date"),
+            DB::raw('CASE
+                    WHEN at.approval1idjabatan = ' . $idjabatan . ' AND at.approval1flag IS NULL THEN 1
+                    WHEN at.approval2idjabatan = ' . $idjabatan . ' AND at.approval1flag = "1" AND at.approval2flag IS NULL THEN 2
+                    WHEN at.approval3idjabatan = ' . $idjabatan . ' AND at.approval1flag = "1" AND at.approval2flag = "1" AND at.approval3flag IS NULL THEN 3
                     ELSE 0
                 END as approval_level')
-            ])
+        ])
             ->orderBy('at.createdat', 'desc')
             ->get();
     }
@@ -185,8 +186,8 @@ class OtherApprovalRepository
                 return $approval->approval1flag === '1' && $approval->approval2flag === '1';
             case 3:
                 return $approval->approval1flag === '1' &&
-                       $approval->approval2flag === '1' &&
-                       $approval->approval3flag === '1';
+                    $approval->approval2flag === '1' &&
+                    $approval->approval3flag === '1';
             default:
                 return false;
         }
@@ -312,10 +313,10 @@ class OtherApprovalRepository
             ->where('transactionnumber', $transactionnumber)
             ->first();
     }
- 
-    public function getApprovalUseMaterialDetail( $companycode, $approvalno )
+
+    public function getApprovalUseMaterialDetail($companycode, $approvalno)
     {
-      $joinmaterial = DB::select('SELECT a.companycode,a.rkhno,a.itemseq,a.lkhno,a.plot,d.totalluas, u.name,
+        $joinmaterial = DB::select('SELECT a.companycode,a.rkhno,a.itemseq,a.lkhno,a.plot,d.totalluas, u.name,
                a.itemcode AS old_itemcode,b.itemcode AS new_itemcode,
                c.itemname AS old_itemname, b.itemname AS new_itemname,
                a.qty AS old_qty,b.qty AS new_qty,
@@ -331,7 +332,7 @@ class OtherApprovalRepository
         LEFT JOIN lkhhdr lh ON lh.companycode = a.companycode AND lh.lkhno = a.lkhno
         LEFT JOIN user u ON u.userid = lh.mandorid
         WHERE a.companycode= ?  AND b.approvalno= ?
-        ORDER BY a.itemseq',[ $companycode, $approvalno ]);
-      return $joinmaterial;
+        ORDER BY a.itemseq', [$companycode, $approvalno]);
+        return $joinmaterial;
     }
 }

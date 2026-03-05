@@ -2,20 +2,22 @@
 
 // routes/approval.php
 
+use App\Http\Controllers\Approval\AbsenApprovalController;
 use App\Http\Controllers\Approval\ApprovalDashboardController;
-use App\Http\Controllers\Approval\RkhApprovalController;
 use App\Http\Controllers\Approval\LkhApprovalController;
 use App\Http\Controllers\Approval\OtherApprovalController;
-use App\Http\Controllers\Approval\AbsenApprovalController;
+use App\Http\Controllers\Approval\RkhApprovalController;
+use App\Http\Controllers\Approval\UpahMingguanApprovalController;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->prefix('approval')->name('approval.')->group(function () {
-    
+
     // ============================================================================
     // APPROVAL DASHBOARD
     // Unified dashboard untuk semua jenis approval
     // ============================================================================
     Route::get('/', [ApprovalDashboardController::class, 'index'])->name('index');
-    
+
     // ============================================================================
     // RKH APPROVAL
     // High-frequency approval with embedded fields
@@ -25,7 +27,7 @@ Route::middleware('auth')->prefix('approval')->name('approval.')->group(function
         Route::get('/{rkhno}/detail', [RkhApprovalController::class, 'detail'])->name('detail');
         Route::get('/{rkhno}/history', [RkhApprovalController::class, 'history'])->name('history');
     });
-    
+
     // ============================================================================
     // LKH APPROVAL
     // High-frequency approval with embedded fields
@@ -35,7 +37,7 @@ Route::middleware('auth')->prefix('approval')->name('approval.')->group(function
         Route::get('/{lkhno}/detail', [LkhApprovalController::class, 'detail'])->name('detail');
         Route::get('/{lkhno}/history', [LkhApprovalController::class, 'history'])->name('history');
     });
-    
+
     // ============================================================================
     // OTHER APPROVALS (Generic)
     // Low-frequency approvals using approvaltransaction table
@@ -46,7 +48,7 @@ Route::middleware('auth')->prefix('approval')->name('approval.')->group(function
         Route::get('/{approvalno}/detail', [OtherApprovalController::class, 'detail'])->name('detail');
         Route::get('/{approvalno}/history', [OtherApprovalController::class, 'history'])->name('history');
     });
-    
+
     // ============================================================================
     // ABSEN APPROVAL
     // Attendance approval (header + individual foto approval)
@@ -57,7 +59,17 @@ Route::middleware('auth')->prefix('approval')->name('approval.')->group(function
         Route::get('/{absenno}/detail', [AbsenApprovalController::class, 'detail'])->name('detail');
         Route::get('/{absenno}/history', [AbsenApprovalController::class, 'history'])->name('history');
     });
-    
+
+    // ============================================================================
+    // UPAH MINGGUAN APPROVAL
+    // Weekly Paid approval
+    // ============================================================================
+    Route::prefix('upah-mingguan')->name('upah-mingguan.')->group(function () {
+        Route::post('/process', [UpahMingguanApprovalController::class, 'process'])->name('process');
+        Route::get('/{transno}/detail', [UpahMingguanApprovalController::class, 'detail'])->name('detail');
+        Route::get('/{transno}/history', [UpahMingguanApprovalController::class, 'history'])->name('history');
+    });
+
     // ============================================================================
     // APPROVAL HISTORY & AUDIT (Future)
     // ============================================================================

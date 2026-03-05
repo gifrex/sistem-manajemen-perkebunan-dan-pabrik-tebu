@@ -120,11 +120,12 @@ class UpahMingguanApprovalService
 
         $header = $this->repository->findHeader($companycode, $transno);
         $history = $this->repository->getApprovalHistory($companycode, $transno);
+        $workers = $this->repository->getWorkers($companycode, $transno);
         $status = $this->buildApprovalStatus($trx);
 
         return [
             'success' => true,
-            'data' => compact('trx', 'header', 'history', 'status'),
+            'data' => compact('trx', 'header', 'history', 'workers', 'status'),
         ];
     }
 
