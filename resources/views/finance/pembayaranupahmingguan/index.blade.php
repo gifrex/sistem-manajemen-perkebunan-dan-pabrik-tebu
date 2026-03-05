@@ -256,93 +256,119 @@
                     <p class="text-gray-500 text-sm">Silakan pilih Jenis Tenaga Kerja dan Range Tanggal</p>
                 </div>
             @else
-                <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm" id="tables">
-                    <table class="min-w-full bg-white text-sm">
+                <div class="rounded-lg border border-gray-200 shadow-sm" id="tables">
+                    <table class="w-full bg-white text-xs">
                         <thead>
                             <tr class="bg-gradient-to-r from-gray-100 to-gray-50">
                                 <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                    class="py-2 px-2 border-b-2 border-gray-300 text-gray-700 font-bold text-center w-8">
                                     No.</th>
                                 <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                    class="py-2 px-2 border-b-2 border-gray-300 text-gray-700 font-bold text-center w-28">
                                     No. Transaksi</th>
-                                <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-left whitespace-nowrap">
+                                <th class="py-2 px-2 border-b-2 border-gray-300 text-gray-700 font-bold text-left">
                                     Kegiatan</th>
-                                <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-left whitespace-nowrap">
+                                <th class="py-2 px-2 border-b-2 border-gray-300 text-gray-700 font-bold text-left">
                                     Mandor</th>
                                 <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-left whitespace-nowrap">
+                                    class="py-2 px-2 border-b-2 border-gray-300 text-gray-700 font-bold text-left w-36">
                                     Plot</th>
                                 <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                    class="py-2 px-2 border-b-2 border-gray-300 text-gray-700 font-bold text-center w-32">
                                     Periode LKH</th>
                                 <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                    class="py-2 px-2 border-b-2 border-gray-300 text-gray-700 font-bold text-center w-24">
                                     Tgl. Generate</th>
                                 <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                    class="py-2 px-2 border-b-2 border-gray-300 text-gray-700 font-bold text-center w-28">
                                     Grand Total (Rp)</th>
                                 <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                    {{ session('tenagakerjarum') == 'Harian' ? 'Jml. TKH' : 'Jml. Plot' }}
+                                    class="py-2 px-2 border-b-2 border-gray-300 text-gray-700 font-bold text-center w-16">
+                                    {{ session('tenagakerjarum') == 'Harian' ? 'TKH' : 'Plot' }}
                                 </th>
                                 <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                    Actions</th>
+                                    class="py-2 px-2 border-b-2 border-gray-300 text-gray-700 font-bold text-center w-36">
+                                    Status Approval</th>
+                                <th
+                                    class="py-2 px-2 border-b-2 border-gray-300 text-gray-700 font-bold text-center w-16">
+                                    Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
                             @forelse ($rum as $item)
                                 <tr class="hover:bg-indigo-50 transition-colors duration-150">
-                                    <td class="py-3 px-4 text-center text-gray-700">{{ $item->no }}.</td>
-                                    <td class="py-3 px-4 text-center font-mono font-semibold text-indigo-700">
+                                    <td class="py-2 px-2 text-center text-gray-700">{{ $item->no }}.</td>
+                                    <td class="py-2 px-2 text-center font-mono font-semibold text-indigo-700">
                                         <span
-                                            class="bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 text-xs">{{ $item->transno }}</span>
+                                            class="bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">{{ $item->transno }}</span>
                                     </td>
-                                    <td class="py-3 px-4 text-left text-gray-700">
-                                        {{ $item->activityname ?? $item->activitycode }}</td>
-                                    <td class="py-3 px-4 text-left text-gray-700">
-                                        {{ $item->mandorname ?? $item->mandoruserid }}</td>
-                                    <td class="py-3 px-4 text-left text-gray-700 max-w-xs truncate"
-                                        title="{{ $item->plots }}">
-                                        {{ $item->plots ?: '-' }}
+                                    <td class="py-2 px-2 text-left text-gray-700"
+                                        title="{{ $item->activityname ?? $item->activitycode }}">
+                                        {{ $item->activityname ?? $item->activitycode }}
                                     </td>
-                                    <td class="py-3 px-4 text-center text-gray-700 text-xs whitespace-nowrap">
+                                    <td class="py-2 px-2 text-left text-gray-700">
+                                        <div class="max-w-[110px] truncate"
+                                            title="{{ $item->mandorname ?? $item->mandoruserid }}">
+                                            {{ $item->mandorname ?? $item->mandoruserid }}
+                                        </div>
+                                    </td>
+                                    <td class="py-2 px-2 text-left text-gray-700">
+                                        <div class="max-w-72 truncate" title="{{ $item->plots }}">
+                                            {{ $item->plots ?: '-' }}
+                                        </div>
+                                    </td>
+                                    <td class="py-2 px-2 text-center text-gray-700 whitespace-nowrap">
                                         {{ $item->startdate }} <span class="text-gray-400">s/d</span>
                                         {{ $item->enddate }}
                                     </td>
-                                    <td class="py-3 px-4 text-center text-xs whitespace-nowrap">
+                                    <td class="py-2 px-2 text-center whitespace-nowrap">
                                         <span
-                                            class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                                            class="inline-flex items-center px-1.5 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700">
                                             {{ $item->generatedate ? \Carbon\Carbon::parse($item->generatedate)->format('d-m-Y') : '-' }}
                                         </span>
                                     </td>
-                                    <td class="py-3 px-4 text-center text-gray-700">{{ $item->grandtotal }}</td>
-                                    <td class="py-3 px-4 text-center">
+                                    <td class="py-2 px-2 text-center text-gray-700">{{ $item->grandtotal }}</td>
+                                    <td class="py-2 px-2 text-center">
                                         <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                            class="inline-flex items-center px-1.5 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-800">
                                             {{ $item->totalworkers ?? '-' }}
                                         </span>
                                     </td>
-                                    <td class="py-3 px-4 text-center">
+                                    <td class="py-2 px-2 text-center">
+                                        @php
+                                            $status = $item->approval_status ?? 'DRAFT';
+                                            $progress = $item->approval_progress ?? null;
+                                            $approvalClass = match ($status) {
+                                                'APPROVED' => 'bg-green-100 text-green-800 border border-green-300',
+                                                'DECLINED' => 'bg-red-100 text-red-800 border border-red-300',
+                                                'DRAFT' => 'bg-yellow-100 text-yellow-800 border border-yellow-300',
+                                                default => 'bg-gray-100 text-gray-500 border border-gray-300',
+                                            };
+                                            $label =
+                                                $status === 'DRAFT' && $progress ? "Waiting ({$progress})" : $status;
+                                        @endphp
+                                        <span
+                                            class="inline-flex items-center px-1.5 py-0.5 rounded-full font-medium {{ $approvalClass }} whitespace-nowrap">
+                                            {{ $label }}
+                                        </span>
+                                    </td>
+                                    <td class="py-2 px-2 text-center">
                                         <button onclick="showList('{{ $item->transno }}')"
-                                            class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-all duration-200"
+                                            class="inline-flex items-center gap-1 px-2 py-1 font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-all duration-200"
                                             title="View Details">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
                                                 viewBox="0 0 24 24">
                                                 <path stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                                                 <path stroke-width="2"
                                                     d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z" />
                                             </svg>
-                                            Detail
+                                            <span>Detail</span>
                                         </button>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="10" class="py-12 text-center">
+                                    <td colspan="11" class="py-12 text-center">
                                         <svg class="w-16 h-16 mx-auto text-gray-300 mb-3" fill="none"
                                             stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -394,141 +420,9 @@
     </div>
 
     @include('finance.pembayaranupahmingguan.modal._generate')
-
-    <div id="listModal"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4 invisible opacity-0 transition-all duration-300">
-        <div
-            class="bg-white w-11/12 max-w-7xl max-h-[90vh] flex flex-col rounded-2xl shadow-2xl transform scale-95 transition-transform duration-300">
-
-            <!-- Modal Header -->
-            <div
-                class="flex items-center justify-between p-6 border-b bg-gradient-to-r from-indigo-50 to-purple-50 rounded-t-2xl flex-shrink-0">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                        <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                            <path fill-rule="evenodd"
-                                d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold text-gray-900">Detail Pembayaran</h2>
-                        <p class="text-xs text-indigo-500 font-mono" id="modal-transno"></p>
-                    </div>
-                </div>
-
-                <!-- Status badge: tampil saat loading -->
-                <div id="modal-loading-badge"
-                    class="hidden items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-full text-xs font-semibold text-indigo-600">
-                    <svg class="w-3.5 h-3.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none"
-                        viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                            stroke-width="4" />
-                        <path class="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Memuat data...
-                </div>
-
-                <button onclick="closeModal()" class="p-2 hover:bg-gray-100 rounded-lg transition-all duration-200">
-                    <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-
-            <!-- Modal Body -->
-            <div class="overflow-auto flex-1 p-6">
-
-                {{-- Info Cards (Harian only) --}}
-                @if (session('tenagakerjarum') == 'Harian')
-                    <div class="mb-4 grid grid-cols-3 gap-3" id="modal-info-cards">
-                        <!-- Skeleton info cards (tampil saat loading) -->
-                        <div id="modal-info-skeleton" class="col-span-3 grid grid-cols-3 gap-3">
-                            @for ($i = 0; $i < 3; $i++)
-                                <div class="bg-gray-100 border border-gray-200 rounded-lg px-4 py-3 animate-pulse">
-                                    <div class="h-3 bg-gray-300 rounded w-16 mb-2"></div>
-                                    <div class="h-4 bg-gray-300 rounded w-24"></div>
-                                </div>
-                            @endfor
-                        </div>
-                        <!-- Real info cards (tampil setelah data load) -->
-                        <div id="modal-info-real" class="col-span-3 grid-cols-3 gap-3" style="display:none">
-                            <div class="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
-                                <p class="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">Plot</p>
-                                <p class="text-sm font-medium text-gray-800" id="modal-plot">-</p>
-                            </div>
-                            <div class="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
-                                <p class="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">Luasan
-                                    (Ha)</p>
-                                <p class="text-sm font-medium text-gray-800" id="modal-luasan">-</p>
-                            </div>
-                            <div class="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
-                                <p class="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">Hasil
-                                    (Ha)</p>
-                                <p class="text-sm font-medium text-gray-800" id="modal-hasil">-</p>
-                            </div>
-                        </div>
-                    </div>
-                @endif
-
-                <!-- Table wrapper -->
-                <div class="rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gradient-to-r from-gray-100 to-gray-200 sticky top-0">
-                            <tr>
-                                <th
-                                    class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                    No.</th>
-                                <th
-                                    class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                    Tanggal</th>
-                                @if (session('tenagakerjarum') == 'Harian')
-                                    <th
-                                        class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                        Tenaga Kerja</th>
-                                    <th
-                                        class="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                        Biaya / Hari (Rp)</th>
-                                    <th
-                                        class="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                        Total (Rp)</th>
-                                @else
-                                    <th
-                                        class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                        Plot</th>
-                                    <th
-                                        class="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                        Upah / Ha (Rp)</th>
-                                    <th
-                                        class="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                        Luasan (Ha)</th>
-                                    <th
-                                        class="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                        Hasil (Ha)</th>
-                                    <th
-                                        class="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                        Total (Rp)</th>
-                                @endif
-                            </tr>
-                        </thead>
-                        <tbody id="listTableBody" class="bg-white divide-y divide-gray-200">
-                        </tbody>
-                    </table>
-                </div>
-
-            </div>
-        </div>
-    </div>
+    @include('finance.pembayaranupahmingguan.modal._list')
 
     <style>
-        th,
-        td {
-            white-space: nowrap;
-        }
-
         .invisible {
             visibility: hidden;
             pointer-events: none;
@@ -851,8 +745,10 @@
             const badge = document.getElementById('modal-loading-badge');
             const infoSkel = document.getElementById('modal-info-skeleton');
             const infoReal = document.getElementById('modal-info-real');
+            const activityInfo = document.getElementById('modal-activity-info');
 
             document.getElementById('modal-transno').textContent = transno;
+            if (activityInfo) activityInfo.classList.add('hidden');
             tbody.innerHTML = buildSkeletonRows(6);
 
             const _elPlot = document.getElementById('modal-plot');
@@ -887,6 +783,18 @@
                     if (badge) {
                         badge.classList.add('hidden');
                         badge.classList.remove('flex');
+                    }
+
+                    // Tampilkan info kegiatan dari header
+                    const hdr = res.header || {};
+                    const elAct = document.getElementById('modal-activityname');
+                    const elMandor = document.getElementById('modal-mandorname');
+                    const elPeriode = document.getElementById('modal-periode');
+                    if (activityInfo) {
+                        if (elAct) elAct.textContent = hdr.activityname || hdr.activitycode || '-';
+                        if (elMandor) elMandor.textContent = hdr.mandorname || hdr.mandoruserid || '-';
+                        if (elPeriode) elPeriode.textContent = (hdr.startdate || '-') + ' s/d ' + (hdr.enddate || '-');
+                        activityInfo.classList.remove('hidden');
                     }
 
                     if (res.error) {
