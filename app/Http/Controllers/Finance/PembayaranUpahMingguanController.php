@@ -410,7 +410,7 @@ class PembayaranUpahMingguanController extends Controller
                     'activitycode' => $activitycode,
                     'jenistenagakerja' => $tk,
                     'grandtotal' => $grandTotal,
-                    'approvalstatus' => null,
+                    'approvalstatus' => 'DRAFT',
                     'createdat' => $now,
                     'inputby' => $userid,
                 ]);
