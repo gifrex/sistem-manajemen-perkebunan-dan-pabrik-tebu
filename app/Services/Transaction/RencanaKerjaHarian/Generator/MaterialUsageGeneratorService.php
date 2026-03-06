@@ -359,14 +359,19 @@ class MaterialUsageGeneratorService
             
             // Insert each item for this specific plot (NO MERGING)
             foreach ($herbisidaDosages as $dosage) {
+                // Truncate 2 desimal, ceiling ke kelipatan 0.05, minimum 0.05
                 $qtyRaw = $plotLuas * $dosage->dosageperha;
-    
-                    // Apply rounding to 0.25
-                    if ($qtyRaw > 0) {
-                        $qty = max(0.25, round($qtyRaw / 0.25) * 0.25);
+
+                if ($qtyRaw > 0) {
+                    $truncated = floor($qtyRaw * 100) / 100;          // ambil 2 desimal (truncate)
+                    if ($truncated == 0) {
+                        $qty = 0.05;                                   // minimum 0.05
                     } else {
-                        $qty = 0;
+                        $qty = ceil($truncated / 0.05) * 0.05;         // ceiling ke kelipatan 0.05
                     }
+                } else {
+                    $qty = 0;
+                }
                 
                 // Insert record per plot
                 DB::table('usemateriallst')->insert([
