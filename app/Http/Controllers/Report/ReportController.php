@@ -239,6 +239,14 @@ class ReportController extends Controller
             $item->umur = Carbon::parse($item->batchdate)->diffInMonths(Carbon::now());
             $tanggaltanam = Carbon::parse($item->batchdate);
             $item->bulantanam = $tanggaltanam->locale('id')->translatedFormat('F');
+            if ($item->lkhdate) {
+                $lkhdate = Carbon::parse($item->lkhdate);
+                $item->perkiraan_panen_awal = $lkhdate->copy()->addDays(28)->format('d/m/Y');
+                $item->perkiraan_panen_akhir = $lkhdate->copy()->addDays(35)->format('d/m/Y');
+            } else {
+                $item->perkiraan_panen_awal = null;
+                $item->perkiraan_panen_akhir = null;
+            }
         }
 
         foreach ($zpk as $index => $item) {
