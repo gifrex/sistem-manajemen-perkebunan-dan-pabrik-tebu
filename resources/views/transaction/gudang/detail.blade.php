@@ -319,13 +319,22 @@
                     
                             <td class="py-0.5 px-2 text-center text-right">
                                 @php
-                                // (ini hanya kalau kamu sudah punya $stdDosage & $activitycode)
-                                // tinggal panggil • ({{ number_format($exp, 2) }})
-                                $exp = (((float)($stdDosage[$d->itemcode.'|'.$activitycode] ?? 0) * (float)($d->luasrkh ?? 0)) > 0)
-                                    ? max(0.25, round((((float)($stdDosage[$d->itemcode.'|'.$activitycode] ?? 0) * (float)($d->luasrkh ?? 0)) / 0.25)) * 0.25)
-                                    : 0;
-                                $qty = (float)($d->qty ?? 0);
-                                $diff = $qty - $exp;
+                                    $qtyRawExp = (float)($stdDosage[$d->itemcode.'|'.$activitycode] ?? 0) * (float)($d->luasrkh ?? 0);
+
+                                    if ($qtyRawExp > 0) {
+                                        $truncatedExp = floor($qtyRawExp * 100) / 100;
+
+                                        if ($truncatedExp <= 0) {
+                                            $exp = 0.05;
+                                        } else {
+                                            $exp = ceil($truncatedExp / 0.05) * 0.05;
+                                        }
+                                    } else {
+                                        $exp = 0;
+                                    }
+
+                                    $qty = (float)($d->qty ?? 0);
+                                    $diff = $qty - $exp;
                                 @endphp
                             
                             <span class="ml-2 text-[10px] font-semibold
@@ -582,8 +591,13 @@
             // recalculate total
             const fmt2 = n => (Number(n)||0).toFixed(2);
     
-            const roundTo25 = (num) => {
-                return num > 0 ? Math.max(0.25, Math.round(num / 0.25) * 0.25) : 0;
+            const roundTo5 = (num) => {
+                if (num <= 0) return 0;
+
+                const truncated = Math.floor(num * 100) / 100;
+                if (truncated <= 0) return 0.05;
+
+                return Math.ceil(truncated / 0.05) * 0.05;
             };
             
     
@@ -606,7 +620,7 @@
     
         let qty;
         if (rounddosage) {
-          qty = roundTo25(qtyRaw);
+          qty = roundto5(qtyRaw);
         } else {
           qty = qtyRaw;
         }
@@ -709,7 +723,7 @@
     
                 let qty;
                 if (rounddosage) {
-                    qty = roundTo25(qtyRaw);     // dibulatkan
+                    qty = roundto5(qtyRaw);     // dibulatkan
                 } else {
                     qty = qtyRaw;                // tidak dibulatkan
                 }

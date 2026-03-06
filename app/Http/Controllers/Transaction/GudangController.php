@@ -1375,8 +1375,14 @@ public function submit(Request $request)
 
                 if ($qtyraw > 0) {
                     if ($rounddosage) {
-                        // dibulatkan ke 0.25
-                        $qty = max(0.25, round($qtyraw / 0.25) * 0.25);
+                        // truncate 2 desimal, lalu ceiling ke 0.05, minimum 0.05
+                        $truncated = floor($qtyraw * 100) / 100;
+
+                        if ($truncated <= 0) {
+                            $qty = 0.05;
+                        } else {
+                            $qty = ceil($truncated / 0.05) * 0.05;
+                        }
                     } else {
                         // tidak dibulatkan
                         $qty = $qtyraw;
