@@ -269,7 +269,7 @@ class GudangController extends Controller
     ]);
 }
 
-
+ 
 
     public function detail(Request $request)
     {   
