@@ -60,14 +60,16 @@
                                         d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z"
                                         clip-rule="evenodd" />
                                 </svg>
-                                <span>Pilih Tanggal</span>
+                                <span id="date-label">
+                                    {{ $startDate }} s/d {{ $endDate }}
+                                </span>
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
 
-                            <div class="absolute left-0 z-10 mt-2 w-80 rounded-lg bg-white border border-gray-200 shadow-xl hidden"
+                            <div class="absolute left-0 z-50 mt-2 w-56 rounded-lg bg-white border border-gray-200 shadow-xl hidden"
                                 id="menu-dropdown">
                                 <div class="p-4 space-y-4">
                                     <div>
@@ -85,6 +87,17 @@
                                             value="{{ old('end_date', $endDate ?? '') }}"
                                             class="w-full px-3 py-2 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-200">
                                     </div>
+
+                                    <button type="button" id="btn-apply-filter"
+                                        onclick="
+                                                document.getElementById('menu-dropdown').classList.add('hidden');
+                                                document.getElementById('date-label').textContent =
+                                                    document.getElementById('start_date').value + ' s/d ' +
+                                                    document.getElementById('end_date').value;
+                                            "
+                                        class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-all duration-200">
+                                        Terapkan
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -162,12 +175,12 @@
                                 Tanggal ZPK</th>
                             <th
                                 class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-red-50">
-                                Tanggal Panen</th>
+                                Perkiraan Panen</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200">
-                        @foreach ($zpk as $item)
-                            <tr class="hover:bg-blue-50 transition-colors duration-150">
+                        @forelse ($zpk as $item)
+                            <tr>
                                 <td class="py-3 px-4 text-center text-gray-700">{{ $item->no }}.</td>
                                 <td class="py-3 px-4 text-center text-gray-700 font-medium">{{ $item->companycode }}
                                 </td>
@@ -203,13 +216,60 @@
                                     </span>
                                 </td>
                                 <td class="py-3 px-4 text-center text-gray-700 bg-red-50">
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                                        {{ $item->tanggalpanen ?? '-' }}
-                                    </span>
+                                    @if ($item->perkiraan_panen_awal)
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                            {{ $item->perkiraan_panen_awal }} &ndash;
+                                            {{ $item->perkiraan_panen_akhir }}
+                                        </span>
+                                    @else
+                                        <span class="text-gray-400">-</span>
+                                    @endif
                                 </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr class="!bg-white hover:!bg-white">
+                                <td colspan="12" class="p-0 border-0">
+                                    <div
+                                        style="
+                                            position: sticky;
+                                            left: 0;
+                                            width: calc(100vw - 330px);
+                                            max-width: calc(100vw - 330px);
+                                            display: flex;
+                                            flex-direction: column;
+                                            align-items: center;
+                                            justify-content: center;
+                                            gap: 12px;
+                                            padding: 64px 16px;
+                                        ">
+                                        <div
+                                            style="
+                                                width: 64px;
+                                                height: 64px;
+                                                border-radius: 9999px;
+                                                background-color: #f3f4f6;
+                                                display: flex;
+                                                align-items: center;
+                                                justify-content: center;
+                                            ">
+                                            <svg style="width:32px;height:32px;color:#9ca3af" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="1.5"
+                                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                            </svg>
+                                        </div>
+                                        <div style="text-align:center">
+                                            <p style="color:#4b5563;font-weight:600;font-size:0.875rem">Tidak ada data
+                                                ditemukan</p>
+                                            <p style="color:#9ca3af;font-size:0.75rem;margin-top:4px">Coba ubah rentang
+                                                tanggal atau kata kunci pencarian</p>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -282,10 +342,6 @@
 
         #tables thead tr th:first-child {
             background: linear-gradient(to right, #f3f4f6, #e5e7eb);
-        }
-
-        #tables tbody tr:hover td:first-child {
-            background: #dbeafe;
         }
     </style>
 
