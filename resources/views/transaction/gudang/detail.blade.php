@@ -319,23 +319,24 @@
                     
                             <td class="py-0.5 px-2 text-center text-right">
                                 @php
-                                    $qtyRawExp = (float)($stdDosage[$d->itemcode.'|'.$activitycode] ?? 0) * (float)($d->luasrkh ?? 0);
+                                $qtyRawExp = (float)($stdDosage[$d->itemcode.'|'.$activitycode] ?? 0) * (float)($d->luasrkh ?? 0);
 
-                                    if ($qtyRawExp > 0) {
-                                        $truncatedExp = floor($qtyRawExp * 100) / 100;
+                                // Pembulatan ke 0.05
+                                if ($qtyRawExp > 0) {
+                                    $truncatedExp = floor($qtyRawExp * 100) / 100; // truncate 2 digit
 
-                                        if ($truncatedExp <= 0) {
-                                            $exp = 0.05;
-                                        } else {
-                                            $exp = ceil($truncatedExp / 0.05) * 0.05;
-                                        }
+                                    if ($truncatedExp <= 0) {
+                                        $exp = 0.05;
                                     } else {
-                                        $exp = 0;
+                                        $exp = ceil($truncatedExp / 0.05) * 0.05;  // Pembulatan ke kelipatan 0.05
                                     }
+                                } else {
+                                    $exp = 0;
+                                }
 
-                                    $qty = (float)($d->qty ?? 0);
-                                    $diff = $qty - $exp;
-                                @endphp
+                                $qty = (float)($d->qty ?? 0);
+                                $diff = $qty - $exp;
+                            @endphp
                             
                             <span class="ml-2 text-[10px] font-semibold
                                 {{ abs($diff) > 0.00001 ? ($diff > 0 ? 'text-orange-600' : 'text-green-600') : 'hidden' }}">
