@@ -9,6 +9,7 @@ use App\Http\Controllers\Approval\OtherApprovalController;
 use App\Http\Controllers\Approval\RkhApprovalController;
 use App\Http\Controllers\Approval\UpahMingguanApprovalController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Approval\OrderBbmApprovalController;
 
 Route::middleware('auth')->prefix('approval')->name('approval.')->group(function () {
 
@@ -75,4 +76,8 @@ Route::middleware('auth')->prefix('approval')->name('approval.')->group(function
     // ============================================================================
     // Route::get('/history', [ApprovalHistoryController::class, 'index'])->name('history.index');
     // Route::get('/audit', [ApprovalAuditController::class, 'index'])->name('audit.index');
+
+     // Order BBM Approval
+    Route::post('/order-bbm/process', [OrderBbmApprovalController::class, 'process'])->name('order-bbm.process');
+    Route::get('/order-bbm/{orderno}/detail', [OrderBbmApprovalController::class, 'detail'])->name('order-bbm.detail');
 });

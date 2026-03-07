@@ -176,9 +176,14 @@ return [
                 'permission' => 'transaction.gudangbbm.view',
             ],
             [
-                'name' => 'Kendaraan Workshop',
-                'route' => 'transaction.kendaraan-workshop.index',
-                'permission' => 'transaction.kendaraanworkshop.view',
+                'name' => 'Kendaraan Supply',
+                'route' => 'transaction.kendaraan-supply.index',
+                'permission' => 'transaction.kendaraansupply.view',
+            ],
+            [
+                'name' => 'Order BBM',
+                'route' => 'transaction.order-bbm.index',
+                'permission' => 'transaction.orderbbm.view',
             ],
             [
                 'name' => 'Tebar Pias',

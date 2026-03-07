@@ -21,6 +21,8 @@ use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\OperatorRekapRepo
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\OperatorReportController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Utility\RkhUtilityController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Domain\MaterialUsageController;
+use App\Http\Controllers\Transaction\KendaraanSupplyController;
+use App\Http\Controllers\Transaction\OrderBbmController;
 
 Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(function () {
 
@@ -225,26 +227,53 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
         Route::post('pias/submit', [PiasController::class, 'submit'])->name('pias.submit');
     });
 
+
     // ============================================================================
-    // KENDARAAN WORKSHOP
+    // KENDARAAN SUPPLY - Mandor Kendaraan
     // ============================================================================
-    Route::middleware('permission:transaction.kendaraanworkshop.view')->group(function () {
-        Route::get('kendaraan-workshop', [KendaraanController::class, 'index'])->name('kendaraan-workshop.index');
-        Route::post('kendaraan-workshop/store', [KendaraanController::class, 'store'])->name('kendaraan-workshop.store');
-        Route::put('kendaraan-workshop/update', [KendaraanController::class, 'update'])->name('kendaraan-workshop.update');
-        Route::post('kendaraan-workshop/{lkhno}/mark-printed', [KendaraanController::class, 'markPrinted'])->name('kendaraan-workshop.mark-printed');
-        Route::get('kendaraan-workshop/{lkhno}/print', [KendaraanController::class, 'print'])->name('kendaraan-workshop.print');
+    Route::middleware('permission:transaction.kendaraansupply.view')->group(function () {
+        Route::prefix('kendaraan-supply')->name('kendaraan-supply.')->group(function () {
+            Route::get('/',                              [KendaraanSupplyController::class, 'index'])->name('index');
+            Route::post('/store',                        [KendaraanSupplyController::class, 'store'])->name('store');
+            Route::put('/{id}',                          [KendaraanSupplyController::class, 'update'])->name('update');
+            Route::delete('/{id}',                       [KendaraanSupplyController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/submit',                  [KendaraanSupplyController::class, 'submit'])->name('submit');
+
+            // API
+            Route::get('/kendaraan-list',                [KendaraanSupplyController::class, 'getKendaraanList'])->name('kendaraan-list');
+            Route::get('/operator-list',                 [KendaraanSupplyController::class, 'getOperatorList'])->name('operator-list');
+            Route::get('/pending-for-order',             [KendaraanSupplyController::class, 'getPendingForOrder'])->name('pending-for-order');
+        });
     });
 
     // ============================================================================
-    // GUDANG BBM
+    // ORDER BBM - Admin Kendaraan
+    // ============================================================================
+    Route::middleware('permission:transaction.orderbbm.view')->group(function () {
+        Route::prefix('order-bbm')->name('order-bbm.')->group(function () {
+            Route::get('/',                          [OrderBbmController::class, 'index'])->name('index');
+            Route::post('/',                         [OrderBbmController::class, 'store'])->name('store');
+            Route::get('/{orderno}',                 [OrderBbmController::class, 'show'])->name('show');
+            Route::put('/{orderno}',                 [OrderBbmController::class, 'update'])->name('update');
+            Route::post('/{orderno}/submit',         [OrderBbmController::class, 'submit'])->name('submit');
+            Route::get('/lkh/{lkhno}/kendaraan',     [OrderBbmController::class, 'getKendaraanFromLkh'])->name('lkh-kendaraan');
+            Route::get('/{orderno}/items', [OrderBbmController::class, 'getItems'])->name('items');
+        });
+    });
+
+    // ============================================================================
+    // GUDANG BBM - Admin Gudang BBM
     // ============================================================================
     Route::middleware('permission:transaction.gudangbbm.view')->group(function () {
-        Route::get('gudang-bbm', [GudangBbmController::class, 'index'])->name('gudang-bbm.index');
-        Route::get('gudang-bbm/{ordernumber}', [GudangBbmController::class, 'show'])->name('gudang-bbm.show');
-        Route::post('gudang-bbm/{ordernumber}/confirm', [GudangBbmController::class, 'markConfirmed'])->name('gudang-bbm.confirm');
+        Route::prefix('gudang-bbm')->name('gudang-bbm.')->group(function () {
+            Route::get('/',                          [GudangBbmController::class, 'index'])->name('index');
+            Route::get('/{orderno}',                 [GudangBbmController::class, 'show'])->name('show');
+            Route::post('/{orderno}/confirm-item',   [GudangBbmController::class, 'confirmItem'])->name('confirm-item');
+            Route::post('/{orderno}/finalize',       [GudangBbmController::class, 'finalizeAll'])->name('finalize');
+            Route::post('/{orderno}/sync-citrix',    [GudangBbmController::class, 'syncCitrix'])->name('sync-citrix');
+        });
     });
-
+    
     // ============================================================================
     // NFC CARD MANAGEMENT
     // ============================================================================

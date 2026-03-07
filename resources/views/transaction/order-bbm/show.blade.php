@@ -1,5 +1,5 @@
-{{-- resources/views/transaction/gudang-bbm/show.blade.php --}}
-{{-- Pure read-only print preview. Semua aksi (input solar, finalize) ada di index page. --}}
+{{-- resources/views/transaction/order-bbm/show.blade.php --}}
+{{-- Pure read-only print preview. --}}
 <x-layout>
     <x-slot:title>{{ $title }}</x-slot:title>
     <x-slot:navbar>{{ $navbar }}</x-slot:navbar>
@@ -29,20 +29,20 @@
     </style>
 
 @php
-    if ($header->gudangconfirm == 0) {
-        $statusLabel = 'Menunggu Input Solar Real';
-    } elseif (($header->gudangapprovalstatus ?? null) === '1') {
+    if ($header->status === 'DRAFT') {
+        $statusLabel = 'Draft';
+    } elseif ($header->approvalstatus === '1') {
         $statusLabel = 'Approved';
-    } elseif (($header->gudangapprovalstatus ?? null) === '0') {
+    } elseif ($header->approvalstatus === '0') {
         $statusLabel = 'Ditolak';
     } else {
-        $statusLabel = 'Menunggu Approval Pengeluaran';
+        $statusLabel = 'Menunggu Approval';
     }
 @endphp
 
     {{-- Action Bar (screen only) --}}
     <div class="no-print mb-4 flex justify-between items-center">
-        <a href="{{ route('transaction.gudang-bbm.index') }}"
+        <a href="{{ route('transaction.order-bbm.index') }}"
            class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm">&larr; Kembali</a>
         <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">Print</button>
     </div>
@@ -54,7 +54,7 @@
 
         {{-- Document Header --}}
         <div style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px;">
-            <div style="font-size: 16pt; font-weight: bold; letter-spacing: 1px;">KONFIRMASI PENGELUARAN BBM</div>
+            <div style="font-size: 16pt; font-weight: bold; letter-spacing: 1px;">ORDER PENGELUARAN BBM</div>
             <div style="font-size: 9pt; margin-top: 4px;">{{ config('app.name') }}</div>
         </div>
 
@@ -126,9 +126,9 @@
                     <th style="text-align:left;">Operator</th>
                     <th style="text-align:center;">Hasil Kerja</th>
                     <th style="text-align:center;">Kalibrasi</th>
+                    <th style="text-align:center;">Solar Hitung (L)</th>
                     <th style="text-align:center;">Solar Diminta (L)</th>
-                    <th style="text-align:center;">Solar Real (L)</th>
-                    <th style="text-align:center;">Selisih (L)</th>
+                    <th style="text-align:left;">Ket</th>
                 </tr>
             </thead>
             <tbody>
@@ -145,14 +145,11 @@
                     <td>{{ $item->operator_nama ?? '-' }}</td>
                     <td style="text-align:center;">{{ number_format($item->hasilkerja, 2) }} {{ $item->satuanhasil }}</td>
                     <td style="text-align:center;">{{ number_format($item->nilaikalibrasi, 2) }} {{ $item->satuankalibrasi }}</td>
-                    <td style="text-align:center;">{{ number_format($item->solarrequested, 2) }}</td>
-                    <td style="text-align:center; font-weight:600;">
-                        {{ $item->solarreal !== null ? number_format($item->solarreal, 2) : '-' }}
-                    </td>
-                    <td style="text-align:center;">
-                        @if($item->solarreal !== null)
-                            @php $selisih = $item->solarrequested - $item->solarreal; @endphp
-                            {{ $selisih > 0 ? '-' . number_format($selisih, 2) : '0.00' }}
+                    <td style="text-align:center;">{{ number_format($item->solarcalculated, 2) }}</td>
+                    <td style="text-align:center; font-weight:600;">{{ number_format($item->solarrequested, 2) }}</td>
+                    <td style="font-size:8pt;">
+                        @if($item->ismanualoverride)
+                            Override{{ $item->overridereason ? ': ' . $item->overridereason : '' }}
                         @else
                             -
                         @endif
@@ -162,20 +159,17 @@
             </tbody>
             <tfoot>
                 <tr style="background:#f0f0f0; font-weight:bold;">
-                    <td colspan="6" style="text-align:right;">TOTAL</td>
+                    <td colspan="7" style="text-align:right;">TOTAL SOLAR DIMINTA</td>
                     <td style="text-align:center;">{{ number_format($header->totalsolarrequested, 2) }}</td>
-                    <td style="text-align:center;">
-                        {{ $header->totalsolarreal !== null ? number_format($header->totalsolarreal, 2) : '-' }}
-                    </td>
-                    <td style="text-align:center;">
-                        @if($header->totalsolarreal !== null)
-                            @php $totalSelisih = $header->totalsolarrequested - $header->totalsolarreal; @endphp
-                            {{ $totalSelisih > 0 ? '-' . number_format($totalSelisih, 2) : '0.00' }}
-                        @else
-                            -
-                        @endif
-                    </td>
+                    <td></td>
                 </tr>
+                @if($header->totalsolarreal)
+                <tr style="font-weight:bold;">
+                    <td colspan="7" style="text-align:right;">TOTAL SOLAR REAL</td>
+                    <td style="text-align:center;">{{ number_format($header->totalsolarreal, 2) }}</td>
+                    <td></td>
+                </tr>
+                @endif
             </tfoot>
         </table>
 
@@ -202,7 +196,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {{-- 1. Pembuatan Order --}}
+                    {{-- 1. Pembuatan --}}
                     <tr>
                         <td>Pembuatan Order</td>
                         <td>{{ $header->inputby ?? '-' }}</td>
@@ -212,7 +206,19 @@
                         </td>
                     </tr>
 
-                    {{-- 2. Approval Permintaan (multi-level) --}}
+                    {{-- 2. Submit --}}
+                    @if($header->status !== 'DRAFT')
+                    <tr>
+                        <td>Submit ke Approval</td>
+                        <td>{{ $header->submittedby ?? '-' }}</td>
+                        <td style="text-align:center;">Submitted</td>
+                        <td style="text-align:center;">
+                            {{ isset($header->submittedat) && $header->submittedat ? \Carbon\Carbon::parse($header->submittedat)->format('d/m/Y H:i') : '-' }}
+                        </td>
+                    </tr>
+                    @endif
+
+                    {{-- 3. Approval Permintaan (multi-level) --}}
                     @for($i = 1; $i <= ($header->jumlahapproval ?? 0); $i++)
                     @php
                         $aUser = $header->{"approval{$i}userid"} ?? null;
@@ -226,41 +232,10 @@
                         else $aStatus = 'Pending';
                     @endphp
                     <tr>
-                        <td>Approval Permintaan {{ $i }}{{ $jabName ? " ({$jabName})" : '' }}</td>
+                        <td>Approval {{ $i }}{{ $jabName ? " ({$jabName})" : '' }}</td>
                         <td>{{ $aUser ?? '-' }}</td>
                         <td style="text-align:center;">{{ $aStatus }}</td>
                         <td style="text-align:center;">{{ $aDate ? \Carbon\Carbon::parse($aDate)->format('d/m/Y H:i') : '-' }}</td>
-                    </tr>
-                    @endfor
-
-                    {{-- 3. Konfirmasi Gudang --}}
-                    <tr>
-                        <td>Konfirmasi Gudang BBM</td>
-                        <td>{{ $header->gudangconfirmedby ?? '-' }}</td>
-                        <td style="text-align:center;">{{ $header->gudangconfirm == 1 ? 'Dikonfirmasi' : 'Pending' }}</td>
-                        <td style="text-align:center;">
-                            {{ isset($header->gudangconfirmedat) && $header->gudangconfirmedat ? \Carbon\Carbon::parse($header->gudangconfirmedat)->format('d/m/Y H:i') : '-' }}
-                        </td>
-                    </tr>
-
-                    {{-- 4. Approval Pengeluaran (multi-level) --}}
-                    @for($i = 1; $i <= ($header->gudangjumlahapproval ?? 0); $i++)
-                    @php
-                        $gUser = $header->{"gudangapproval{$i}userid"} ?? null;
-                        $gFlag = $header->{"gudangapproval{$i}flag"} ?? null;
-                        $gDate = $header->{"gudangapproval{$i}date"} ?? null;
-                        $gJab  = $header->{"gudangapproval{$i}idjabatan"} ?? null;
-                        $gJabName = $gJab ? \Illuminate\Support\Facades\DB::table('jabatan')->where('idjabatan', $gJab)->value('namajabatan') : null;
-
-                        if ($gFlag === '1') $gStatus = 'Approved';
-                        elseif ($gFlag === '0') $gStatus = 'Ditolak';
-                        else $gStatus = 'Pending';
-                    @endphp
-                    <tr>
-                        <td>Approval Pengeluaran {{ $i }}{{ $gJabName ? " ({$gJabName})" : '' }}</td>
-                        <td>{{ $gUser ?? '-' }}</td>
-                        <td style="text-align:center;">{{ $gStatus }}</td>
-                        <td style="text-align:center;">{{ $gDate ? \Carbon\Carbon::parse($gDate)->format('d/m/Y H:i') : '-' }}</td>
                     </tr>
                     @endfor
                 </tbody>
