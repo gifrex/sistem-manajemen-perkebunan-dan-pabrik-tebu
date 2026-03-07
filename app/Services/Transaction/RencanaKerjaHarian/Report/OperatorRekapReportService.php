@@ -9,8 +9,7 @@ use Carbon\Carbon;
 /**
  * OperatorRekapReportService
  * 
- * Orchestrates Operator Rekap report business logic (all operators summary).
- * RULE: No DB queries. Only orchestration + formatting.
+ * Orchestrates Operator Rekap report (UNION LKH + SJS).
  */
 class OperatorRekapReportService
 {
@@ -25,15 +24,10 @@ class OperatorRekapReportService
         $this->masterDataRepo = $masterDataRepo;
     }
 
-    /**
-     * Build operator rekap report payload
-     */
-    // OperatorRekapReportService.php
-
     public function buildOperatorRekapReportPayload($companycode, $date)
     {
         $allData = $this->operatorRekapRepo->getAllOperatorsWithActivities($companycode, $date);
-        
+
         if ($allData->isEmpty()) {
             return [
                 'success' => false,
@@ -41,87 +35,121 @@ class OperatorRekapReportService
             ];
         }
 
-        // Group by operator (HANYA untuk hitung grand totals)
         $groupedByOperator = $allData->groupBy('tenagakerjaid');
-        
+
         $allActivities = [];
-        $totalOperators = $groupedByOperator->count(); // Hitung jumlah operator
-        
-        // Initialize grand totals
+        $totalOperators = $groupedByOperator->count();
+
+        // Grand totals
         $totalLuasRencana = 0;
-        $totalLuasHasil = 0;
+        $totalHasilHa = 0;
+        $totalHasilRit = 0;
         $totalSolar = 0;
         $totalDurationMinutes = 0;
-        
+        $countLkh = 0;
+        $countSjs = 0;
+
         foreach ($groupedByOperator as $operatorId => $activities) {
             $firstActivity = $activities->first();
-            
-            // Loop semua aktivitas operator ini
+
             foreach ($activities as $activity) {
-                // Check if values are NULL or 0
-                $jamMulai = $activity->jammulai && $activity->jammulai !== '00:00:00' 
-                    ? substr($activity->jammulai, 0, 5) 
+                $isLkh = $activity->source_type === 'LKH';
+                $isSjs = $activity->source_type === 'SJS';
+
+                if ($isLkh) $countLkh++;
+                if ($isSjs) $countSjs++;
+
+                // Jam & Durasi
+                $jamMulai = $activity->jammulai && $activity->jammulai !== '00:00:00'
+                    ? substr($activity->jammulai, 0, 5)
                     : null;
-                
-                $jamSelesai = $activity->jamselesai && $activity->jamselesai !== '00:00:00' 
-                    ? substr($activity->jamselesai, 0, 5) 
+
+                $jamSelesai = $activity->jamselesai && $activity->jamselesai !== '00:00:00'
+                    ? substr($activity->jamselesai, 0, 5)
                     : null;
-                
-                $durasiKerja = $activity->durasi_kerja && $activity->durasi_kerja !== '00:00:00' 
-                    ? substr($activity->durasi_kerja, 0, 5) 
+
+                $durasiKerja = $activity->durasi_kerja && $activity->durasi_kerja !== '00:00:00'
+                    ? substr($activity->durasi_kerja, 0, 5)
                     : null;
-                
-                $luasHasil = $activity->luas_hasil_ha && (float)$activity->luas_hasil_ha > 0 
-                    ? number_format((float)$activity->luas_hasil_ha, 2) 
+
+                // Luas Rencana (LKH only)
+                $luasRencana = $isLkh && $activity->luas_rencana && (float)$activity->luas_rencana > 0
+                    ? number_format((float)$activity->luas_rencana, 2)
                     : null;
-                
-                $solarLiter = $activity->solar && (float)$activity->solar > 0 
-                    ? number_format((float)$activity->solar, 1) 
+
+                // Hasil: hektar (LKH) atau rit (SJS)
+                $hasilValue = $activity->hasil_value && (float)$activity->hasil_value > 0
+                    ? (float)$activity->hasil_value
                     : null;
-                
-                // Add to activities array
+
+                $hasilFormatted = null;
+                if ($hasilValue !== null) {
+                    $hasilFormatted = $isLkh
+                        ? number_format($hasilValue, 2)
+                        : number_format($hasilValue, 0);
+                }
+
+                // Solar (prioritas: real > requested)
+                $solarReal = $activity->solar_real && (float)$activity->solar_real > 0
+                    ? (float)$activity->solar_real
+                    : null;
+
+                $solarRequested = $activity->solar_requested && (float)$activity->solar_requested > 0
+                    ? (float)$activity->solar_requested
+                    : null;
+
+                $solarValue = $solarReal ?? $solarRequested;
+                $solarLiter = $solarValue ? number_format($solarValue, 1) : null;
+
                 $allActivities[] = [
                     'operator_name' => $firstActivity->operator_name,
-                    'nokendaraan' => $firstActivity->nokendaraan,
-                    'vehicle_type' => $firstActivity->vehicle_type,
+                    'nokendaraan' => $activity->nokendaraan,
+                    'vehicle_type' => $activity->vehicle_type,
                     'jam_mulai' => $jamMulai,
                     'jam_selesai' => $jamSelesai,
                     'durasi_kerja' => $durasiKerja,
-                    'activitycode' => $activity->activitycode,
-                    'activityname' => $activity->activityname,
+                    'kegiatan' => $activity->kegiatan ?: '-',
+                    'kegiatan_code' => $activity->kegiatan_code ?: null,
                     'plots_display' => $activity->plots_display ?: '-',
-                    'luas_rencana_ha' => number_format((float)$activity->luas_rencana_ha, 2),
-                    'luas_hasil_ha' => $luasHasil,
+                    'luas_rencana' => $luasRencana,
+                    'hasil_value' => $hasilFormatted,
+                    'hasil_satuan' => $activity->hasil_satuan,
+                    'solar_requested' => $solarRequested ? number_format($solarRequested, 1) : null,
+                    'solar_real' => $solarReal ? number_format($solarReal, 1) : null,
                     'solar_liter' => $solarLiter,
-                    'lkhno' => $activity->lkhno,
+                    'source_type' => $activity->source_type,
+                    'source_no' => $activity->source_no,
                 ];
-                
-                // ✅ Calculate grand totals SEKALIGUS
-                $totalLuasRencana += (float)$activity->luas_rencana_ha;
-                
-                if (!is_null($luasHasil)) {
-                    $totalLuasHasil += (float)str_replace(',', '', $luasHasil);
+
+                // Grand totals
+                if ($isLkh && $activity->luas_rencana) {
+                    $totalLuasRencana += (float)$activity->luas_rencana;
                 }
-                
-                if (!is_null($solarLiter)) {
-                    $totalSolar += (float)str_replace(',', '', $solarLiter);
+
+                if ($hasilValue !== null) {
+                    if ($isLkh) {
+                        $totalHasilHa += $hasilValue;
+                    } else {
+                        $totalHasilRit += $hasilValue;
+                    }
                 }
-                
-                if (!is_null($durasiKerja)) {
-                    $durationParts = explode(':', $durasiKerja);
-                    $hours = (int)$durationParts[0];
-                    $minutes = (int)$durationParts[1];
-                    $totalDurationMinutes += ($hours * 60) + $minutes;
+
+                if ($solarValue) {
+                    $totalSolar += $solarValue;
+                }
+
+                if ($durasiKerja) {
+                    $parts = explode(':', $durasiKerja);
+                    $totalDurationMinutes += ((int)$parts[0] * 60) + (int)$parts[1];
                 }
             }
         }
-        
-        // Format total duration
+
         $totalHours = floor($totalDurationMinutes / 60);
         $totalMinutes = $totalDurationMinutes % 60;
-        
+
         $companyInfo = $this->masterDataRepo->getCompanyInfo($companycode);
-        
+
         return [
             'success' => true,
             'date' => $date,
@@ -131,10 +159,14 @@ class OperatorRekapReportService
             'grand_totals' => [
                 'total_operators' => $totalOperators,
                 'total_activities' => count($allActivities),
+                'count_lkh' => $countLkh,
+                'count_sjs' => $countSjs,
                 'total_luas_rencana' => $totalLuasRencana,
-                'total_luas_rencana_formatted' => number_format($totalLuasRencana, 2),
-                'total_luas_hasil' => $totalLuasHasil,
-                'total_luas_hasil_formatted' => $totalLuasHasil > 0 ? number_format($totalLuasHasil, 2) : null,
+                'total_luas_rencana_formatted' => $totalLuasRencana > 0 ? number_format($totalLuasRencana, 2) : null,
+                'total_hasil_ha' => $totalHasilHa,
+                'total_hasil_ha_formatted' => $totalHasilHa > 0 ? number_format($totalHasilHa, 2) : null,
+                'total_hasil_rit' => $totalHasilRit,
+                'total_hasil_rit_formatted' => $totalHasilRit > 0 ? number_format($totalHasilRit, 0) : null,
                 'total_solar' => $totalSolar,
                 'total_solar_formatted' => $totalSolar > 0 ? number_format($totalSolar, 1) : null,
                 'total_duration_minutes' => $totalDurationMinutes,

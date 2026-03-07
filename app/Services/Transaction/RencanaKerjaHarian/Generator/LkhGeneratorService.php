@@ -261,6 +261,7 @@ class LkhGeneratorService
         return $plotDetails;
     }
 
+    
     private function generateLkhKendaraanRecords($rkhno, $lkhno, $lkhhdrid, $activitycode, $companycode, $activities)
     {
         try {
@@ -291,6 +292,8 @@ class LkhGeneratorService
                     $kendaraanid = $kendaraan ? $kendaraan->id : null;
                 }
                 
+                // CHANGED: Hapus hourmeterstart, hourmeterend, solar, status
+                // Kolom-kolom tersebut sudah pindah ke tabel orderbbmlst
                 $record = [
                     'companycode' => $companycode,
                     'lkhno' => $lkhno,
@@ -301,10 +304,6 @@ class LkhGeneratorService
                     'helperid' => $assignment->helperid,
                     'jammulai' => null,
                     'jamselesai' => null,
-                    'hourmeterstart' => null,
-                    'hourmeterend' => null,
-                    'solar' => null,
-                    'status' => null,
                     'createdat' => now()
                 ];
                 

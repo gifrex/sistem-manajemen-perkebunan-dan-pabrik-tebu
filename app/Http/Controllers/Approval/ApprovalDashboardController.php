@@ -8,6 +8,7 @@ use App\Repositories\Approval\LkhApprovalRepository;
 use App\Repositories\Approval\OtherApprovalRepository;
 use App\Repositories\Approval\RkhApprovalRepository;
 use App\Repositories\Approval\UpahMingguanApprovalRepository;
+use App\Http\Controllers\Approval\OrderBbmApprovalController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -68,7 +69,12 @@ class ApprovalDashboardController extends Controller
         $pendingAbsen = $this->getPendingAbsenWithDetails($companycode, $currentUser, $filters);
         $pendingOther = $this->getPendingOtherWithDetails($companycode, $currentUser, $filters);
         $othersDetail = $this->setOtherDetail($pendingOther);
-        $pendingUpah = $this->getPendingUpahWithDetails($companycode, $currentUser, $filters);
+        $pendingUpah = $this->getPendingUpahWithDetails($companycode, $currentUser, $filters);    
+        $pendingBBM = OrderBbmApprovalController::getPendingApprovals(
+            $companycode,
+            $currentUser->idjabatan,
+            $filters
+        );
 
         // Load activity groups user punya akses
         $userActivityGroups = DB::table('useractivity as ua')
@@ -89,6 +95,7 @@ class ApprovalDashboardController extends Controller
             'pendingOther' => $pendingOther,
             'pendingAbsen' => $pendingAbsen,
             'pendingUpah' => $pendingUpah,
+            'pendingBBM' => $pendingBBM,
             'userInfo' => $this->getUserInfo($currentUser),
             'filterDate' => $filterDate,
             'allDate' => $allDate,
