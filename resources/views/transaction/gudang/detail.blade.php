@@ -592,7 +592,7 @@
             // recalculate total
             const fmt2 = n => (Number(n)||0).toFixed(2);
     
-            const roundTo5 = (num) => {
+            const roundto5 = (num) => {
                 if (num <= 0) return 0;
 
                 const truncated = Math.floor(num * 100) / 100;
