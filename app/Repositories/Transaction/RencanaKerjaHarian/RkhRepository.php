@@ -812,4 +812,45 @@ class RkhRepository
                 'u.name as batal_by_nama'
             ]);
     }
+
+    public function getMaterialByRkhNo($companycode, $rkhno)
+    {
+        return DB::table('usemateriallst as uml')
+            ->join('lkhhdr as lh', function($join) use ($companycode) {
+                $join->on('uml.lkhno', '=', 'lh.lkhno')
+                    ->where('lh.companycode', '=', $companycode);
+            })
+            ->join('rkhlst as rl', function($join) use ($companycode, $rkhno) {
+                $join->on('uml.plot', '=', 'rl.plot')
+                    ->on('lh.activitycode', '=', 'rl.activitycode')
+                    ->where('rl.companycode', '=', $companycode)
+                    ->where('rl.rkhno', '=', $rkhno);
+            })
+            ->leftJoin('herbisidagroup as hg', function($join) {
+                $join->on('rl.herbisidagroupid', '=', 'hg.herbisidagroupid')
+                    ->on('lh.activitycode', '=', 'hg.activitycode');
+            })
+            ->leftJoin('activity as a', 'lh.activitycode', '=', 'a.activitycode')
+            ->where('uml.companycode', $companycode)
+            ->where('lh.rkhno', $rkhno)
+            ->select([
+                'uml.plot',
+                'uml.lkhno',
+                'uml.itemcode',
+                'uml.itemname',
+                'uml.qty',
+                'uml.unit',
+                'uml.dosageperha',
+                'lh.activitycode',
+                'hg.herbisidagroupid',
+                'hg.herbisidagroupname',
+                'a.activityname',
+                'rl.luasarea',
+            ])
+            ->orderBy('lh.activitycode')
+            ->orderBy('uml.plot')
+            ->orderBy('uml.itemcode')
+            ->get();
+    }
 }
+

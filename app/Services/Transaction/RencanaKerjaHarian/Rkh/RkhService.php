@@ -185,15 +185,20 @@ class RkhService
             throw new \Exception('RKH not found');
         }
 
-        // Authorization check
         $this->authorizeActivityGroup($header->activitygroup, $companycode);
 
-        $details = $this->rkhRepo->getDetails($companycode, $rkhno);
-        $workers = $this->workerRepo->getWorkersByActivityForRkh($companycode, $rkhno);
+        $details  = $this->rkhRepo->getDetails($companycode, $rkhno);
+        $workers  = $this->workerRepo->getWorkersByActivityForRkh($companycode, $rkhno);
         $kendaraan = $this->kendaraanRepo->getKendaraanByActivity($companycode, $rkhno);
-
         $absenData = $this->absenRepo->getAttendanceData($companycode, $header->rkhdate, $header->mandorid);
         $herbisidaData = $this->masterDataRepo->getFullHerbisidaGroupData($companycode);
+
+        // Grouped by activitycode + herbisidagroupid for modal lookup
+        $materialRaw = $this->rkhRepo->getMaterialByRkhNo($companycode, $rkhno);
+        $materialData = $materialRaw
+            ->groupBy(fn($row) => $row->activitycode . '||' . $row->herbisidagroupid)
+            ->map(fn($items) => $items->values())
+            ->toArray();
 
         return [
             'rkhHeader'          => $header,
@@ -202,6 +207,7 @@ class RkhService
             'kendaraanByActivity'=> $kendaraan,
             'absentenagakerja'   => $absenData,
             'herbisidagroups'    => $herbisidaData,
+            'materialData'       => $materialData,
         ];
     }
 
