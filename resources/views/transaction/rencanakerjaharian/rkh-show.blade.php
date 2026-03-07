@@ -4,12 +4,11 @@
   <x-slot:navbar>{{ $navbar }}</x-slot:navbar>
   <x-slot:nav>{{ $nav }}</x-slot:nav>
 
-  <!-- HEADER CONTENT - GRAYSCALE DESIGN -->
+  <!-- HEADER CONTENT -->
   <div class="bg-white rounded-xl p-6 mb-6 border-2 border-gray-300 shadow-sm">
-    
+
     <!-- TOP ROW: No RKH + Status Badges -->
     <div class="flex flex-wrap items-start justify-between gap-4 mb-5 pb-5 border-b-2 border-gray-200">
-      <!-- No RKH -->
       <div>
         <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">No RKH</label>
         <p class="text-4xl font-mono font-bold text-gray-900 tracking-wide">
@@ -17,13 +16,10 @@
         </p>
       </div>
 
-      <!-- Status Badges Group -->
       <div class="flex flex-wrap gap-3">
         @php
-          // Status Approval
           $approvalStatus = 'Waiting';
-          $approvalClass = 'bg-yellow-100 text-yellow-800 border-yellow-300';
-          $approvalCount = '';
+          $approvalClass  = 'bg-yellow-100 text-yellow-800 border-yellow-300';
 
           if (isset($rkhHeader->jumlahapproval) && $rkhHeader->jumlahapproval > 0) {
             $approvedCount = 0;
@@ -32,29 +28,25 @@
             if ($rkhHeader->approval3flag === '1') $approvedCount++;
 
             if ($rkhHeader->approval1flag === '0' || $rkhHeader->approval2flag === '0' || $rkhHeader->approval3flag === '0') {
-              $approvalStatus = 'Declined';
               $approvalClass = 'bg-red-100 text-red-800 border-red-300';
-              if ($rkhHeader->approval1flag === '0') {
-                $approvalStatus = 'Declined L1';
-              } elseif ($rkhHeader->approval2flag === '0') {
-                $approvalStatus = 'Declined L2';
-              } elseif ($rkhHeader->approval3flag === '0') {
-                $approvalStatus = 'Declined L3';
-              }
+              if ($rkhHeader->approval1flag === '0')      $approvalStatus = 'Declined L1';
+              elseif ($rkhHeader->approval2flag === '0')  $approvalStatus = 'Declined L2';
+              elseif ($rkhHeader->approval3flag === '0')  $approvalStatus = 'Declined L3';
             } elseif ($approvedCount === $rkhHeader->jumlahapproval) {
               $approvalStatus = 'Approved';
-              $approvalClass = 'bg-green-100 text-green-800 border-green-300';
+              $approvalClass  = 'bg-green-100 text-green-800 border-green-300';
             } else {
-              $approvalCount = " ({$approvedCount}/{$rkhHeader->jumlahapproval})";
-              $approvalStatus = "Waiting{$approvalCount}";
+              $approvalStatus = "Waiting ({$approvedCount}/{$rkhHeader->jumlahapproval})";
             }
           } else {
             $approvalStatus = 'No Approval';
-            $approvalClass = 'bg-gray-200 text-gray-700 border-gray-400';
+            $approvalClass  = 'bg-gray-200 text-gray-700 border-gray-400';
           }
 
-          $rkhStatus = $rkhHeader->status === 'Completed' ? 'Completed' : 'In Progress';
-          $rkhStatusClass = $rkhHeader->status === 'Completed' ? 'bg-green-100 text-green-800 border-green-300' : 'bg-blue-100 text-blue-800 border-blue-300';
+          $rkhStatus      = $rkhHeader->status === 'Completed' ? 'Completed' : 'In Progress';
+          $rkhStatusClass = $rkhHeader->status === 'Completed'
+            ? 'bg-green-100 text-green-800 border-green-300'
+            : 'bg-blue-100 text-blue-800 border-blue-300';
         @endphp
 
         <div>
@@ -75,20 +67,16 @@
 
     <!-- MIDDLE ROW: Info Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-      
-      <!-- LEFT COLUMN: Basic Info (7 cols) -->
+
+      <!-- LEFT COLUMN (7 cols) -->
       <div class="lg:col-span-7 space-y-4">
-        
+
         <!-- Mandor & Date -->
         <div class="grid grid-cols-2 gap-4">
           <div class="bg-gray-50 rounded-lg p-4 border border-gray-300">
             <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Mandor</label>
-            <div class="text-sm font-bold text-gray-900">
-              {{ $rkhHeader->mandorid ?? '-' }}
-            </div>
-            <div class="text-xs text-gray-600 mt-0.5">
-              {{ $rkhHeader->mandor_nama ?? '-' }}
-            </div>
+            <div class="text-sm font-bold text-gray-900">{{ $rkhHeader->mandorid ?? '-' }}</div>
+            <div class="text-xs text-gray-600 mt-0.5">{{ $rkhHeader->mandor_nama ?? '-' }}</div>
           </div>
 
           <div class="bg-gray-50 rounded-lg p-4 border border-gray-300">
@@ -106,26 +94,23 @@
         @if($rkhHeader->keterangan)
         <div class="bg-gray-50 rounded-lg p-4 border border-gray-300">
           <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Keterangan</label>
-          <div class="text-sm text-gray-700">
-            {{ $rkhHeader->keterangan }}
-          </div>
+          <div class="text-sm text-gray-700">{{ $rkhHeader->keterangan }}</div>
         </div>
         @endif
 
         <!-- Compact Summary Row -->
         <div class="grid grid-cols-3 gap-3">
-          
-          <!-- Absen Summary -->
+
           <div class="bg-gray-50 rounded-lg p-3 border border-gray-300">
             <div class="flex items-center gap-2 mb-2">
               <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
               <h4 class="text-xs font-bold text-gray-800 uppercase">Absen</h4>
             </div>
             @php
-              $absenSummary = collect($absentenagakerja ?? [])->where('mandorid', $rkhHeader->mandorid);
-              $lakiCount = $absenSummary->where('gender', 'L')->count();
+              $absenSummary   = collect($absentenagakerja ?? [])->where('mandorid', $rkhHeader->mandorid);
+              $lakiCount      = $absenSummary->where('gender', 'L')->count();
               $perempuanCount = $absenSummary->where('gender', 'P')->count();
-              $totalCount = $lakiCount + $perempuanCount;
+              $totalCount     = $lakiCount + $perempuanCount;
             @endphp
             <div class="space-y-1">
               <div class="flex justify-between text-xs">
@@ -143,7 +128,6 @@
             </div>
           </div>
 
-          <!-- Workers Summary -->
           <div class="bg-gray-50 rounded-lg p-3 border border-gray-300">
             <div class="flex items-center gap-2 mb-2">
               <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
@@ -157,7 +141,6 @@
             </div>
           </div>
 
-          <!-- Kendaraan Summary -->
           <div class="bg-gray-50 rounded-lg p-3 border border-gray-300">
             <div class="flex items-center gap-2 mb-2">
               <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
@@ -174,9 +157,9 @@
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: Details (5 cols) -->
+      <!-- RIGHT COLUMN (5 cols) -->
       <div class="lg:col-span-5 space-y-4">
-        
+
         <!-- Workers Detail -->
         <div class="bg-gray-50 rounded-lg border border-gray-300">
           <div class="p-3 border-b border-gray-300 bg-gray-100">
@@ -187,7 +170,8 @@
               <div class="bg-white rounded border border-gray-300 p-2">
                 <div class="flex items-start justify-between mb-1">
                   <div class="flex-1 min-w-0">
-                    <div class="text-xs font-bold text-gray-900 truncate" title="{{ $worker->activitycode }} - {{ $worker->activityname }}">
+                    <div class="text-xs font-bold text-gray-900 truncate"
+                         title="{{ $worker->activitycode }} - {{ $worker->activityname }}">
                       {{ $worker->activitycode }} - {{ $worker->activityname }}
                     </div>
                   </div>
@@ -223,7 +207,9 @@
             @foreach($kendaraanByActivity as $activityCode => $vehicles)
               <div class="bg-white rounded border border-gray-300 p-2">
                 <div class="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
-                  <span class="text-xs font-bold text-gray-900">{{ $activityCode }} - {{ $vehicles->first()->activityname ?? '' }}</span>
+                  <span class="text-xs font-bold text-gray-900">
+                    {{ $activityCode }} - {{ $vehicles->first()->activityname ?? '' }}
+                  </span>
                   <span class="text-[10px] text-gray-600">{{ $vehicles->count() }} unit</span>
                 </div>
                 <div class="space-y-1.5">
@@ -257,12 +243,25 @@
   <div class="bg-white rounded-xl border-2 border-gray-300 shadow-sm">
     <div class="flex justify-between items-center p-4 border-b-2 border-gray-200 bg-gray-50">
       <h3 class="text-base font-bold text-gray-900 uppercase tracking-wide">Detail Rencana Kerja</h3>
-      <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors flex items-center">
-        <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-        </svg>
-        Print
-      </button>
+      <div class="flex gap-2">
+        {{-- Rekap Material button: hanya tampil kalau ada material --}}
+        @if(collect($rkhDetails)->where('usingmaterial', 1)->count() > 0)
+        <button onclick="openRekapMaterialModal()"
+                class="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors flex items-center">
+          <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+          </svg>
+          Rekap Material
+        </button>
+        @endif
+        <button onclick="window.print()"
+                class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors flex items-center">
+          <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+          </svg>
+          Print
+        </button>
+      </div>
     </div>
 
     <div class="overflow-x-auto p-4">
@@ -292,10 +291,9 @@
         <tbody class="divide-y divide-gray-200">
           @forelse ($rkhDetails as $index => $detail)
             @php
-              // Calculate luas sisa from total_sudah_dikerjakan
-              $luasPlot = $detail->luasarea ?? 0;
+              $luasPlot             = $detail->luasarea ?? 0;
               $totalSudahDikerjakan = $detail->total_sudah_dikerjakan ?? 0;
-              $luasSisa = $luasPlot - $totalSudahDikerjakan;
+              $luasSisa             = $luasPlot - $totalSudahDikerjakan;
             @endphp
             <tr class="hover:bg-gray-50 transition-colors">
               <td class="px-3 py-3 text-sm text-center font-bold text-gray-700">{{ $index + 1 }}</td>
@@ -306,19 +304,16 @@
               </td>
 
               <td class="px-3 py-3 text-sm text-center font-bold text-gray-900">{{ $detail->blok ?? '-' }}</td>
-
               <td class="px-3 py-3 text-sm text-center font-bold text-gray-900">{{ $detail->plot ?? '-' }}</td>
 
-              {{-- ✅ NEW: Info Plot (untuk semua activity) --}}
               <td class="px-3 py-3 text-xs">
                 @if($detail->batch_number && $detail->batch_lifecycle)
-                  {{-- Panen Activity: Show batch info --}}
                   <div class="space-y-1">
                     <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold border
-                      {{ $detail->batch_lifecycle === 'PC' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : '' }}
-                      {{ $detail->batch_lifecycle === 'RC1' ? 'bg-green-100 text-green-800 border-green-300' : '' }}
-                      {{ $detail->batch_lifecycle === 'RC2' ? 'bg-blue-100 text-blue-800 border-blue-300' : '' }}
-                      {{ $detail->batch_lifecycle === 'RC3' ? 'bg-purple-100 text-purple-800 border-purple-300' : '' }}">
+                      {{ $detail->batch_lifecycle === 'PC'  ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : '' }}
+                      {{ $detail->batch_lifecycle === 'RC1' ? 'bg-green-100 text-green-800 border-green-300'   : '' }}
+                      {{ $detail->batch_lifecycle === 'RC2' ? 'bg-blue-100 text-blue-800 border-blue-300'     : '' }}
+                      {{ $detail->batch_lifecycle === 'RC3' ? 'bg-purple-100 text-purple-800 border-purple-300': '' }}">
                       {{ $detail->batch_lifecycle }}
                     </span>
                     <div class="text-[10px] text-gray-600">
@@ -336,7 +331,6 @@
                     @endif
                   </div>
                 @else
-                  {{-- Non-Panen Activity: Show luas info --}}
                   <div class="space-y-1">
                     <div class="text-[10px] text-gray-700">
                       <span class="font-semibold">Luas Plot:</span> {{ number_format($luasPlot, 2) }} Ha
@@ -444,185 +438,243 @@
     </button>
   </div>
 
-  <!-- Material Modal -->
+  <!-- ============================================================ -->
+  <!-- MODAL 1: Detail Material per baris (compact, no total)      -->
+  <!-- ============================================================ -->
   <div x-data="{
-    showMaterialModal: false,
-    currentMaterial: {
-      activitycode: '',
-      activityname: '',
-      blok: '',
-      plot: '',
-      luasarea: 0,
-      herbisidagroupid: null,
-      herbisidagroupname: ''
-    },
-    materialItems: [],
-
+    show: false,
+    info: { activitycode:'', activityname:'', blok:'', plot:'', luasarea:0, herbisidagroupid:null, herbisidagroupname:'' },
+    items: [],
     init() {
       window.addEventListener('open-material-modal', (e) => {
-        this.currentMaterial = {
-          activitycode: e.detail.activitycode || '',
-          activityname: e.detail.activityname || '',
-          blok: e.detail.blok || '',
-          plot: e.detail.plot || '',
-          luasarea: parseFloat(e.detail.luasarea) || 0,
-          herbisidagroupid: e.detail.herbisidagroupid || null,
+        this.info = {
+          activitycode:       e.detail.activitycode       || '',
+          activityname:       e.detail.activityname       || '',
+          blok:               e.detail.blok               || '',
+          plot:               e.detail.plot               || '',
+          luasarea:           parseFloat(e.detail.luasarea) || 0,
+          herbisidagroupid:   e.detail.herbisidagroupid   || null,
           herbisidagroupname: e.detail.herbisidagroupname || ''
         };
-        this.loadMaterialItems();
-        this.showMaterialModal = true;
+        const key  = this.info.activitycode + '||' + this.info.herbisidagroupid;
+        const rows = window.materialData[key];
+
+        // Filter by plot, lalu group by itemcode → sum qty per item
+        const filtered = (rows || []).filter(r => r.plot === this.info.plot);
+        const grouped  = {};
+        filtered.forEach(r => {
+          const ic = r.itemcode || '';
+          if (!grouped[ic]) {
+            grouped[ic] = {
+              itemcode:    ic,
+              itemname:    r.itemname    || '-',
+              dosageperha: parseFloat(r.dosageperha) || 0,
+              qty:         0,
+              unit:        r.unit        || '-',
+            };
+          }
+          grouped[ic].qty += parseFloat(r.qty) || 0;
+        });
+        this.items = Object.values(grouped);
+        this.show = true;
       });
-    },
-
-    loadMaterialItems() {
-      if (!this.currentMaterial.herbisidagroupid || !window.herbisidaData) {
-        this.materialItems = [];
-        return;
-      }
-
-      this.materialItems = window.herbisidaData
-        .filter(item => 
-          item.herbisidagroupid == this.currentMaterial.herbisidagroupid &&
-          item.activitycode === this.currentMaterial.activitycode
-        )
-        .map(item => ({
-          itemcode: item.itemcode || '',
-          itemname: item.itemname || 'Unknown',
-          dosageperha: parseFloat(item.dosageperha) || 0,
-          measure: item.measure || '-'
-        }));
-    },
-
-    // Add rounding to 0.25
-    getTotalQty() {
-      if (this.materialItems.length === 0) return '-';
-      
-      const total = this.materialItems.reduce((sum, item) => {
-        const qtyRaw = parseFloat(item.dosageperha) * parseFloat(this.currentMaterial.luasarea);
-        const qtyRounded = qtyRaw > 0 ? Math.max(0.25, Math.round(qtyRaw / 0.25) * 0.25) : 0;
-        return sum + qtyRounded;
-      }, 0);
-      
-      return total.toFixed(2);
-    },
-
-    // Helper for per-item qty
-    getItemQty(dosageperha) {
-      const qtyRaw = parseFloat(dosageperha) * parseFloat(this.currentMaterial.luasarea);
-      const qtyRounded = qtyRaw > 0 ? Math.max(0.25, Math.round(qtyRaw / 0.25) * 0.25) : 0;
-      return qtyRounded.toFixed(2);
     }
   }" x-cloak>
-    
-    <!-- Modal Overlay -->
-    <div
-      x-show="showMaterialModal"
-      x-cloak
-      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4"
-      style="display: none;"
-      @click.self="showMaterialModal = false"
-      x-transition:enter="transition ease-out duration-300"
-      x-transition:enter-start="opacity-0"
-      x-transition:enter-end="opacity-100"
-      x-transition:leave="transition ease-in duration-200"
-      x-transition:leave-start="opacity-100"
-      x-transition:leave-end="opacity-0"
-    >
-      <!-- Modal Content -->
-      <div class="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col"
-          x-transition:enter="transition ease-out duration-300"
-          x-transition:enter-start="opacity-0 transform scale-95"
-          x-transition:enter-end="opacity-100 transform scale-100"
-          x-transition:leave="transition ease-in duration-200"
-          x-transition:leave-start="opacity-100 transform scale-100"
-          x-transition:leave-end="opacity-0 transform scale-95">
-        
+    <div x-show="show" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4"
+         style="display:none;" @click.self="show=false"
+         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+      <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl flex flex-col max-h-[80vh]"
+           x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+           x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+
         {{-- Header --}}
-        <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-900">Detail Material</h2>
-            <button @click="showMaterialModal = false" type="button" class="text-gray-400 hover:text-gray-600 rounded-full p-2 transition-colors">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        <div class="px-5 py-3 border-b border-gray-200 bg-green-50 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold text-green-800 uppercase tracking-wide" x-text="info.activitycode + ' — ' + info.activityname"></p>
+            <p class="text-[11px] text-gray-500 mt-0.5">
+              Blok-Plot: <span class="font-semibold text-gray-700" x-text="info.blok + '-' + info.plot"></span>
+              &nbsp;·&nbsp; Luas: <span class="font-semibold text-gray-700" x-text="info.luasarea + ' Ha'"></span>
+              &nbsp;·&nbsp; Grup: <span class="font-semibold text-green-700" x-text="info.herbisidagroupname"></span>
+            </p>
           </div>
+          <button @click="show=false" type="button" class="text-gray-400 hover:text-gray-600 p-1 rounded">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
         </div>
 
-        {{-- Content --}}
-        <div class="flex-1 overflow-y-auto p-6">
-          {{-- Activity Info --}}
-          <div class="bg-blue-50 rounded-lg p-4 mb-4 border border-blue-200">
-            <div class="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span class="font-semibold text-gray-700">Aktivitas:</span>
-                <span class="ml-2 text-gray-900" x-text="currentMaterial.activitycode + ' - ' + currentMaterial.activityname"></span>
-              </div>
-              <div>
-                <span class="font-semibold text-gray-700">Blok-Plot:</span>
-                <span class="ml-2 text-gray-900" x-text="currentMaterial.blok + '-' + currentMaterial.plot"></span>
-              </div>
-              <div>
-                <span class="font-semibold text-gray-700">Luas Area:</span>
-                <span class="ml-2 text-gray-900" x-text="currentMaterial.luasarea + ' Ha'"></span>
-              </div>
-              <div>
-                <span class="font-semibold text-gray-700">Grup Material:</span>
-                <span class="ml-2 text-green-800 font-semibold" x-text="currentMaterial.herbisidagroupname"></span>
-              </div>
-            </div>
-          </div>
+        {{-- Body --}}
+        <div class="flex-1 overflow-y-auto p-4">
 
-          {{-- Material Items Table --}}
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <table class="w-full">
+          {{-- Table --}}
+          <div x-show="items.length > 0" x-cloak class="border border-gray-200 rounded-lg overflow-hidden">
+            <table class="w-full text-xs">
               <thead class="bg-gray-800 text-white">
                 <tr>
-                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">Kode</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide">Nama Material</th>
-                  <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide">Dosis/Ha</th>
-                  <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide">Satuan</th>
-                  <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide">Total Qty</th>
+                  <th class="px-3 py-2 text-left font-semibold uppercase">Material</th>
+                  <th class="px-3 py-2 text-right font-semibold uppercase">Dosis/Ha</th>
+                  <th class="px-3 py-2 text-center font-semibold uppercase">Sat</th>
+                  <th class="px-3 py-2 text-right font-semibold uppercase">Luas</th>
+                  <th class="px-3 py-2 text-right font-semibold uppercase">Hasil</th>
+                  <th class="px-3 py-2 text-right font-semibold uppercase">Pembulatan</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-200 bg-white">
-                <template x-for="item in materialItems" :key="item.itemcode">
-                  <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="px-4 py-3 text-sm font-mono text-gray-900" x-text="item.itemcode"></td>
-                    <td class="px-4 py-3 text-sm text-gray-900" x-text="item.itemname"></td>
-                    <td class="px-4 py-3 text-sm text-right text-gray-700" x-text="item.dosageperha.toFixed(2)"></td>
-                    <td class="px-4 py-3 text-sm text-center text-gray-700" x-text="item.measure"></td>
-                    <td class="px-4 py-3 text-sm text-right font-semibold text-green-700" 
-                        x-text="getItemQty(item.dosageperha)"></td>
+              <tbody class="divide-y divide-gray-100 bg-white">
+                <template x-for="(item, idx) in items" :key="idx">
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-3 py-2">
+                      <div class="font-mono font-bold text-gray-900" x-text="item.itemcode"></div>
+                      <div class="text-[10px] text-gray-500" x-text="item.itemname"></div>
+                    </td>
+                    <td class="px-3 py-2 text-right text-gray-700" x-text="item.dosageperha.toFixed(3)"></td>
+                    <td class="px-3 py-2 text-center text-gray-600" x-text="item.unit"></td>
+                    <td class="px-3 py-2 text-right text-gray-600" x-text="info.luasarea.toFixed(2)"></td>
+                    <td class="px-3 py-2 text-right text-gray-500 italic"
+                        x-text="(item.dosageperha * info.luasarea).toFixed(2)"></td>
+                    <td class="px-3 py-2 text-right font-bold text-green-700" x-text="item.qty.toFixed(3)"></td>
                   </tr>
                 </template>
               </tbody>
-              <tfoot class="bg-gray-100 border-t-2 border-gray-300">
-                <tr>
-                  <td colspan="4" class="px-4 py-3 text-sm font-bold text-gray-700 text-right">
-                    Total Material untuk <span x-text="currentMaterial.luasarea"></span> Ha:
-                  </td>
-                  <td class="px-4 py-3 text-sm font-bold text-green-700 text-right" x-text="getTotalQty()"></td>
-                </tr>
-              </tfoot>
             </table>
           </div>
 
-          {{-- Empty State --}}
-          <template x-if="materialItems.length === 0">
-            <div class="text-center py-8 text-gray-400">
-              <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-              </svg>
-              <p class="text-sm font-medium">Tidak ada material untuk grup ini</p>
-            </div>
-          </template>
+          {{-- Empty --}}
+          <div x-show="items.length === 0" x-cloak class="text-center py-10 text-gray-400">
+            <svg class="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+            </svg>
+            <p class="text-sm font-medium">Belum ada realisasi material</p>
+          </div>
         </div>
 
         {{-- Footer --}}
-        <div class="px-6 py-4 bg-gray-50 border-t flex justify-end">
-          <button @click="showMaterialModal = false" type="button" 
-                  class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+        <div class="px-5 py-3 bg-gray-50 border-t flex justify-end">
+          <button @click="show=false" type="button"
+                  class="px-5 py-1.5 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors">
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 2: Rekap Material — grouped by aktivitas, subtotal     -->
+  <!-- ============================================================ -->
+  <div x-data="{
+    show: false,
+    grouped: [],
+    init() {
+      window.addEventListener('open-rekap-material-modal', () => {
+        this.grouped = window.buildRekapMaterial();
+        this.show    = true;
+      });
+    }
+  }" x-cloak>
+    <div x-show="show" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4"
+         style="display:none;" @click.self="show=false"
+         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+      <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh]"
+           x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+           x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+
+        {{-- Header --}}
+        <div class="px-5 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-gray-900 uppercase tracking-wide">Rekap Penggunaan Material</h2>
+            <p class="text-[11px] text-gray-500 mt-0.5">RKH: <span class="font-semibold">{{ $rkhHeader->rkhno }}</span></p>
+          </div>
+          <button @click="show=false" type="button" class="text-gray-400 hover:text-gray-600 p-1 rounded">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        {{-- Body --}}
+        <div class="flex-1 overflow-y-auto p-4 space-y-3">
+          <template x-for="(act, ai) in grouped" :key="ai">
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+
+              {{-- Aktivitas Header --}}
+              <div class="bg-gray-800 text-white px-4 py-2.5">
+                <span class="text-xs font-bold uppercase tracking-wide"
+                      x-text="act.activitycode + ' — ' + act.activityname"></span>
+              </div>
+
+              {{-- Items --}}
+              <template x-for="(item, ii) in act.items" :key="ii">
+                <div x-data="{ open: false }" class="border-b border-gray-100 last:border-b-0">
+
+                  {{-- Item Header Row (clickable) --}}
+                  <div class="flex items-center justify-between px-4 py-2 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors select-none"
+                       @click="open = !open">
+                    <div class="flex items-center gap-2">
+                      {{-- chevron --}}
+                      <svg class="w-3 h-3 text-gray-400 transition-transform duration-200 flex-shrink-0"
+                           :class="open ? 'rotate-90' : ''"
+                           fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                      </svg>
+                      <span class="font-mono text-xs font-bold text-gray-800" x-text="item.itemcode"></span>
+                      <span class="text-xs text-gray-500" x-text="item.itemname"></span>
+                    </div>
+                    <div class="flex items-center gap-3 flex-shrink-0">
+                      <span class="text-[10px] text-gray-400 uppercase" x-text="item.unit"></span>
+                      <span class="text-xs font-bold text-green-700 min-w-[55px] text-right"
+                            x-text="item.totalqty.toFixed(3)"></span>
+                      <span class="text-[10px] text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded"
+                            x-text="item.plots.length + ' plot'"></span>
+                    </div>
+                  </div>
+
+                  {{-- Plot Breakdown (dropdown) --}}
+                  <div x-show="open" x-collapse class="bg-white">
+                    {{-- sub-header --}}
+                    <div class="grid grid-cols-12 gap-1 px-4 py-1 bg-gray-50 border-t border-gray-100 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                      <div class="col-span-2">Plot</div>
+                      <div class="col-span-2 text-right">Luas (Ha)</div>
+                      <div class="col-span-2 text-right">Dosis/Ha</div>
+                      <div class="col-span-3 text-right">Hasil Asli</div>
+                      <div class="col-span-3 text-right">Pembulatan</div>
+                    </div>
+                    <template x-for="(p, pi) in item.plots" :key="pi">
+                      <div class="grid grid-cols-12 gap-1 px-4 py-1.5 border-t border-gray-50 text-xs hover:bg-gray-50">
+                        <div class="col-span-2 font-semibold text-gray-700" x-text="p.plot"></div>
+                        <div class="col-span-2 text-right text-gray-500" x-text="p.luasarea.toFixed(2)"></div>
+                        <div class="col-span-2 text-right text-gray-500" x-text="p.dosageperha.toFixed(3)"></div>
+                        <div class="col-span-3 text-right text-gray-400 italic"
+                             x-text="(p.dosageperha * p.luasarea).toFixed(2)"></div>
+                        <div class="col-span-3 text-right font-semibold text-green-700"
+                             x-text="p.qty.toFixed(3)"></div>
+                      </div>
+                    </template>
+                    {{-- subtotal row --}}
+                    <div class="grid grid-cols-12 gap-1 px-4 py-1.5 border-t-2 border-gray-200 bg-gray-50 text-xs font-bold">
+                      <div class="col-span-9 text-right text-gray-600">Subtotal</div>
+                      <div class="col-span-3 text-right text-green-700" x-text="item.totalqty.toFixed(3)"></div>
+                    </div>
+                  </div>
+
+                </div>
+              </template>
+
+            </div>
+          </template>
+
+          {{-- Empty --}}
+          <div x-show="grouped.length === 0" class="text-center py-10 text-gray-400">
+            <p class="text-sm font-medium">Belum ada data material</p>
+          </div>
+        </div>
+
+        {{-- Footer --}}
+        <div class="px-5 py-3 bg-gray-50 border-t flex justify-end">
+          <button @click="show=false" type="button"
+                  class="px-5 py-1.5 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors">
             Tutup
           </button>
         </div>
@@ -632,10 +684,78 @@
 
   <script>
     window.herbisidaData = @json($herbisidagroups ?? []);
-    
+    window.materialData  = @json($materialData ?? []);
+
     function openMaterialModal(data) {
       window.dispatchEvent(new CustomEvent('open-material-modal', { detail: data }));
     }
+
+    function openRekapMaterialModal() {
+      window.dispatchEvent(new CustomEvent('open-rekap-material-modal'));
+    }
+
+    /**
+     * Build rekap: group by activitycode → itemcode → plots
+     * Structure:
+     * [
+     *   { activitycode, activityname, items: [
+     *     { itemcode, itemname, unit, totalqty, plots: [
+     *       { plot, dosageperha, luasarea (from rkhlst — not available here, skip), qty }
+     *     ]}
+     *   ]}
+     * ]
+     */
+    window.buildRekapMaterial = function() {
+      const byActivity = {};
+
+      Object.keys(window.materialData).forEach(key => {
+        const rows = window.materialData[key];
+        if (!rows || !rows.length) return;
+
+        const activitycode = rows[0].activitycode || key.split('||')[0];
+        const activityname = rows[0].activityname || activitycode;
+
+        if (!byActivity[activitycode]) {
+          byActivity[activitycode] = { activitycode, activityname, items: {} };
+        }
+
+        rows.forEach(r => {
+          const ic = r.itemcode || '';
+          if (!byActivity[activitycode].items[ic]) {
+            byActivity[activitycode].items[ic] = {
+              itemcode: ic,
+              itemname: r.itemname || '-',
+              unit:     r.unit     || '-',
+              totalqty: 0,
+              plots:    {}
+            };
+          }
+
+          const item = byActivity[activitycode].items[ic];
+          item.totalqty += parseFloat(r.qty) || 0;
+
+          // group plots: sum qty per plot
+          const plot = r.plot || '-';
+          if (!item.plots[plot]) {
+            item.plots[plot] = {
+              plot,
+              luasarea:   parseFloat(r.luasarea)   || 0,
+              dosageperha: parseFloat(r.dosageperha) || 0,
+              qty: 0
+            };
+          }
+          item.plots[plot].qty += parseFloat(r.qty) || 0;
+        });
+      });
+
+      return Object.values(byActivity).map(act => ({
+        ...act,
+        items: Object.values(act.items).map(item => ({
+          ...item,
+          plots: Object.values(item.plots)
+        }))
+      }));
+    };
   </script>
 
 </x-layout>
