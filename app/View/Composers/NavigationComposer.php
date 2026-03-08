@@ -15,15 +15,16 @@ use App\Services\PermissionService;
  * - Reads menu from config/menu.php (not database)
  * - Filters menu items based on user permissions
  * - Uses static caching to prevent duplicate queries per request
- * 
- * OPTIMIZATION CHANGES:
- * - Added static cache to prevent multiple queries in same request
- * - Combined company name & period into single query
- * - Use Auth::user() directly instead of re-querying user table
- * - Removed duplicate queries in catch block
+ * - Company & usercompany ALWAYS query production DB ('mariadb')
  */
 class NavigationComposer
 {
+    /**
+     * Production DB connection name
+     * Company/usercompany selalu dari production, tidak ikut SwitchDatabase middleware
+     */
+    private const PRODUCTION_DB = 'mariadb';
+
     /**
      * Static cache untuk mencegah query berulang dalam satu request
      * @var array|null
@@ -107,6 +108,7 @@ class NavigationComposer
 
     /**
      * Get company data (name & period) - dengan static cache
+     * ALWAYS dari production DB
      * 
      * @param string|null $companyCode
      * @return object|null
@@ -126,7 +128,7 @@ class NavigationComposer
         }
 
         $lastCompanyCode = $companyCode;
-        $companyData = DB::table('company')
+        $companyData = DB::connection(self::PRODUCTION_DB)->table('company')
             ->where('companycode', $companyCode)
             ->select('name', 'companyperiod')
             ->first();
@@ -136,6 +138,7 @@ class NavigationComposer
 
     /**
      * Get user companies - dengan static cache
+     * ALWAYS dari production DB
      * 
      * @param string $userId
      * @return array
@@ -148,7 +151,7 @@ class NavigationComposer
         }
 
         try {
-            self::$cachedUserCompanies = DB::table('usercompany')
+            self::$cachedUserCompanies = DB::connection(self::PRODUCTION_DB)->table('usercompany')
                 ->where('userid', $userId)
                 ->where('isactive', 1)
                 ->pluck('companycode')

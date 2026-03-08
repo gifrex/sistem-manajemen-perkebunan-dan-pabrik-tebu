@@ -33,7 +33,7 @@ class HomeController extends Controller
         session(['companycode' => $request->dropdown_value]);
         
         // Set company name ke session
-        $companyName = DB::table('company')
+        $companyName = DB::connection('mariadb')->table('company')
             ->where('companycode', $request->dropdown_value)
             ->value('name');
         
