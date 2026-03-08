@@ -187,28 +187,84 @@ class RkhService
 
         $this->authorizeActivityGroup($header->activitygroup, $companycode);
 
-        $details  = $this->rkhRepo->getDetails($companycode, $rkhno);
-        $workers  = $this->workerRepo->getWorkersByActivityForRkh($companycode, $rkhno);
+        $details   = $this->rkhRepo->getDetails($companycode, $rkhno, $header->rkhdate);
+        $workers   = $this->workerRepo->getWorkersByActivityForRkh($companycode, $rkhno);
         $kendaraan = $this->kendaraanRepo->getKendaraanByActivity($companycode, $rkhno);
         $absenData = $this->absenRepo->getAttendanceData($companycode, $header->rkhdate, $header->mandorid);
         $herbisidaData = $this->masterDataRepo->getFullHerbisidaGroupData($companycode);
 
-        // Grouped by activitycode + herbisidagroupid for modal lookup
+        // ============================================================
+        // Material Data: pakai hasil generate (usemateriallst) dulu,
+        // kalau kosong fallback hitung manual dari herbisidadosage
+        // ============================================================
         $materialRaw = $this->rkhRepo->getMaterialByRkhNo($companycode, $rkhno);
+        $isEstimated = false;
+
+        if ($materialRaw->isEmpty()) {
+            // Fallback: hitung manual
+            $materialRaw = $this->buildEstimatedMaterial($companycode, $rkhno);
+            $isEstimated = true;
+        }
+
         $materialData = $materialRaw
             ->groupBy(fn($row) => $row->activitycode . '||' . $row->herbisidagroupid)
             ->map(fn($items) => $items->values())
             ->toArray();
 
         return [
-            'rkhHeader'          => $header,
-            'rkhDetails'         => $details,
-            'workersByActivity'  => $workers,
-            'kendaraanByActivity'=> $kendaraan,
-            'absentenagakerja'   => $absenData,
-            'herbisidagroups'    => $herbisidaData,
-            'materialData'       => $materialData,
+            'rkhHeader'           => $header,
+            'rkhDetails'          => $details,
+            'workersByActivity'   => $workers,
+            'kendaraanByActivity' => $kendaraan,
+            'absentenagakerja'    => $absenData,
+            'herbisidagroups'     => $herbisidaData,
+            'materialData'        => $materialData,
+            'isMaterialEstimated' => $isEstimated,
         ];
+    }
+
+    /**
+     * Build estimated material data (fallback)
+     * Same rounding logic as MaterialUsageGeneratorService
+     * 
+     * @param string $companycode
+     * @param string $rkhno
+     * @return \Illuminate\Support\Collection
+     */
+    private function buildEstimatedMaterial($companycode, $rkhno)
+    {
+        $raw = $this->rkhRepo->getEstimatedMaterialByRkhNo($companycode, $rkhno);
+
+        return $raw->map(function ($row) {
+            $qtyRaw = (float) $row->luasarea * (float) $row->dosageperha;
+
+            if ($qtyRaw > 0) {
+                $truncated = floor($qtyRaw * 100) / 100;
+                if ($truncated == 0) {
+                    $qty = 0.05;
+                } else {
+                    $qty = ceil($truncated / 0.05) * 0.05;
+                }
+            } else {
+                $qty = 0;
+            }
+
+            // Return object yang mirip struktur getMaterialByRkhNo
+            return (object) [
+                'plot'               => $row->plot,
+                'lkhno'              => null, // belum ada LKH
+                'itemcode'           => $row->itemcode,
+                'itemname'           => $row->itemname,
+                'qty'                => round($qty, 3),
+                'unit'               => $row->unit,
+                'dosageperha'        => $row->dosageperha,
+                'activitycode'       => $row->activitycode,
+                'herbisidagroupid'   => $row->herbisidagroupid,
+                'herbisidagroupname' => $row->herbisidagroupname,
+                'activityname'       => $row->activityname,
+                'luasarea'           => $row->luasarea,
+            ];
+        });
     }
 
     /**

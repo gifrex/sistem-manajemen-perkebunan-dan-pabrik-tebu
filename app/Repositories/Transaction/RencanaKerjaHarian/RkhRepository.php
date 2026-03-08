@@ -852,5 +852,51 @@ class RkhRepository
             ->orderBy('uml.itemcode')
             ->get();
     }
+
+    /**
+     * Get estimated material data (fallback when not yet generated)
+     * Calculates from herbisidadosage × rkhlst.luasarea per plot
+     * 
+     * @param string $companycode
+     * @param string $rkhno
+     * @return \Illuminate\Support\Collection
+     */
+    public function getEstimatedMaterialByRkhNo($companycode, $rkhno)
+    {
+        return DB::table('rkhlst as rl')
+            ->join('herbisidadosage as hd', function($join) use ($companycode) {
+                $join->on('rl.herbisidagroupid', '=', 'hd.herbisidagroupid')
+                    ->where('hd.companycode', '=', $companycode);
+            })
+            ->join('herbisidagroup as hg', function($join) {
+                $join->on('rl.herbisidagroupid', '=', 'hg.herbisidagroupid')
+                    ->on('rl.activitycode', '=', 'hg.activitycode');
+            })
+            ->join('herbisida as h', function($join) use ($companycode) {
+                $join->on('hd.itemcode', '=', 'h.itemcode')
+                    ->where('h.companycode', '=', $companycode);
+            })
+            ->leftJoin('activity as a', 'rl.activitycode', '=', 'a.activitycode')
+            ->where('rl.companycode', $companycode)
+            ->where('rl.rkhno', $rkhno)
+            ->where('rl.usingmaterial', 1)
+            ->whereNotNull('rl.herbisidagroupid')
+            ->select([
+                'rl.plot',
+                'rl.activitycode',
+                'rl.luasarea',
+                'rl.herbisidagroupid',
+                'hg.herbisidagroupname',
+                'hd.itemcode',
+                'h.itemname',
+                'hd.dosageperha',
+                'h.measure as unit',
+                'a.activityname',
+            ])
+            ->orderBy('rl.activitycode')
+            ->orderBy('rl.plot')
+            ->orderBy('hd.itemcode')
+            ->get();
+    }
 }
 
