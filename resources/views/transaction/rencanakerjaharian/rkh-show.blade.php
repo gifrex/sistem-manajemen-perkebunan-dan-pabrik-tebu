@@ -244,14 +244,17 @@
     <div class="flex justify-between items-center p-4 border-b-2 border-gray-200 bg-gray-50">
       <h3 class="text-base font-bold text-gray-900 uppercase tracking-wide">Detail Rencana Kerja</h3>
       <div class="flex gap-2">
-        {{-- Rekap Material button: hanya tampil kalau ada material --}}
+        {{-- Rekap Material button --}}
         @if(collect($rkhDetails)->where('usingmaterial', 1)->count() > 0)
         <button onclick="openRekapMaterialModal()"
-                class="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors flex items-center">
+                class="{{ ($isMaterialEstimated ?? false) ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-700 hover:bg-green-800' }} text-white px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors flex items-center">
           <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
           </svg>
           Rekap Material
+          @if($isMaterialEstimated ?? false)
+            <span class="ml-1.5 text-[10px] bg-yellow-800 px-1.5 py-0.5 rounded">(Estimasi)</span>
+          @endif
         </button>
         @endif
         <button onclick="window.print()"
@@ -263,6 +266,22 @@
         </button>
       </div>
     </div>
+
+    {{-- Estimated banner --}}
+    @if($isMaterialEstimated ?? false)
+    <div class="mx-4 mt-4 p-3 bg-yellow-50 border border-yellow-300 rounded-lg flex items-start gap-2">
+      <svg class="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.27 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+      </svg>
+      <div>
+        <p class="text-xs font-bold text-yellow-800">Data Material Estimasi</p>
+        <p class="text-[11px] text-yellow-700 mt-0.5">
+          Material belum di-generate. Data di bawah adalah perkiraan berdasarkan dosis × luas RKH. 
+          Angka final bisa berbeda setelah approval & generate material (menggunakan luas dari LKH).
+        </p>
+      </div>
+    </div>
+    @endif
 
     <div class="overflow-x-auto p-4">
       <table class="table-fixed w-full border-collapse bg-white">
@@ -354,7 +373,9 @@
               <td class="px-3 py-3 text-xs text-center">
                 @if($detail->usingmaterial == 1 && $detail->herbisidagroupname)
                   <div
-                    class="bg-green-100 text-green-800 px-2 py-1 rounded border border-green-300 cursor-pointer hover:bg-green-200 transition-colors"
+                    class="{{ ($isMaterialEstimated ?? false)
+                        ? 'bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200'
+                        : 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200' }} px-2 py-1 rounded border cursor-pointer transition-colors"
                     onclick="openMaterialModal({
                       activitycode: '{{ $detail->activitycode }}',
                       activityname: '{{ addslashes($detail->activityname ?? '') }}',
@@ -364,10 +385,10 @@
                       herbisidagroupid: {{ $detail->herbisidagroupid ?? 'null' }},
                       herbisidagroupname: '{{ addslashes($detail->herbisidagroupname) }}'
                     })"
-                    title="Klik untuk detail"
+                    title="{{ ($isMaterialEstimated ?? false) ? 'Estimasi - klik untuk detail' : 'Klik untuk detail' }}"
                   >
                     <div class="font-bold text-[11px]">{{ $detail->herbisidagroupname }}</div>
-                    <div class="text-[9px]">(klik)</div>
+                    <div class="text-[9px]">{{ ($isMaterialEstimated ?? false) ? '(estimasi)' : '(klik)' }}</div>
                   </div>
                 @elseif($detail->usingmaterial == 1)
                   <span class="bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-300 text-[11px] font-semibold">Ya</span>
@@ -489,14 +510,22 @@
            x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
 
         {{-- Header --}}
-        <div class="px-5 py-3 border-b border-gray-200 bg-green-50 flex items-center justify-between">
+        <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between"
+             :class="window.isMaterialEstimated ? 'bg-yellow-50' : 'bg-green-50'">
           <div>
-            <p class="text-xs font-bold text-green-800 uppercase tracking-wide" x-text="info.activitycode + ' — ' + info.activityname"></p>
+            <p class="text-xs font-bold uppercase tracking-wide"
+               :class="window.isMaterialEstimated ? 'text-yellow-800' : 'text-green-800'"
+               x-text="info.activitycode + ' — ' + info.activityname"></p>
             <p class="text-[11px] text-gray-500 mt-0.5">
               Blok-Plot: <span class="font-semibold text-gray-700" x-text="info.blok + '-' + info.plot"></span>
               &nbsp;·&nbsp; Luas: <span class="font-semibold text-gray-700" x-text="info.luasarea + ' Ha'"></span>
               &nbsp;·&nbsp; Grup: <span class="font-semibold text-green-700" x-text="info.herbisidagroupname"></span>
             </p>
+            <template x-if="window.isMaterialEstimated">
+              <p class="text-[10px] text-yellow-700 font-semibold mt-1">
+                ⚠ Data estimasi — belum di-generate (material belum final)
+              </p>
+            </template>
           </div>
           <button @click="show=false" type="button" class="text-gray-400 hover:text-gray-600 p-1 rounded">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -582,10 +611,16 @@
            x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
 
         {{-- Header --}}
-        <div class="px-5 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+        <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between"
+             :class="window.isMaterialEstimated ? 'bg-yellow-50' : 'bg-gray-50'">
           <div>
             <h2 class="text-sm font-bold text-gray-900 uppercase tracking-wide">Rekap Penggunaan Material</h2>
-            <p class="text-[11px] text-gray-500 mt-0.5">RKH: <span class="font-semibold">{{ $rkhHeader->rkhno }}</span></p>
+            <p class="text-[11px] text-gray-500 mt-0.5">
+              RKH: <span class="font-semibold">{{ $rkhHeader->rkhno }}</span>
+              <template x-if="window.isMaterialEstimated">
+                <span class="ml-2 text-yellow-700 font-semibold">⚠ Estimasi — angka bisa berubah setelah generate</span>
+              </template>
+            </p>
           </div>
           <button @click="show=false" type="button" class="text-gray-400 hover:text-gray-600 p-1 rounded">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -683,8 +718,9 @@
   </div>
 
   <script>
-    window.herbisidaData = @json($herbisidagroups ?? []);
-    window.materialData  = @json($materialData ?? []);
+    window.herbisidaData        = @json($herbisidagroups ?? []);
+    window.materialData         = @json($materialData ?? []);
+    window.isMaterialEstimated  = @json($isMaterialEstimated ?? false);
 
     function openMaterialModal(data) {
       window.dispatchEvent(new CustomEvent('open-material-modal', { detail: data }));
@@ -696,14 +732,6 @@
 
     /**
      * Build rekap: group by activitycode → itemcode → plots
-     * Structure:
-     * [
-     *   { activitycode, activityname, items: [
-     *     { itemcode, itemname, unit, totalqty, plots: [
-     *       { plot, dosageperha, luasarea (from rkhlst — not available here, skip), qty }
-     *     ]}
-     *   ]}
-     * ]
      */
     window.buildRekapMaterial = function() {
       const byActivity = {};
@@ -739,7 +767,7 @@
           if (!item.plots[plot]) {
             item.plots[plot] = {
               plot,
-              luasarea:   parseFloat(r.luasarea)   || 0,
+              luasarea:    parseFloat(r.luasarea)    || 0,
               dosageperha: parseFloat(r.dosageperha) || 0,
               qty: 0
             };
