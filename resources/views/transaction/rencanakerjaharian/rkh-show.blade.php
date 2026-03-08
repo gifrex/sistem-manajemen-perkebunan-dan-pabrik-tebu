@@ -277,7 +277,7 @@
         <p class="text-xs font-bold text-yellow-800">Data Material Estimasi</p>
         <p class="text-[11px] text-yellow-700 mt-0.5">
           Material belum di-generate. Data di bawah adalah perkiraan berdasarkan dosis × luas RKH. 
-          Angka final bisa berbeda setelah approval & generate material (menggunakan luas dari LKH).
+          Angka final didapat setelah approval & generate material.
         </p>
       </div>
     </div>
