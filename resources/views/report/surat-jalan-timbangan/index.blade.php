@@ -21,9 +21,8 @@
                 </h2>
             </div>
 
-            <!-- Summary Cards (3 cards only) -->
+            <!-- Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-                <!-- Total SJ -->
                 <div class="bg-white rounded-xl shadow-lg p-5 border-l-4 border-blue-500 transform hover:scale-105 transition-transform hover:shadow-xl">
                     <div class="flex justify-between items-start mb-3">
                         <div>
@@ -42,7 +41,6 @@
                     </div>
                 </div>
 
-                <!-- Total Tonase (Netto) -->
                 <div class="bg-white rounded-xl shadow-lg p-5 border-l-4 border-green-500 transform hover:scale-105 transition-transform hover:shadow-xl">
                     <div class="flex justify-between items-start mb-3">
                         <div>
@@ -61,7 +59,6 @@
                     </div>
                 </div>
 
-                <!-- Pending Timbangan -->
                 <div class="bg-white rounded-xl shadow-lg p-5 border-l-4 border-amber-500 transform hover:scale-105 transition-transform hover:shadow-xl">
                     <div class="flex justify-between items-start mb-3">
                         <div>
@@ -95,7 +92,6 @@
                     </div>
                 </div>
                 
-                <!-- Date Range Row -->
                 <div class="flex flex-wrap gap-3 mb-3 pb-3 border-b border-gray-200">
                     <div class="flex-1 min-w-[140px]">
                         <label class="block text-xs font-medium text-gray-600 mb-1.5">Group</label>
@@ -121,7 +117,6 @@
                     </div>
                 </div>
 
-                <!-- Other Filters Row -->
                 <div class="flex flex-wrap gap-3">
                     <div class="flex-1 min-w-[140px]">
                         <label class="block text-xs font-medium text-gray-600 mb-1.5">Mandor</label>
@@ -208,7 +203,6 @@
 
             <!-- Charts Row 1: SJ & Tonase per Tanggal -->
             <div x-show="!data.isSingleDay" class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-                <!-- SJ per Tanggal -->
                 <div class="bg-white rounded-xl shadow-md p-5">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Jumlah Surat Jalan</h3>
@@ -220,7 +214,6 @@
                     <canvas id="sjPerTanggalChart" height="220"></canvas>
                 </div>
 
-                <!-- Tonase per Tanggal -->
                 <div class="bg-white rounded-xl shadow-md p-5">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Hasil Tonase (Netto)</h3>
@@ -241,9 +234,8 @@
                 </div>
             </div>
 
-            <!-- Charts Row 3: Rit, Vehicle, Durasi (3 kolom) -->
+            <!-- Charts Row 3: Rit, Vehicle, Durasi -->
             <div class="grid grid-cols-1 md:grid-cols-11 gap-5 mb-5">
-                <!-- RIT PER KONTRAKTOR -->
                 <div class="bg-white rounded-xl shadow-md p-5 min-h-[500px] md:col-span-5">
                     <h3 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Jumlah Rit per Kontraktor</h3>
                     <div class="max-h-80">
@@ -284,7 +276,6 @@
                     </div>
                 </div>
 
-                <!-- Vehicle Performance List (Scrollable) -->
                 <div class="bg-white rounded-xl shadow-md p-5 md:col-span-3">
                     <h3 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Performance Kendaraan</h3>
                     <div class="overflow-y-auto max-h-96">
@@ -320,7 +311,6 @@
                     </div>
                 </div>
 
-                <!-- Durasi Perjalanan Chart -->
                 <div class="bg-white rounded-xl shadow-md p-5 md:col-span-3">
                     <h3 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Distribusi Durasi Perjalanan</h3>
                     <p class="text-xs text-gray-500 mb-3">Waktu dari Cetak POS ke Timbangan</p>
@@ -328,9 +318,8 @@
                 </div>
             </div>
 
-            <!-- Charts Row 4: Compact Stats Cards (4 in 1 row) -->
+            <!-- Charts Row 4: Compact Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
-                <!-- Langsir -->
                 <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500">
                     <div class="flex items-center justify-between mb-2">
                         <h3 class="text-xs font-bold text-gray-700 uppercase">Langsir</h3>
@@ -346,7 +335,6 @@
                     <div class="text-xs text-gray-500 mt-1">dari <span x-text="data.summary?.total_sj"></span> total</div>
                 </div>
 
-                <!-- Tebu Sulit -->
                 <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-red-500">
                     <div class="flex items-center justify-between mb-2">
                         <h3 class="text-xs font-bold text-gray-700 uppercase">Tebu Sulit</h3>
@@ -362,7 +350,6 @@
                     <div class="text-xs text-gray-500 mt-1">dari <span x-text="data.summary?.total_sj"></span> total</div>
                 </div>
 
-                <!-- Kode Tebang -->
                 <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-purple-500">
                     <div class="flex items-center justify-between mb-2">
                         <h3 class="text-xs font-bold text-gray-700 uppercase">Kode Tebang</h3>
@@ -382,7 +369,6 @@
                     <div class="text-xs text-gray-500 mt-1">dari <span x-text="data.summary?.total_sj"></span> total</div>
                 </div>
 
-                <!-- Jenis Kendaraan -->
                 <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500">
                     <div class="flex items-center justify-between mb-2">
                         <h3 class="text-xs font-bold text-gray-700 uppercase">Kendaraan</h3>
@@ -405,19 +391,16 @@
 
             <!-- Charts Row 5: Status, Kontraktor & Subkontraktor -->
             <div class="grid grid-cols-1 md:grid-cols-8 gap-5 mb-5">
-                <!-- STATUS TIMBANGAN -->
                 <div class="bg-white rounded-xl shadow-md p-5 md:col-span-2">
                     <h3 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Status Timbangan</h3>
                     <canvas id="statusChart" height="200"></canvas>
                 </div>
 
-                <!-- Kontraktor by Tonase (posisi 3, ukuran 2 kolom) -->
                 <div class="bg-white rounded-xl shadow-md p-5 md:col-span-3">
                     <h3 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Kontraktor by Tonase</h3>
                     <canvas id="kontraktorChart" height="220"></canvas>
                 </div>
 
-                <!-- Subkontraktor by Tonase (posisi 4, ukuran 2 kolom) -->
                 <div class="bg-white rounded-xl shadow-md p-5 md:col-span-3">
                     <h3 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Sub Kontraktor by Tonase</h3>
                     <canvas id="subkontraktorChart" height="220"></canvas>
@@ -444,29 +427,89 @@
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">No</th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Company</th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">No SJ</th>
-                                <th rowspan="2" class="border border-gray-300 px-2 py-2">Tgl SJ</th>
-                                <th rowspan="2" class="border border-gray-300 px-2 py-2">Mandor</th>
-                                <th rowspan="2" class="border border-gray-300 px-2 py-2">Plot</th>
-                                <th rowspan="2" class="border border-gray-300 px-2 py-2">Umur<br>(bulan)</th>
+                                <th rowspan="2" @click="sortBy('tanggalcetakpossecurity')" class="border border-gray-300 px-2 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Tgl SJ
+                                        <span x-html="getSortIcon('tanggalcetakpossecurity')"></span>
+                                    </div>
+                                </th>
+                                <th rowspan="2" @click="sortBy('nama_mandor')" class="border border-gray-300 px-2 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Mandor
+                                        <span x-html="getSortIcon('nama_mandor')"></span>
+                                    </div>
+                                </th>
+                                <th rowspan="2" @click="sortBy('plot')" class="border border-gray-300 px-2 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Plot
+                                        <span x-html="getSortIcon('plot')"></span>
+                                    </div>
+                                </th>
+                                <th rowspan="2" @click="sortBy('umur')" class="border border-gray-300 px-2 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Umur<br>(bulan)
+                                        <span x-html="getSortIcon('umur')"></span>
+                                    </div>
+                                </th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Kategori</th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Varietas</th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Kode<br>Tebang</th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Langsir</th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Tebu<br>Sulit</th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Jenis<br>Kendaraan</th>
-                                <th rowspan="2" class="border border-gray-300 px-2 py-2">No Polisi</th>
+                                <th rowspan="2" @click="sortBy('nomorpolisi')" class="border border-gray-300 px-2 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        No Polisi
+                                        <span x-html="getSortIcon('nomorpolisi')"></span>
+                                    </div>
+                                </th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Supir</th>
-                                <th rowspan="2" class="border border-gray-300 px-2 py-2">Kontraktor</th>
-                                <th rowspan="2" class="border border-gray-300 px-2 py-2">Sub Kontraktor</th>
+                                <th rowspan="2" @click="sortBy('nama_kontraktor_lengkap')" class="border border-gray-300 px-2 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Kontraktor
+                                        <span x-html="getSortIcon('nama_kontraktor_lengkap')"></span>
+                                    </div>
+                                </th>
+                                <th rowspan="2" @click="sortBy('nama_subkontraktor_lengkap')" class="border border-gray-300 px-2 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Sub Kontraktor
+                                        <span x-html="getSortIcon('nama_subkontraktor_lengkap')"></span>
+                                    </div>
+                                </th>
                                 <th colspan="4" class="border border-gray-300 px-2 py-1 text-center bg-gray-100">Waktu</th>
-                                <th rowspan="2" class="border border-gray-300 px-2 py-2">Bruto</th>
-                                <th rowspan="2" class="border border-gray-300 px-2 py-2">Netto</th>
+                                <th rowspan="2" @click="sortBy('bruto')" class="border border-gray-300 px-2 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Bruto
+                                        <span x-html="getSortIcon('bruto')"></span>
+                                    </div>
+                                </th>
+                                <th rowspan="2" @click="sortBy('netto')" class="border border-gray-300 px-2 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Netto
+                                        <span x-html="getSortIcon('netto')"></span>
+                                    </div>
+                                </th>
                                 <th colspan="2" class="border border-gray-300 px-2 py-1 text-center bg-gray-100">Durasi</th>
-                                <th rowspan="2" class="border border-gray-300 px-2 py-2">Status</th>
+                                <th rowspan="2" @click="sortBy('status')" class="border border-gray-300 px-2 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Status
+                                        <span x-html="getSortIcon('status')"></span>
+                                    </div>
+                                </th>
                             </tr>
                             <tr class="bg-gray-100">
-                                <th class="border border-gray-300 px-2 py-1 text-xs">Jam<br>Angkut</th>
-                                <th class="border border-gray-300 px-2 py-1 text-xs">Jam<br>Cetak POS</th>
+                                <th @click="sortBy('tanggalangkut')" class="border border-gray-300 px-2 py-1 text-xs cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Jam<br>Angkut
+                                        <span x-html="getSortIcon('tanggalangkut')"></span>
+                                    </div>
+                                </th>
+                                <th @click="sortBy('tanggalcetakpossecurity')" class="border border-gray-300 px-2 py-1 text-xs cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Jam<br>Cetak POS
+                                        <span x-html="getSortIcon('tanggalcetakpossecurity')"></span>
+                                    </div>
+                                </th>
                                 <th class="border border-gray-300 px-2 py-1 text-xs">Jam<br>Masuk</th>
                                 <th class="border border-gray-300 px-2 py-1 text-xs">Jam<br>Keluar</th>
                                 <th class="border border-gray-300 px-2 py-1 text-xs">POS ke<br>Timbang<br>(min)</th>
@@ -474,7 +517,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <template x-for="(item, index) in data.details" :key="`${item.companycode}-${item.suratjalanno}`">
+                            <template x-for="(item, index) in sortedDetails()" :key="`${item.companycode}-${item.suratjalanno}`">
                                 <tr :class="item.status === 'Sudah Timbang' ? 'bg-green-50 hover:bg-green-100' : 'bg-yellow-50 hover:bg-yellow-100'" class="transition-colors">
                                     <td class="border border-gray-300 px-2 py-2 text-center" x-text="index + 1"></td>
                                     <td class="border border-gray-300 px-2 py-2 text-center font-semibold" x-text="item.companycode"></td>
@@ -543,6 +586,8 @@
             sjPeriod: 'daily',
             tonasePeriod: 'daily',
             searchSJ: '',
+            sortColumn: '',
+            sortDirection: 'asc',
             chartLoading: {
                 sj: false,
                 tonase: false
@@ -598,6 +643,59 @@
                 subkontraktor: null
             },
 
+            sortBy(column) {
+                if (this.sortColumn === column) {
+                    this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    this.sortColumn = column;
+                    this.sortDirection = 'asc';
+                }
+            },
+
+            getSortIcon(column) {
+                if (this.sortColumn !== column) {
+                    return '<svg class="w-3 h-3 text-gray-400 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path></svg>';
+                }
+                if (this.sortDirection === 'asc') {
+                    return '<svg class="w-3 h-3 text-blue-600 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>';
+                }
+                return '<svg class="w-3 h-3 text-blue-600 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
+            },
+
+            sortedDetails() {
+                if (!this.data.details || this.data.details.length === 0) return [];
+                if (!this.sortColumn) return this.data.details;
+
+                const col = this.sortColumn;
+                const dir = this.sortDirection === 'asc' ? 1 : -1;
+
+                const numericCols = ['umur', 'bruto', 'netto'];
+                const dateCols = ['tanggalcetakpossecurity', 'tanggalangkut'];
+
+                return [...this.data.details].sort((a, b) => {
+                    let valA = a[col];
+                    let valB = b[col];
+
+                    // Handle null/undefined
+                    if (valA == null && valB == null) return 0;
+                    if (valA == null) return 1;
+                    if (valB == null) return -1;
+
+                    // Numeric sort
+                    if (numericCols.includes(col)) {
+                        return (parseFloat(valA) - parseFloat(valB)) * dir;
+                    }
+
+                    // Date sort
+                    if (dateCols.includes(col)) {
+                        return (new Date(valA) - new Date(valB)) * dir;
+                    }
+
+                    // String sort
+                    return String(valA).localeCompare(String(valB), 'id') * dir;
+                });
+            },
+
             async loadData() {
                 this.loading = true;
                 try {
@@ -647,11 +745,7 @@
             renderHourlyChart() {
                 const ctx = document.getElementById('hourlyChart');
                 if (!ctx) return;
-
-                if (this.charts.hourly) {
-                    this.charts.hourly.destroy();
-                    this.charts.hourly = null;
-                }
+                if (this.charts.hourly) { this.charts.hourly.destroy(); this.charts.hourly = null; }
 
                 this.charts.hourly = new Chart(ctx, {
                     type: 'line',
@@ -662,33 +756,15 @@
                             data: this.data.hourlyTrend.map(d => d.netto / 1000),
                             borderColor: '#3b82f6',
                             backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            fill: true,
-                            tension: 0,
-                            borderWidth: 3
+                            fill: true, tension: 0, borderWidth: 3
                         }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: {
-                            legend: { 
-                                display: false
-                            }
-                        },
+                        responsive: true, maintainAspectRatio: true,
+                        plugins: { legend: { display: false } },
                         scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: { color: '#f3f4f6' },
-                                ticks: {
-                                    callback: function(value) {
-                                        return value.toLocaleString('id-ID') + ' ton';
-                                    }
-                                }
-                            },
-                            x: {
-                                grid: { display: false },
-                                ticks: { font: { size: 9 } }
-                            }
+                            y: { beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { callback: v => v.toLocaleString('id-ID') + ' ton' } },
+                            x: { grid: { display: false }, ticks: { font: { size: 9 } } }
                         }
                     }
                 });
@@ -697,66 +773,43 @@
             renderStatusChart() {
                 const ctx = document.getElementById('statusChart');
                 if (!ctx) return;
-
-                if (this.charts.status) {
-                    this.charts.status.destroy();
-                    this.charts.status = null;
-                }
+                if (this.charts.status) { this.charts.status.destroy(); this.charts.status = null; }
 
                 this.charts.status = new Chart(ctx, {
                     type: 'doughnut',
                     data: {
                         labels: this.data.statusBreakdown.map(d => d.name),
-                        datasets: [{
-                            data: this.data.statusBreakdown.map(d => d.value),
-                            backgroundColor: ['#10b981', '#f59e0b']
-                        }]
+                        datasets: [{ data: this.data.statusBreakdown.map(d => d.value), backgroundColor: ['#10b981', '#f59e0b'] }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: {
-                            legend: { 
-                                position: 'bottom',
-                                labels: { font: { size: 10 } }
-                            }
-                        }
+                        responsive: true, maintainAspectRatio: true,
+                        plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }
                     }
                 });
             },
 
             async setSJPeriod(period) {
                 if (this.sjPeriod === period || this.chartLoading.sj) return;
-                
                 this.chartLoading.sj = true;
                 this.sjPeriod = period;
-                
                 this.renderSJPerTanggalChart();
-                
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                await new Promise(r => setTimeout(r, 3000));
                 this.chartLoading.sj = false;
             },
 
             async setTonasePeriod(period) {
                 if (this.tonasePeriod === period || this.chartLoading.tonase) return;
-                
                 this.chartLoading.tonase = true;
                 this.tonasePeriod = period;
-                
                 this.renderTonasePerTanggalChart();
-                
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                await new Promise(r => setTimeout(r, 3000));
                 this.chartLoading.tonase = false;
             },
 
             renderSJPerTanggalChart() {
                 const ctx = document.getElementById('sjPerTanggalChart');
                 if (!ctx) return;
-
-                if (this.charts.sjPerTanggal) {
-                    this.charts.sjPerTanggal.destroy();
-                    this.charts.sjPerTanggal = null;
-                }
+                if (this.charts.sjPerTanggal) { this.charts.sjPerTanggal.destroy(); this.charts.sjPerTanggal = null; }
 
                 const chartData = this.sjPeriod === 'monthly' ? this.data.sjMonthly : this.data.sjDaily;
 
@@ -765,34 +818,18 @@
                     data: {
                         labels: chartData.map(d => d.label),
                         datasets: [{
-                            label: 'Jumlah SJ',
-                            data: chartData.map(d => d.value),
-                            borderColor: '#3b82f6',
-                            backgroundColor: '#3b82f6',
-                            pointBackgroundColor: '#3b82f6',
-                            pointBorderColor: '#070088ff',
-                            pointBorderWidth: 1,
-                            pointRadius: 5,
-                            tension: 0,
-                            borderWidth: 4,
-                            fill: false
+                            label: 'Jumlah SJ', data: chartData.map(d => d.value),
+                            borderColor: '#3b82f6', backgroundColor: '#3b82f6',
+                            pointBackgroundColor: '#3b82f6', pointBorderColor: '#070088ff',
+                            pointBorderWidth: 1, pointRadius: 5, tension: 0, borderWidth: 4, fill: false
                         }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: {
-                            legend: { display: false }
-                        },
+                        responsive: true, maintainAspectRatio: true,
+                        plugins: { legend: { display: false } },
                         scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: { color: '#f3f4f6' }
-                            },
-                            x: {
-                                grid: { display: false },
-                                ticks: { font: { size: 9 } }
-                            }
+                            y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
+                            x: { grid: { display: false }, ticks: { font: { size: 9 } } }
                         }
                     }
                 });
@@ -801,11 +838,7 @@
             renderTonasePerTanggalChart() {
                 const ctx = document.getElementById('tonasePerTanggalChart');
                 if (!ctx) return;
-
-                if (this.charts.tonasePerTanggal) {
-                    this.charts.tonasePerTanggal.destroy();
-                    this.charts.tonasePerTanggal = null;
-                }
+                if (this.charts.tonasePerTanggal) { this.charts.tonasePerTanggal.destroy(); this.charts.tonasePerTanggal = null; }
 
                 const chartData = this.tonasePeriod === 'monthly' ? this.data.tonaseMonthly : this.data.tonaseDaily;
 
@@ -814,46 +847,21 @@
                     data: {
                         labels: chartData.map(d => d.label),
                         datasets: [{
-                            label: 'Tonase (ton)',
-                            data: chartData.map(d => d.value / 1000),
-                            borderColor: '#10b981',
-                            backgroundColor: '#10b981',
-                            pointBackgroundColor: '#10b981',
-                            pointBorderColor: '#0a6b34ff',
-                            pointBorderWidth: 1,
-                            pointRadius: 5,
-                            tension: 0,
-                            borderWidth: 4,
-                            fill: false
+                            label: 'Tonase (ton)', data: chartData.map(d => d.value / 1000),
+                            borderColor: '#10b981', backgroundColor: '#10b981',
+                            pointBackgroundColor: '#10b981', pointBorderColor: '#0a6b34ff',
+                            pointBorderWidth: 1, pointRadius: 5, tension: 0, borderWidth: 4, fill: false
                         }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
+                        responsive: true, maintainAspectRatio: true,
                         plugins: {
                             legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return context.parsed.y.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ton';
-                                    }
-                                }
-                            }
+                            tooltip: { callbacks: { label: ctx => ctx.parsed.y.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ton' } }
                         },
                         scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: { color: '#f3f4f6' },
-                                ticks: {
-                                    callback: function(value) {
-                                        return value.toLocaleString('id-ID') + ' ton';
-                                    }
-                                }
-                            },
-                            x: {
-                                grid: { display: false },
-                                ticks: { font: { size: 9 } }
-                            }
+                            y: { beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { callback: v => v.toLocaleString('id-ID') + ' ton' } },
+                            x: { grid: { display: false }, ticks: { font: { size: 9 } } }
                         }
                     }
                 });
@@ -862,38 +870,20 @@
             renderDurasiChart() {
                 const ctx = document.getElementById('durasiChart');
                 if (!ctx || !this.data.durasiPerjalanan || this.data.durasiPerjalanan.length === 0) return;
-
-                if (this.charts.durasi) {
-                    this.charts.durasi.destroy();
-                    this.charts.durasi = null;
-                }
+                if (this.charts.durasi) { this.charts.durasi.destroy(); this.charts.durasi = null; }
 
                 this.charts.durasi = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: this.data.durasiPerjalanan.map(d => d.label),
-                        datasets: [{
-                            label: 'Jumlah SJ',
-                            data: this.data.durasiPerjalanan.map(d => d.value),
-                            backgroundColor: '#8b5cf6',
-                            borderRadius: 6
-                        }]
+                        datasets: [{ label: 'Jumlah SJ', data: this.data.durasiPerjalanan.map(d => d.value), backgroundColor: '#8b5cf6', borderRadius: 6 }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: {
-                            legend: { display: false }
-                        },
+                        responsive: true, maintainAspectRatio: true,
+                        plugins: { legend: { display: false } },
                         scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: { color: '#f3f4f6' }
-                            },
-                            x: {
-                                grid: { display: false },
-                                ticks: { font: { size: 10 } }
-                            }
+                            y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
+                            x: { grid: { display: false }, ticks: { font: { size: 10 } } }
                         }
                     }
                 });
@@ -902,51 +892,23 @@
             renderKontraktorChart() {
                 const ctx = document.getElementById('kontraktorChart');
                 if (!ctx || !this.data.kontraktorTonase || this.data.kontraktorTonase.length === 0) return;
-
-                if (this.charts.kontraktor) {
-                    this.charts.kontraktor.destroy();
-                    this.charts.kontraktor = null;
-                }
+                if (this.charts.kontraktor) { this.charts.kontraktor.destroy(); this.charts.kontraktor = null; }
 
                 this.charts.kontraktor = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: this.data.kontraktorTonase.map(d => d.name),
-                        datasets: [{
-                            label: 'Tonase (ton)',
-                            data: this.data.kontraktorTonase.map(d => d.value),
-                            backgroundColor: '#10b981',
-                            borderRadius: 6
-                        }]
+                        datasets: [{ label: 'Tonase (ton)', data: this.data.kontraktorTonase.map(d => d.value), backgroundColor: '#10b981', borderRadius: 6 }]
                     },
                     options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: true,
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: true,
                         plugins: {
                             legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return context.parsed.x.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ton';
-                                    }
-                                }
-                            }
+                            tooltip: { callbacks: { label: ctx => ctx.parsed.x.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ton' } }
                         },
                         scales: {
-                            x: {
-                                beginAtZero: true,
-                                grid: { color: '#f3f4f6' },
-                                ticks: {
-                                    callback: function(value) {
-                                        return value.toLocaleString('id-ID') + ' ton';
-                                    }
-                                }
-                            },
-                            y: {
-                                grid: { display: false },
-                                ticks: { font: { size: 9 } }
-                            }
+                            x: { beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { callback: v => v.toLocaleString('id-ID') + ' ton' } },
+                            y: { grid: { display: false }, ticks: { font: { size: 9 } } }
                         }
                     }
                 });
@@ -955,87 +917,50 @@
             renderSubkontraktorChart() {
                 const ctx = document.getElementById('subkontraktorChart');
                 if (!ctx || !this.data.subkontraktorTonase || this.data.subkontraktorTonase.length === 0) return;
-
-                if (this.charts.subkontraktor) {
-                    this.charts.subkontraktor.destroy();
-                    this.charts.subkontraktor = null;
-                }
+                if (this.charts.subkontraktor) { this.charts.subkontraktor.destroy(); this.charts.subkontraktor = null; }
 
                 this.charts.subkontraktor = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: this.data.subkontraktorTonase.map(d => d.name),
-                        datasets: [{
-                            label: 'Tonase (ton)',
-                            data: this.data.subkontraktorTonase.map(d => d.value),
-                            backgroundColor: '#f59e0b',
-                            borderRadius: 6
-                        }]
+                        datasets: [{ label: 'Tonase (ton)', data: this.data.subkontraktorTonase.map(d => d.value), backgroundColor: '#f59e0b', borderRadius: 6 }]
                     },
                     options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: true,
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: true,
                         plugins: {
                             legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return context.parsed.x.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ton';
-                                    }
-                                }
-                            }
+                            tooltip: { callbacks: { label: ctx => ctx.parsed.x.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ton' } }
                         },
                         scales: {
-                            x: {
-                                beginAtZero: true,
-                                grid: { color: '#f3f4f6' },
-                                ticks: {
-                                    callback: function(value) {
-                                        return value.toLocaleString('id-ID') + ' ton';
-                                    }
-                                }
-                            },
-                            y: {
-                                grid: { display: false },
-                                ticks: { font: { size: 9 } }
-                            }
+                            x: { beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { callback: v => v.toLocaleString('id-ID') + ' ton' } },
+                            y: { grid: { display: false }, ticks: { font: { size: 9 } } }
                         }
                     }
                 });
             },
 
-            applyFilters() {
-                this.loadData();
-            },
+            applyFilters() { this.loadData(); },
 
             goToDetail() {
                 if (!this.searchSJ || this.searchSJ.trim() === '') {
                     alert('Masukkan nomor surat jalan terlebih dahulu');
                     return;
                 }
-                
-                const suratjalanno = this.searchSJ.trim();
-                const url = `{{ route('report.report-surat-jalan-timbangan.index') }}/${suratjalanno}`;
-                window.open(url, '_blank');
+                window.open(`{{ route('report.report-surat-jalan-timbangan.index') }}/${this.searchSJ.trim()}`, '_blank');
             },
 
             resetFilters() {
                 this.filters = {
-                    group: '',
-                    start_date: new Date().toISOString().split('T')[0],
+                    group: '', start_date: new Date().toISOString().split('T')[0],
                     end_date: new Date().toISOString().split('T')[0],
-                    mandor: '',
-                    plot: '',
-                    kontraktor: '',
-                    subkontraktor: '',
-                    nopol: '',
-                    status: ''
+                    mandor: '', plot: '', kontraktor: '', subkontraktor: '', nopol: '', status: ''
                 };
                 this.activeRange = '';
                 this.dateRangeLocked = false;
                 this.sjPeriod = 'daily';
                 this.tonasePeriod = 'daily';
+                this.sortColumn = '';
+                this.sortDirection = 'asc';
                 this.loadData();
             },
 
@@ -1049,19 +974,17 @@
             },
 
             setYesterday() {
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const dateStr = yesterday.toISOString().split('T')[0];
-                this.filters.start_date = dateStr;
-                this.filters.end_date = dateStr;
+                const d = new Date(); d.setDate(d.getDate() - 1);
+                const s = d.toISOString().split('T')[0];
+                this.filters.start_date = s;
+                this.filters.end_date = s;
                 this.activeRange = 'yesterday';
                 this.dateRangeLocked = true;
                 this.applyFilters();
             },
 
             setLast7Days() {
-                const end = new Date();
-                const start = new Date();
+                const end = new Date(); const start = new Date();
                 start.setDate(start.getDate() - 6);
                 this.filters.start_date = start.toISOString().split('T')[0];
                 this.filters.end_date = end.toISOString().split('T')[0];
@@ -1071,8 +994,7 @@
             },
 
             setLast30Days() {
-                const end = new Date();
-                const start = new Date();
+                const end = new Date(); const start = new Date();
                 start.setDate(start.getDate() - 29);
                 this.filters.start_date = start.toISOString().split('T')[0];
                 this.filters.end_date = end.toISOString().split('T')[0];
@@ -1088,19 +1010,14 @@
             
             formatTon(kg) {
                 if (!kg) return '0.00';
-                const ton = parseFloat(kg) / 1000;
-                return ton.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                return (parseFloat(kg) / 1000).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             },
 
             formatDuration(minutes) {
                 if (!minutes) return '-';
                 const mins = parseFloat(minutes);
-                if (mins < 60) {
-                    return Math.round(mins) + ' menit';
-                }
-                const hours = Math.floor(mins / 60);
-                const remainingMins = Math.round(mins % 60);
-                return `${hours} jam ${remainingMins} menit`;
+                if (mins < 60) return Math.round(mins) + ' menit';
+                return `${Math.floor(mins / 60)} jam ${Math.round(mins % 60)} menit`;
             },
 
             formatDate(date) {
@@ -1110,65 +1027,43 @@
 
             formatTime24(datetime) {
                 if (!datetime) return '-';
-                const date = new Date(datetime);
-                const hours = String(date.getHours()).padStart(2, '0');
-                const minutes = String(date.getMinutes()).padStart(2, '0');
-                return `${hours}:${minutes}`;
+                const d = new Date(datetime);
+                return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
             },
 
             formatTime24FromJam(jam) {
                 if (!jam) return '-';
-                const parts = jam.split(':');
-                if (parts.length >= 2) {
-                    return `${parts[0]}:${parts[1]}`;
-                }
-                return jam;
+                const p = jam.split(':');
+                return p.length >= 2 ? `${p[0]}:${p[1]}` : jam;
             },
 
             getKategoriColor(kategori) {
-                const colors = {
-                    'PC': 'bg-emerald-100 text-emerald-800',
-                    'RC1': 'bg-blue-100 text-blue-800',
-                    'RC2': 'bg-amber-100 text-amber-800',
-                    'RC3': 'bg-rose-100 text-rose-800'
-                };
-                return colors[kategori] || 'bg-gray-100 text-gray-800';
+                const c = { 'PC': 'bg-emerald-100 text-emerald-800', 'RC1': 'bg-blue-100 text-blue-800', 'RC2': 'bg-amber-100 text-amber-800', 'RC3': 'bg-rose-100 text-rose-800' };
+                return c[kategori] || 'bg-gray-100 text-gray-800';
             },
 
             exportSummary() {
                 let html = '<table border="1"><thead><tr><th>Mandor</th><th>Total SJ</th><th>Total Netto (kg)</th></tr></thead><tbody>';
-                const mandorSummary = {};
-                
+                const s = {};
                 this.data.details.forEach(item => {
-                    const mandor = item.nama_mandor || item.mandorid;
-                    if (!mandorSummary[mandor]) {
-                        mandorSummary[mandor] = { count: 0, netto: 0 };
-                    }
-                    mandorSummary[mandor].count++;
-                    if (item.netto) {
-                        mandorSummary[mandor].netto += parseFloat(item.netto);
-                    }
+                    const m = item.nama_mandor || item.mandorid;
+                    if (!s[m]) s[m] = { count: 0, netto: 0 };
+                    s[m].count++;
+                    if (item.netto) s[m].netto += parseFloat(item.netto);
                 });
-                
-                Object.keys(mandorSummary).forEach(mandor => {
-                    html += `<tr><td>${mandor}</td><td>${mandorSummary[mandor].count}</td><td>${mandorSummary[mandor].netto}</td></tr>`;
-                });
+                Object.keys(s).forEach(m => { html += `<tr><td>${m}</td><td>${s[m].count}</td><td>${s[m].netto}</td></tr>`; });
                 html += '</tbody></table>';
-                
                 const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
-                const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url;
+                a.href = URL.createObjectURL(blob);
                 a.download = `Summary_SJ_${this.filters.start_date}_${this.filters.end_date}.xls`;
                 a.click();
             },
 
             exportDetail() {
-                const table = document.querySelector('table').outerHTML;
-                const blob = new Blob([table], { type: 'application/vnd.ms-excel' });
-                const url = URL.createObjectURL(blob);
+                const blob = new Blob([document.querySelector('table').outerHTML], { type: 'application/vnd.ms-excel' });
                 const a = document.createElement('a');
-                a.href = url;
+                a.href = URL.createObjectURL(blob);
                 a.download = `Detail_SJ_${this.filters.start_date}_${this.filters.end_date}.xls`;
                 a.click();
             }

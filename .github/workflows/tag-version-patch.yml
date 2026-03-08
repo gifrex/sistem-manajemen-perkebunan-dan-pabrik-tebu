@@ -1,4 +1,4 @@
-name: Auto Tag Version (Smart)
+name: Auto Tag Version
 
 on:
   push:
@@ -8,70 +8,51 @@ permissions:
   contents: write
 
 jobs:
-  tag_logic:
+  tag:
     runs-on: ubuntu-latest
-    # ATURAN 1: Kalau di pesan commit ada tulisan [skip tag], workflow ini batal jalan.
     if: "!contains(github.event.head_commit.message, '[skip tag]')"
-    
     steps:
-      - name: Checkout (full history + tags)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Create and push next tag
-        shell: bash
+      - name: Create and push tag
         run: |
           set -euo pipefail
           git fetch --tags
 
-          # Ambil pesan commit terakhir untuk dicek "Aturan Main"-nya
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          echo "Commit message: $COMMIT_MSG"
+          MSG=$(git log -1 --pretty=%B)
 
-          # --- ATURAN MAIN PEMBACAAN PESAN COMMIT ---
-          # 1. Mengandung 'BREAKING CHANGE' -> Naik angka depan (v2.0.0) - Perubahan besar/merusak.
-          # 2. Mengandung 'feat:'           -> Naik angka tengah (v1.1.0) - Fitur baru.
-          # 3. Mengandung 'fix:' atau '[release]' -> Naik angka belakang (v1.0.1) - Perbaikan bug/update kecil.
-          # 4. Selain itu?                  -> TIDAK BIKIN TAG (Skip).
-          
+          # Aturan Main:
+          # big_update:   → v2.0.0 (major) - perubahan besar
+          # new_feature:  → v1.1.0 (minor) - fitur baru
+          # fix: / update: → v1.0.1 (patch) - perbaikan / update kecil
+          # selain itu    → skip, tidak bikin tag
+
           BUMP="none"
-          
-          if [[ "$COMMIT_MSG" == *"BREAKING CHANGE"* ]]; then
-            BUMP="major"
-          elif [[ "$COMMIT_MSG" == *"feat:"* ]]; then
-            BUMP="minor"
-          elif [[ "$COMMIT_MSG" == *"fix:"* ]] || [[ "$COMMIT_MSG" == *"[release]"* ]]; then
-            BUMP="patch"
+          if [[ "$MSG" == *"big_update:"* ]]; then BUMP="major";
+          elif [[ "$MSG" == *"new_feature:"* ]]; then BUMP="minor";
+          elif [[ "$MSG" == *"fix:"* ]] || [[ "$MSG" == *"update:"* ]]; then BUMP="patch";
           fi
 
-          # Jika tidak memenuhi kriteria di atas, hentikan proses (Exit)
           if [ "$BUMP" == "none" ]; then
-            echo "Gak ada keyword (feat:, fix:, atau BREAKING CHANGE). Tag tidak dibuat."
+            echo "No keyword found, skipping tag."
             exit 0
           fi
 
-          # Ambil tag terakhir yang ada di sistem
-          LAST_TAG=$(git tag --sort=-v:refname | head -n 1)
+          LAST=$(git tag --sort=-v:refname | head -n 1)
 
-          if [ -z "${LAST_TAG:-}" ]; then
-            NEW_TAG="v1.0.0"
+          if [ -z "${LAST:-}" ]; then
+            NEW="v1.0.0"
           else
-            VERSION_NUM=${LAST_TAG#v}
-            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NUM"
-
-            if [ "$BUMP" == "major" ]; then
-              NEW_TAG="v$((MAJOR+1)).0.0"
-            elif [ "$BUMP" == "minor" ]; then
-              NEW_TAG="v$MAJOR.$((MINOR+1)).0"
-            else
-              NEW_TAG="v$MAJOR.$MINOR.$((PATCH+1))"
-            fi
+            IFS='.' read -r MAJOR MINOR PATCH <<< "${LAST#v}"
+            case $BUMP in
+              major) NEW="v$((MAJOR+1)).0.0" ;;
+              minor) NEW="v$MAJOR.$((MINOR+1)).0" ;;
+              patch) NEW="v$MAJOR.$MINOR.$((PATCH+1))" ;;
+            esac
           fi
 
-          echo "Tipe Update: $BUMP"
-          echo "Tag Baru: $NEW_TAG"
-
-          # Push tag ke GitHub
-          git tag "$NEW_TAG"
-          git push origin "$NEW_TAG"
+          echo "$BUMP → $NEW"
+          git tag "$NEW"
+          git push origin "$NEW"

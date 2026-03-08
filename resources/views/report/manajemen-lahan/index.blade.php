@@ -23,7 +23,6 @@
 
             <!-- Lifecycle Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
-                <!-- PC Card -->
                 <div class="bg-white rounded-xl shadow-lg p-5 border-l-4 border-emerald-500 transform hover:scale-105 transition-transform hover:shadow-xl">
                     <div class="flex justify-between items-start mb-3">
                         <div>
@@ -41,7 +40,6 @@
                     </div>
                 </div>
 
-                <!-- RC1 Card -->
                 <div class="bg-white rounded-xl shadow-lg p-5 border-l-4 border-blue-500 transform hover:scale-105 transition-transform hover:shadow-xl">
                     <div class="flex justify-between items-start mb-3">
                         <div>
@@ -59,7 +57,6 @@
                     </div>
                 </div>
 
-                <!-- RC2 Card -->
                 <div class="bg-white rounded-xl shadow-lg p-5 border-l-4 border-amber-500 transform hover:scale-105 transition-transform hover:shadow-xl">
                     <div class="flex justify-between items-start mb-3">
                         <div>
@@ -77,7 +74,6 @@
                     </div>
                 </div>
 
-                <!-- RC3 Card -->
                 <div class="bg-white rounded-xl shadow-lg p-5 border-l-4 border-rose-500 transform hover:scale-105 transition-transform hover:shadow-xl">
                     <div class="flex justify-between items-start mb-3">
                         <div>
@@ -118,8 +114,7 @@
                         </div>
                         <div>
                             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Area</p>
-                            <p class="text-3xl font-bold text-gray-900" x-text="parseFloat(data.summary?.total_area || 0).toFixed(2)">
-                            </p>
+                            <p class="text-3xl font-bold text-gray-900" x-text="parseFloat(data.summary?.total_area || 0).toFixed(2)"></p>
                             <p class="text-xs text-gray-500 font-medium">Hectares</p>
                         </div>
                     </div>
@@ -137,7 +132,7 @@
                 </div>
             </div>
 
-            <!-- Filters Section - Compact Horizontal -->
+            <!-- Filters Section -->
             <div class="bg-white rounded-xl shadow-md p-4 mb-5">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Filters</h3>
@@ -214,30 +209,23 @@
                 </div>
             </div>
 
-            <!-- Charts Section - 2 Columns -->
+            <!-- Charts Section -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-                <!-- Lifecycle Distribution - Multi Bar -->
                 <div class="bg-white rounded-xl shadow-md p-5">
                     <h3 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Lifecycle Distribution</h3>
                     <canvas id="lifecycleChart" height="220"></canvas>
                 </div>
-
-                <!-- Varietas Distribution -->
                 <div class="bg-white rounded-xl shadow-md p-5">
                     <h3 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Varietas Distribution</h3>
                     <canvas id="varietasChart" height="220"></canvas>
                 </div>
             </div>
 
-            <!-- Plot Type + Age Distribution -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-                <!-- Plot Type Chart - Horizontal Bar -->
                 <div class="bg-white rounded-xl shadow-md p-5">
                     <h3 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Plot Type Distribution</h3>
                     <canvas id="plottypeChart" height="180"></canvas>
                 </div>
-
-                <!-- Age Distribution - Histogram -->
                 <div class="bg-white rounded-xl shadow-md p-5">
                     <h3 class="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Age Distribution (Histogram)</h3>
                     <canvas id="ageChart" height="180"></canvas>
@@ -260,20 +248,55 @@
                                 <th class="border border-gray-300 px-3 py-2">Company</th>
                                 <th class="border border-gray-300 px-3 py-2">Blok</th>
                                 <th class="border border-gray-300 px-3 py-2">Plot</th>
-                                <th class="border border-gray-300 px-3 py-2">Type</th>
+                                <th @click="sortBy('plottype')" class="border border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Type
+                                        <span x-html="getSortIcon('plottype')"></span>
+                                    </div>
+                                </th>
                                 <th class="border border-gray-300 px-3 py-2">Batch No</th>
-                                <th class="border border-gray-300 px-3 py-2">Area<br>(Ha)</th>
-                                <th class="border border-gray-300 px-3 py-2">Lifecycle</th>
+                                <th @click="sortBy('batcharea')" class="border border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Area<br>(Ha)
+                                        <span x-html="getSortIcon('batcharea')"></span>
+                                    </div>
+                                </th>
+                                <th @click="sortBy('lifecyclestatus')" class="border border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Lifecycle
+                                        <span x-html="getSortIcon('lifecyclestatus')"></span>
+                                    </div>
+                                </th>
                                 <th class="border border-gray-300 px-3 py-2">Varietas</th>
-                                <th class="border border-gray-300 px-3 py-2">PKP</th>
+                                <th @click="sortBy('pkp')" class="border border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        PKP
+                                        <span x-html="getSortIcon('pkp')"></span>
+                                    </div>
+                                </th>
                                 <th class="border border-gray-300 px-3 py-2">Tanggal<br>Ulang Tahun</th>
-                                <th class="border border-gray-300 px-3 py-2">Age<br>(Months)</th>
-                                <th class="border border-gray-300 px-3 py-2">Age<br>(Days)</th>
-                                <th class="border border-gray-300 px-3 py-2">Status</th>
+                                <th @click="sortBy('age_months')" class="border border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Age<br>(Months)
+                                        <span x-html="getSortIcon('age_months')"></span>
+                                    </div>
+                                </th>
+                                <th @click="sortBy('age_days')" class="border border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Age<br>(Days)
+                                        <span x-html="getSortIcon('age_days')"></span>
+                                    </div>
+                                </th>
+                                <th @click="sortBy('age_months')" class="border border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Status
+                                        <span x-html="getSortIcon('age_months')"></span>
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
-                            <template x-for="(item, index) in data.details" :key="`${item.companycode}-${item.batchno}`">
+                            <template x-for="(item, index) in sortedDetails()" :key="`${item.companycode}-${item.batchno}`">
                                 <tr class="hover:bg-blue-50 transition-colors">
                                     <td class="border border-gray-300 px-3 py-2 text-center" x-text="index + 1"></td>
                                     <td class="border border-gray-300 px-3 py-2 text-center font-semibold" x-text="item.companycode_formatted"></td>
@@ -299,7 +322,7 @@
                             </template>
                             <template x-if="!data.details || data.details.length === 0">
                                 <tr>
-                                    <td colspan="12" class="border border-gray-300 px-3 py-8 text-center text-gray-500 font-medium">No data available</td>
+                                    <td colspan="14" class="border border-gray-300 px-3 py-8 text-center text-gray-500 font-medium">No data available</td>
                                 </tr>
                             </template>
                         </tbody>
@@ -314,6 +337,8 @@
     function masterLahanReport() {
         return {
             loading: true,
+            sortColumn: '',
+            sortDirection: 'asc',
             data: {
                 summary: {},
                 details: [],
@@ -343,6 +368,49 @@
                 age: null
             },
 
+            sortBy(column) {
+                if (this.sortColumn === column) {
+                    this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    this.sortColumn = column;
+                    this.sortDirection = 'asc';
+                }
+            },
+
+            getSortIcon(column) {
+                if (this.sortColumn !== column) {
+                    return '<svg class="w-3 h-3 text-gray-400 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path></svg>';
+                }
+                if (this.sortDirection === 'asc') {
+                    return '<svg class="w-3 h-3 text-blue-600 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>';
+                }
+                return '<svg class="w-3 h-3 text-blue-600 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
+            },
+
+            sortedDetails() {
+                if (!this.data.details || this.data.details.length === 0) return [];
+                if (!this.sortColumn) return this.data.details;
+
+                const col = this.sortColumn;
+                const dir = this.sortDirection === 'asc' ? 1 : -1;
+                const numericCols = ['batcharea', 'pkp', 'age_months', 'age_days'];
+
+                return [...this.data.details].sort((a, b) => {
+                    let valA = a[col];
+                    let valB = b[col];
+
+                    if (valA == null && valB == null) return 0;
+                    if (valA == null) return 1;
+                    if (valB == null) return -1;
+
+                    if (numericCols.includes(col)) {
+                        return (parseFloat(valA) - parseFloat(valB)) * dir;
+                    }
+
+                    return String(valA).localeCompare(String(valB), 'id') * dir;
+                });
+            },
+
             async loadData() {
                 this.loading = true;
                 try {
@@ -352,7 +420,7 @@
                     
                     if (result.success) {
                         this.data = result.data;
-                        this.appliedFilters.group = this.filters.group; // SIMPAN FILTER YANG APPLIED
+                        this.appliedFilters.group = this.filters.group;
                         await this.$nextTick();
                         this.renderCharts();
                     } else {
@@ -372,7 +440,6 @@
                 } else if (this.appliedFilters.group === 'all-divisi') {
                     return 'All Division';
                 } else {
-                    // Pakai PHP helper langsung dari Blade
                     return '{{ formatCompanyCode(Session::get("companycode")) }}';
                 }
             },
@@ -387,76 +454,28 @@
             renderLifecycleChart() {
                 const ctx = document.getElementById('lifecycleChart');
                 if (!ctx) return;
-
-                if (this.charts.lifecycle) {
-                    this.charts.lifecycle.destroy();
-                }
-
-                const labels = this.data.lifecycleChart.map(d => d.name);
-                const counts = this.data.lifecycleChart.map(d => d.value);
-                const areas = this.data.lifecycleChart.map(d => d.area);
+                if (this.charts.lifecycle) { this.charts.lifecycle.destroy(); }
 
                 this.charts.lifecycle = new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: labels,
+                        labels: this.data.lifecycleChart.map(d => d.name),
                         datasets: [
-                            {
-                                label: 'Plot Count',
-                                data: counts,
-                                backgroundColor: '#3b82f6',
-                                borderRadius: 6,
-                                yAxisID: 'y'
-                            },
-                            {
-                                label: 'Area (Ha)',
-                                data: areas,
-                                backgroundColor: '#10b981',
-                                borderRadius: 6,
-                                yAxisID: 'y1'
-                            }
+                            { label: 'Plot Count', data: this.data.lifecycleChart.map(d => d.value), backgroundColor: '#3b82f6', borderRadius: 6, yAxisID: 'y' },
+                            { label: 'Area (Ha)', data: this.data.lifecycleChart.map(d => d.area), backgroundColor: '#10b981', borderRadius: 6, yAxisID: 'y1' }
                         ]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        interaction: {
-                            mode: 'index',
-                            intersect: false
-                        },
+                        responsive: true, maintainAspectRatio: true,
+                        interaction: { mode: 'index', intersect: false },
                         plugins: {
-                            legend: { 
-                                position: 'top',
-                                labels: { font: { size: 12, weight: 'bold' } }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: (context) => {
-                                        const label = context.dataset.label;
-                                        const value = context.parsed.y;
-                                        return `${label}: ${value.toFixed(2)}`;
-                                    }
-                                }
-                            }
+                            legend: { position: 'top', labels: { font: { size: 12, weight: 'bold' } } },
+                            tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}` } }
                         },
                         scales: {
-                            y: {
-                                type: 'linear',
-                                display: true,
-                                position: 'left',
-                                title: { display: true, text: 'Plot Count', font: { size: 11 } },
-                                grid: { color: '#f3f4f6' }
-                            },
-                            y1: {
-                                type: 'linear',
-                                display: true,
-                                position: 'right',
-                                title: { display: true, text: 'Area (Ha)', font: { size: 11 } },
-                                grid: { drawOnChartArea: false }
-                            },
-                            x: {
-                                grid: { display: false }
-                            }
+                            y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Plot Count', font: { size: 11 } }, grid: { color: '#f3f4f6' } },
+                            y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Area (Ha)', font: { size: 11 } }, grid: { drawOnChartArea: false } },
+                            x: { grid: { display: false } }
                         }
                     }
                 });
@@ -465,47 +484,23 @@
             renderVarietasChart() {
                 const ctx = document.getElementById('varietasChart');
                 if (!ctx) return;
-
-                if (this.charts.varietas) {
-                    this.charts.varietas.destroy();
-                }
+                if (this.charts.varietas) { this.charts.varietas.destroy(); }
 
                 this.charts.varietas = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: this.data.varietasChart.map(d => d.name),
-                        datasets: [{
-                            label: 'Area (Ha)',
-                            data: this.data.varietasChart.map(d => d.area),
-                            backgroundColor: '#f97316',
-                            borderRadius: 6,
-                            borderWidth: 0
-                        }]
+                        datasets: [{ label: 'Area (Ha)', data: this.data.varietasChart.map(d => d.area), backgroundColor: '#f97316', borderRadius: 6, borderWidth: 0 }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
+                        responsive: true, maintainAspectRatio: true,
                         plugins: {
                             legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: (context) => {
-                                        const item = this.data.varietasChart[context.dataIndex];
-                                        return `${item.plots} plots - ${item.area.toFixed(2)} Ha`;
-                                    }
-                                }
-                            }
+                            tooltip: { callbacks: { label: ctx => { const i = this.data.varietasChart[ctx.dataIndex]; return `${i.plots} plots - ${i.area.toFixed(2)} Ha`; } } }
                         },
                         scales: {
-                            y: { 
-                                beginAtZero: true,
-                                grid: { color: '#f3f4f6' },
-                                title: { display: true, text: 'Area (Ha)', font: { size: 11 } }
-                            },
-                            x: {
-                                grid: { display: false },
-                                ticks: { font: { size: 10 } }
-                            }
+                            y: { beginAtZero: true, grid: { color: '#f3f4f6' }, title: { display: true, text: 'Area (Ha)', font: { size: 11 } } },
+                            x: { grid: { display: false }, ticks: { font: { size: 10 } } }
                         }
                     }
                 });
@@ -514,46 +509,23 @@
             renderPlottypeChart() {
                 const ctx = document.getElementById('plottypeChart');
                 if (!ctx) return;
-
-                if (this.charts.plottype) {
-                    this.charts.plottype.destroy();
-                }
+                if (this.charts.plottype) { this.charts.plottype.destroy(); }
 
                 this.charts.plottype = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: this.data.plottypeChart?.map(d => d.name) || [],
-                        datasets: [{
-                            label: 'Plot Count',
-                            data: this.data.plottypeChart?.map(d => d.value) || [],
-                            backgroundColor: ['#1f2937', '#6b7280'],
-                            borderRadius: 6
-                        }]
+                        datasets: [{ label: 'Plot Count', data: this.data.plottypeChart?.map(d => d.value) || [], backgroundColor: ['#1f2937', '#6b7280'], borderRadius: 6 }]
                     },
                     options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: true,
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: true,
                         plugins: {
                             legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: (context) => {
-                                        const item = this.data.plottypeChart[context.dataIndex];
-                                        return `${item.value} plots (${item.area.toFixed(2)} Ha)`;
-                                    }
-                                }
-                            }
+                            tooltip: { callbacks: { label: ctx => { const i = this.data.plottypeChart[ctx.dataIndex]; return `${i.value} plots (${i.area.toFixed(2)} Ha)`; } } }
                         },
                         scales: {
-                            x: { 
-                                beginAtZero: true,
-                                grid: { color: '#f3f4f6' },
-                                title: { display: true, text: 'Number of Plots', font: { size: 11 } }
-                            },
-                            y: {
-                                grid: { display: false }
-                            }
+                            x: { beginAtZero: true, grid: { color: '#f3f4f6' }, title: { display: true, text: 'Number of Plots', font: { size: 11 } } },
+                            y: { grid: { display: false } }
                         }
                     }
                 });
@@ -562,74 +534,41 @@
             renderAgeChart() {
                 const ctx = document.getElementById('ageChart');
                 if (!ctx) return;
+                if (this.charts.age) { this.charts.age.destroy(); }
 
-                if (this.charts.age) {
-                    this.charts.age.destroy();
-                }
-
-                const ageData = this.data.ageDistribution || {};
+                const ad = this.data.ageDistribution || {};
 
                 this.charts.age = new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: ['0-3', '4-6', '7-12', '>12'],  // dalam bulan
+                        labels: ['0-3', '4-6', '7-12', '>12'],
                         datasets: [{
                             label: 'Plot Count',
-                            data: [
-                                ageData.young || 0,
-                                ageData.growing || 0,
-                                ageData.mature || 0,
-                                ageData.overdue || 0
-                            ],
+                            data: [ad.young || 0, ad.growing || 0, ad.mature || 0, ad.overdue || 0],
                             backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
-                            borderWidth: 0,
-                            barPercentage: 1.0,
-                            categoryPercentage: 1.0
+                            borderWidth: 0, barPercentage: 1.0, categoryPercentage: 1.0
                         }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
+                        responsive: true, maintainAspectRatio: true,
                         plugins: {
                             legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    title: (items) => {
-                                        const labels = ['Young (0-3 months)', 'Growing (4-6 months)', 'Mature (7-12 months)', 'Overdue (>12 months)'];
-                                        return labels[items[0].dataIndex];
-                                    }
-                                }
-                            }
+                            tooltip: { callbacks: { title: items => { const l = ['Young (0-3 months)', 'Growing (4-6 months)', 'Mature (7-12 months)', 'Overdue (>12 months)']; return l[items[0].dataIndex]; } } }
                         },
                         scales: {
-                            y: { 
-                                beginAtZero: true,
-                                grid: { color: '#f3f4f6' },
-                                title: { display: true, text: 'Number of Plots', font: { size: 11 } }
-                            },
-                            x: {
-                                grid: { display: false },
-                                title: { display: true, text: 'Age Range (Months)', font: { size: 11 } }
-                            }
+                            y: { beginAtZero: true, grid: { color: '#f3f4f6' }, title: { display: true, text: 'Number of Plots', font: { size: 11 } } },
+                            x: { grid: { display: false }, title: { display: true, text: 'Age Range (Months)', font: { size: 11 } } }
                         }
                     }
                 });
             },
 
-            applyFilters() {
-                this.loadData();
-            },
+            applyFilters() { this.loadData(); },
 
             resetFilters() {
-                this.filters = { 
-                    blok: '', 
-                    varietas: '', 
-                    lifecycle: '', 
-                    plottype: '',
-                    pkp: '', 
-                    age_min: '', 
-                    age_max: '' 
-                };
+                this.filters = { group: '', blok: '', varietas: '', lifecycle: '', plottype: '', pkp: '', age_min: '', age_max: '' };
+                this.sortColumn = '';
+                this.sortDirection = 'asc';
                 this.loadData();
             },
 
@@ -639,18 +578,12 @@
 
             formatDate(date) {
                 if (!date) return '-';
-                const d = new Date(date);
-                return d.toLocaleDateString('id-ID');
+                return new Date(date).toLocaleDateString('id-ID');
             },
 
             getLifecycleColor(lifecycle) {
-                const colors = {
-                    'PC': 'bg-emerald-100 text-emerald-800',
-                    'RC1': 'bg-blue-100 text-blue-800',
-                    'RC2': 'bg-amber-100 text-amber-800',
-                    'RC3': 'bg-rose-100 text-rose-800'
-                };
-                return colors[lifecycle] || 'bg-gray-100 text-gray-800';
+                const c = { 'PC': 'bg-emerald-100 text-emerald-800', 'RC1': 'bg-blue-100 text-blue-800', 'RC2': 'bg-amber-100 text-amber-800', 'RC3': 'bg-rose-100 text-rose-800' };
+                return c[lifecycle] || 'bg-gray-100 text-gray-800';
             },
 
             getAgeStatus(months) {
@@ -668,11 +601,9 @@
             },
 
             exportToExcel() {
-                let table = document.querySelector('table').outerHTML;
-                const blob = new Blob([table], { type: 'application/vnd.ms-excel' });
-                const url = URL.createObjectURL(blob);
+                const blob = new Blob([document.querySelector('table').outerHTML], { type: 'application/vnd.ms-excel' });
                 const a = document.createElement('a');
-                a.href = url;
+                a.href = URL.createObjectURL(blob);
                 a.download = `Master_Lahan_Report_${new Date().toISOString().split('T')[0]}.xls`;
                 a.click();
             }
