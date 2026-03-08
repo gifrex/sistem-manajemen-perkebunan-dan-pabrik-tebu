@@ -90,7 +90,7 @@
                 <table class="w-full text-xs">
                     <thead class="text-gray-700">
                         <tr>
-                            <th class="py-1 px-2 text-left border-0" colspan="5">
+                            <th class="py-1 px-2 text-left border-0" colspan="6"> <!-- 3.8 -->
                                 <div class="space-y-1 mb-3">
                                     <div class="grid grid-cols-3 gap-4">
                                         <span class="text-left"><b>Company:</b> {{session('companycode')}} </span>
@@ -112,6 +112,7 @@
                             <th class="py-1 px-2">Plot</th>
                             <th class="py-1 px-2">Luas (HA)</th>
                             <th class="py-1 px-2">Activity</th>
+                            <th class="py-1 px-2">Cost Center</th> <!-- 3.8 -->
                         </tr>
                     </thead>
                     <tbody class="text-gray-600">
@@ -129,6 +130,7 @@
                                 <td class="py-1 px-2">{{ $d->plot }}</td>
                                 <td class="py-1 px-2 text-right">{{ $d->luasrkh }} HA</td>
                                 <td class="py-1 px-2 bg-green-100">{{ $d->activitycode }} {{ $d->herbisidagroupname }}</td>
+                                <td class="py-1 px-2 text-center">{{ $d->costcenter ?? '-' }}</td> <!-- 3.8 -->
                             </tr>
                             @php $totalLuas += floatval($d->luasrkh); @endphp
                         @endforeach
@@ -138,6 +140,7 @@
                             <td colspan="3" class="py-1 px-2 font-semibold text-right border-t">Total Luas</td>
                             <td class="py-1 px-2 font-semibold text-right border-t">{{ $totalLuas }} HA</td>
                             <td class="py-1 px-2 border-t"></td>
+                            <td class="py-1 px-2 border-t"></td> <!-- 3.8 -->
                         </tr>
                     </tfoot>
                 </table>
@@ -436,7 +439,7 @@
                 </tbody>
             </table>
             
-            
+            <!-- 3.8 
             <div class="flex justify-center mt-4 no-print">
             <select @if( !empty($details[0]->costcenter)) disabled @endif
                 name="costcenter"
@@ -456,6 +459,7 @@
                 @endif
             </select>
             </div>
+            -->
                 <!-- Submit Button -->
                 @if(strtoupper($details[0]->flagstatus) == 'ACTIVE' )
                 <div class="flex justify-center mt-4">

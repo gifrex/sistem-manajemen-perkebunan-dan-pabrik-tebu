@@ -405,8 +405,20 @@ class GudangController extends Controller
             ->get();
             // dd($itemlist->where('activitycode','5.2.3a'));
 
+        // $details = collect($usematerialhdr->selectusematerial(session('companycode'), $request->rkhno, 1));
+        // $first = $details->first();
+        //3.8
         $details = collect($usematerialhdr->selectusematerial(session('companycode'), $request->rkhno, 1));
+        $ccMap = DB::table('costcenter')
+            ->where('companycode', session('companycode'))
+            ->pluck('costcenter', 'herbisidagroupid');
+        $details = $details->map(function ($row) use ($ccMap) {
+            $row->costcenter = $ccMap[$row->herbisidagroupid] ?? null;
+            return $row;
+        });
         $first = $details->first();
+        //3.8
+
 
         Log::info('SUBMIT DEBUG CONTEXT', [
             'url' => $request->fullUrl(),
@@ -458,19 +470,18 @@ class GudangController extends Controller
             'lst_itemcodes_sample' => $lst->pluck('itemcode')->take(10)->values()->toArray(),
         ]);        
 
+        //3.8
         //api_costcenter
-        $companyinv = Company::where('companycode', session('companycode'))->first();
-        // dd($companyinv->companyinventory, $first->factoryinv, $companyinv, $first);
-        $response = Http::withoutVerifying()->withOptions(['headers' => ['Accept' => 'application/json']])
-            ->asJson()
-            ->get('https://rosebrand.sungaibudigroup.com/app/im-purchasing/purchasing/bpb/costcenter_api', [
-                'connection' => '172.17.1.39',
-                'company' => $companyinv->companyinventory,
-                'factory' => $first->factoryinv
-            ]);
-
-        $costcenter = collect($response->json('costcenter'));
-
+        // $companyinv = Company::where('companycode', session('companycode'))->first();
+        // $response = Http::withoutVerifying()->withOptions(['headers' => ['Accept' => 'application/json']])
+        //     ->asJson()
+        //     ->get('https://rosebrand.sungaibudigroup.com/app/im-purchasing/purchasing/bpb/costcenter_api', [
+        //         'connection' => '172.17.1.39',
+        //         'company' => $companyinv->companyinventory,
+        //         'factory' => $first->factoryinv
+        //     ]);
+        // $costcenter = collect($response->json('costcenter'));
+        //3.8
         
         $usematerialapproval=null;
         if (strtoupper($details->first()->flagstatus ?? '') === 'WAIT_APPROVAL') {
@@ -478,10 +489,12 @@ class GudangController extends Controller
             ->where('companycode', session('companycode'))
             ->where('rkhno', $request->rkhno);
             $usematerialapproval = $ap->get();
-            if($details[0]->costcenter == NULL){
-            $details[0]->costcenter = $ap
-                ->value('costcenter');
-            }
+            //3.8
+            // if($details[0]->costcenter == NULL){
+            // $details[0]->costcenter = $ap
+            //     ->value('costcenter');
+            // }
+            //3.8
             if ($usematerialapproval) {
                 $usematerialapproval = $usematerialapproval->keyBy(function($r){
                     return trim($r->lkhno).'|'.trim($r->plot).'|'.trim($r->itemcode);
@@ -496,7 +509,7 @@ class GudangController extends Controller
             'dosage' => $dosage,
             'lst' => $lst,
             'itemlist' => $itemlist,
-            'costcenter' => $costcenter,
+            // 'costcenter' => $costcenter, 3.8
             'detailmaterial' => $detailmaterial,
             'islokal' => $islokal,
             'usematerialapproval' => $usematerialapproval,
@@ -1287,6 +1300,12 @@ public function submit(Request $request)
     });
     $herbisidaItems = Herbisida::where('companycode', session('companycode'))->get()->keyBy('itemcode');
 
+    //3.8
+    $costcenterByGroup = DB::table('costcenter')
+        ->where('companycode', session('companycode'))
+        ->pluck('costcenter', 'herbisidagroupid');
+    //3.8
+
     $insertData = [];
     $apiPayload = [];
     $qtyByItemcode = [];
@@ -1372,7 +1391,16 @@ public function submit(Request $request)
                 // ambil group & flag rounding
                 $groupId     = $detail->herbisidagroupid ?? null;
                 $rounddosage = $groupId !== null ? ($roundingByGroup[$groupId] ?? 1) : 1; // default: masih rounded seperti lama
-
+                //3.8
+                $rowCostcenter = $groupId !== null ? ($costcenterByGroup[$groupId] ?? null) : null;
+                if (!$rowCostcenter) {
+                    return $releaseLockAndBack(
+                        'error',
+                        "Costcenter belum diset untuk herbisidagroup {$groupId} (LKH {$lkhno}, Plot {$key})",
+                        6
+                    );
+                }
+                //3.8
                 if ($qtyraw > 0) {
                     if ($rounddosage) {
                         // truncate 2 desimal, lalu ceiling ke 0.05, minimum 0.05
@@ -1407,6 +1435,9 @@ public function submit(Request $request)
                     'nouse' => $existing?->nouse ?? null,
                     'plot' => $key,
                     'itemseq' => $seq++,
+                    //3.8
+                    'costcenter' => $rowCostcenter,
+                    //3.8
                 ];
 
                 // Jumlahkan qty per itemcode
@@ -1416,7 +1447,10 @@ public function submit(Request $request)
                 if (!isset($itemDetails[$itemcode])) {
                     $itemDetails[$itemcode] = [
                         'detail' => $detail,
-                        'unit' => $unit
+                        'unit' => $unit,
+                        //3.8
+                        'costcenter' => $rowCostcenter,
+                        //3.8
                     ];
                 }
             }
@@ -1491,7 +1525,7 @@ public function submit(Request $request)
                     'unit' => $row['unit'],
                     'qty' => $row['qty'],
                     'flagstatus' => 'WAIT_APPROVAL',
-                    'costcenter' => $request->costcenter,
+                    'costcenter' => $row['costcenter'] ?? null,
                     'createdat' => now(),
                     'itemseq'     => $seq++,
                 ];
@@ -1542,7 +1576,10 @@ public function submit(Request $request)
             'Keterangan' => $detail->herbisidagroupname . ' - ' . $detail->name. ' | rkhno:' . $request->rkhno . ' company:' . session('companycode'),
             'vehiclenumber' => '',
             'flagstatus' => $isFromApproval ? 'ACTIVE' : $detail->flagstatus,
-            'qtydigunakan' => $detail->qtydigunakan
+            'qtydigunakan' => $detail->qtydigunakan,
+            //3.8
+            'costcenter' => $itemDetails[$itemcode]['costcenter'] ?? null,
+            //3.8
         ];
     }
 
@@ -1632,7 +1669,7 @@ public function submit(Request $request)
             'companytebu' => session('companycode'),
             'rkhno' => $request->rkhno,
             'factory' => $first->factoryinv ?? null,
-            'costcenter' => $request->costcenter ?? null,
+            'costcenter_items' => collect($apiPayload)->pluck('costcenter')->filter()->unique()->values()->toArray(),
             'rkhdate' => $rkhdate ?? null,
             'items_count' => is_array($apiPayload) ? count($apiPayload) : null,
             'api_itemcodes' => array_slice(array_keys($apiPayload ?? []), 0, 10),
@@ -1648,7 +1685,7 @@ public function submit(Request $request)
                 'companytebu'  => session('companycode'),  // ✅ tambah (atau sumber yg benar)
                 'rkhno'        => $request->rkhno,
                 'factory' => $first->factoryinv,
-                'costcenter' => $request->costcenter,
+                'costcenter' => null,
                 'isi' => array_values($apiPayload),
                 'userid' => substr(auth()->user()->userid, 0, 10),
                 'rkhdate' => $rkhdate,
@@ -1665,7 +1702,7 @@ public function submit(Request $request)
                 'payload_sent' => [
                     'company' => $companyinv->companyinventory,
                     'factory' => $first->factoryinv,
-                    'costcenter' => $request->costcenter,
+                    'costcenter_items' => collect($apiPayload)->pluck('costcenter')->filter()->unique()->values()->toArray(),
                     'isi' => array_values($apiPayload),
                     'userid' => substr(auth()->user()->userid, 0, 10)
                 ]
@@ -1738,7 +1775,7 @@ public function submit(Request $request)
                     ->update([
                         'nouse' => $responseData['noUse'] ?? null,
                         'itemprice' => $val['itemprice'],
-                        'costcenter' => $request->costcenter,
+                        'costcenter' => $itemDetails[$itemcode]['costcenter'] ?? null,
                         'startstock' => $val['startstock'],
                         'endstock' => $val['endstock'],
                         'tgluse'    => now()
