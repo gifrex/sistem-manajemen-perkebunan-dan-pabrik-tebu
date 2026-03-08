@@ -10,7 +10,7 @@ use Carbon\Carbon;
 
 // Hapus file upload lebih dari 2 hari, jalan setiap hari jam 00:00
 Schedule::call(function () {
-    $path = storage_path('app/public/uploads');
+    $path = public_path('uploads');
 
     if (!File::isDirectory($path)) return;
 
