@@ -46,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Apply mandor access management globally to web routes
         $middleware->web(append: [
+            \App\Http\Middleware\SwitchDatabase::class,
             \App\Http\Middleware\MandorAccessManagement::class,
         ]);
 
