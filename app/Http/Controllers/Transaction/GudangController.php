@@ -1665,7 +1665,7 @@ public function submit(Request $request)
         if( session('companycode') == 'TBL4' ){$koneksi = 'TESTING';}
         Log::info('SUBMIT API PAYLOAD SUMMARY', [
             'connection' => $koneksi ?? null,
-            'company_inventory' => $companyinv->companyinventory ?? null,
+            'company_inventory' => $first->companyinv ?? null,
             'companytebu' => session('companycode'),
             'rkhno' => $request->rkhno,
             'factory' => $first->factoryinv ?? null,
@@ -1674,23 +1674,48 @@ public function submit(Request $request)
             'items_count' => is_array($apiPayload) ? count($apiPayload) : null,
             'api_itemcodes' => array_slice(array_keys($apiPayload ?? []), 0, 10),
         ]);
-        
-        $response = Http::withoutVerifying()
-            ->withOptions(['headers' => ['Accept' => 'application/json']])
+
+        $response = Http::withOptions([
+                'verify' => false,
+                'curl' => [
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                ],
+                'headers' => [
+                    'Accept' => 'application/json',
+                ],
+            ])
             ->asJson()
             ->timeout(30)
             ->post('https://rosebrand.sungaibudigroup.com/app/im-purchasing/purchasing/bpb/use_api', [
-                'connection' => $koneksi,
-                'company' => $first->companyinv,
-                'companytebu' => session('companycode'),
+                'connection'   => $koneksi,
+                'company'      => $first->companyinv,
+                'companytebu'  => session('companycode'),
                 'rkhno'        => $request->rkhno,
-                'factory' => $first->factoryinv,
-                'costcenter' => null,
-                'isi' => array_values($apiPayload),
-                'userid' => substr(auth()->user()->userid, 0, 10),
-                'rkhdate' => $rkhdate,
-                'type' => $isFromApproval ? 'KS' : ''
+                'factory'      => $first->factoryinv,
+                'costcenter'   => null,
+                'isi'          => array_values($apiPayload),
+                'userid'       => substr(auth()->user()->userid, 0, 10),
+                'rkhdate'      => $rkhdate,
+                'type'         => $isFromApproval ? 'KS' : ''
             ]);
+        
+        // $response = Http::withoutVerifying()
+        //     ->withOptions(['headers' => ['Accept' => 'application/json']])
+        //     ->asJson()
+        //     ->timeout(30)
+        //     ->post('https://rosebrand.sungaibudigroup.com/app/im-purchasing/purchasing/bpb/use_api', [
+        //         'connection' => $koneksi,
+        //         'company' => $first->companyinv,
+        //         'companytebu' => session('companycode'),
+        //         'rkhno'        => $request->rkhno,
+        //         'factory' => $first->factoryinv,
+        //         'costcenter' => null,
+        //         'isi' => array_values($apiPayload),
+        //         'userid' => substr(auth()->user()->userid, 0, 10),
+        //         'rkhdate' => $rkhdate,
+        //         'type' => $isFromApproval ? 'KS' : ''
+        //     ]);
 
         // Check jika API gagal
         if (!$response->successful()) {
