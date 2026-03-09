@@ -19,23 +19,21 @@ class ActivityController extends Controller
         $query = Activity::with('group');
 
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('activitycode', 'like', "%{$search}%")
                   ->orWhere('activityname', 'like', "%{$search}%")
-                  ->orWhere('activitygroup', 'like', "%{$search}%");
+                  ->orWhere('activitygroup', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
         $activities = $query
-            ->orderBy('activitygroup', 'asc')
-            ->orderBy('activitycode', 'asc')
+            ->orderBy('activitygroup')
+            ->orderBy('activitycode')
             ->paginate($perPage)
-            ->appends([
-                'perPage' => $perPage,
-                'search' => $search,
-            ]);
+            ->appends($request->only(['perPage', 'search']));
 
-        $activityGroup = ActivityGroup::orderBy('activitygroup', 'asc')->get();
+        $activityGroups = ActivityGroup::orderBy('activitygroup')->get();
 
         return view('masterdata.activity.index', [
             'title' => 'Daftar Aktivitas',
@@ -44,157 +42,129 @@ class ActivityController extends Controller
             'perPage' => $perPage,
             'search' => $search,
             'activities' => $activities,
-            'activityGroup' => $activityGroup
+            'activityGroups' => $activityGroups,
         ]);
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'grupaktivitas' => 'required|exists:activitygroup,activitygroup',
-            'kodeaktivitas' => 'required|string|max:3',
-            'namaaktivitas' => 'required|string|max:255',
-            'keterangan' => 'nullable|string|max:150',
-            'jenistenagakerja' => 'required|in:1,2',
-            'material' => 'required|in:0,1',
-            'vehicle' => 'required|in:0,1',
-            'var.*' => 'required|string|max:50',
-            'satuan.*' => 'required|string|max:20'
-        ], [
-            'kodeaktivitas.max' => 'Kode aktivitas maksimal 3 karakter',
-            'var.*.required' => 'Variable hasil aktivitas wajib diisi',
-            'satuan.*.required' => 'Satuan hasil aktivitas wajib diisi'
-        ]);
+        $validated = $this->validateActivity($request);
 
-        // Cek duplicate
-        $exists = Activity::where('activitycode', $request->kodeaktivitas)->exists();
-
-        if ($exists) {
-            return redirect()->back()
-                ->withInput()
+        if (Activity::where('activitycode', $validated['kodeaktivitas'])->exists()) {
+            return back()->withInput()
                 ->withErrors(['kodeaktivitas' => 'Kode aktivitas sudah ada dalam database']);
         }
 
-        // Validasi max 5 variables
-        if (count($request->var) > 5) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['var' => 'Maksimal 5 variable hasil aktivitas']);
-        }
-
         try {
-            DB::transaction(function () use ($request) {
-                $data = [
-                    'activitycode' => $request->kodeaktivitas,
-                    'activitygroup' => $request->grupaktivitas,
-                    'activityname' => $request->namaaktivitas,
-                    'description' => $request->keterangan,
-                    'usingmaterial' => $request->material,
-                    'usingvehicle' => $request->vehicle,
-                    'jenistenagakerja' => $request->jenistenagakerja,
-                    'jumlahvar' => count($request->var),
-                    'inputby' => Auth::user()->userid,
-                    'createdat' => now(),
-                ];
-
-                // Tambahkan var dan satuan
-                foreach ($request->var as $index => $value) {
-                    $data["var" . ($index + 1)] = $value;
-                    $data["satuan" . ($index + 1)] = $request->satuan[$index];
-                }
-
-                Activity::create($data);
+            DB::transaction(function () use ($validated) {
+                Activity::create($this->buildData($validated, true));
             });
 
-            return redirect()->back()->with('success', 'Data berhasil disimpan');
+            return back()->with('success', 'Data berhasil disimpan');
         } catch (\Exception $e) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['error' => 'Error pada database: ' . $e->getMessage()]);
+            return back()->withInput()
+                ->withErrors(['error' => 'Error: ' . $e->getMessage()]);
         }
     }
 
     public function update(Request $request, $activityCode)
     {
-        $request->validate([
-            'grupaktivitas' => 'required|exists:activitygroup,activitygroup',
-            'kodeaktivitas' => 'required|string|max:3',
-            'namaaktivitas' => 'required|string|max:255',
-            'keterangan' => 'nullable|string|max:150',
-            'jenistenagakerja' => 'required|in:1,2',
-            'material' => 'required|in:0,1',
-            'vehicle' => 'required|in:0,1',
-            'var.*' => 'required|string|max:50',
-            'satuan.*' => 'required|string|max:20'
-        ], [
-            'kodeaktivitas.max' => 'Kode aktivitas maksimal 3 karakter',
-            'var.*.required' => 'Variable hasil aktivitas wajib diisi',
-            'satuan.*.required' => 'Satuan hasil aktivitas wajib diisi'
-        ]);
-
         $activity = Activity::where('activitycode', $activityCode)->firstOrFail();
-
-        // Validasi max 5 variables
-        if (count($request->var) > 5) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['var' => 'Maksimal 5 variable hasil aktivitas']);
-        }
+        $validated = $this->validateActivity($request);
 
         try {
-            DB::transaction(function () use ($request, $activity) {
-                $data = [
-                    'activitycode' => $request->kodeaktivitas,
-                    'activitygroup' => $request->grupaktivitas,
-                    'activityname' => $request->namaaktivitas,
-                    'description' => $request->keterangan,
-                    'usingmaterial' => $request->material,
-                    'usingvehicle' => $request->vehicle,
-                    'jenistenagakerja' => $request->jenistenagakerja,
-                    'jumlahvar' => count($request->var),
-                    'updatedby' => Auth::user()->userid,
-                    'updatedat' => now(),
-                ];
-
-                // Reset semua var dan satuan
-                for ($i = 1; $i <= 5; $i++) {
-                    $data["var$i"] = null;
-                    $data["satuan$i"] = null;
-                }
-
-                // Tambahkan var dan satuan yang ada
-                foreach ($request->var as $index => $value) {
-                    $data["var" . ($index + 1)] = $value;
-                    $data["satuan" . ($index + 1)] = $request->satuan[$index];
-                }
-
-                $activity->update($data);
+            DB::transaction(function () use ($activity, $validated) {
+                $activity->update($this->buildData($validated, false));
             });
 
-            return redirect()->back()->with('success', 'Data berhasil di-update');
+            return back()->with('success', 'Data berhasil di-update');
         } catch (\Exception $e) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['error' => 'Error pada database: ' . $e->getMessage()]);
+            return back()->withInput()
+                ->withErrors(['error' => 'Error: ' . $e->getMessage()]);
         }
     }
 
     public function destroy($activityCode)
     {
         try {
-            DB::transaction(function () use ($activityCode) {
-                Activity::where('activitycode', $activityCode)->delete();
-            });
+            Activity::where('activitycode', $activityCode)->delete();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Data berhasil dihapus',
-            ]);
+            return response()->json(['success' => true, 'message' => 'Data berhasil dihapus']);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus data: ' . $e->getMessage(),
+                'message' => 'Gagal menghapus: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    // ─── Private ─────────────────────────────────────────
+
+    private function validateActivity(Request $request): array
+    {
+        return $request->validate([
+            'grupaktivitas'    => 'required|exists:activitygroup,activitygroup',
+            'kodeaktivitas'    => 'required|string|max:50',
+            'namaaktivitas'    => 'required|string|max:150',
+            'namaaktivitas2'   => 'nullable|string|max:150',
+            'keterangan'       => 'nullable|string|max:150',
+            'jenistenagakerja' => 'required|in:1,2',
+            'material'         => 'required|in:0,1',
+            'vehicle'          => 'required|in:0,1',
+            'isblokactivity'   => 'required|in:0,1',
+            'active'           => 'required|in:0,1',
+            'accno'            => 'nullable|string|max:25',
+            'var'              => 'nullable|array|max:5',
+            'var.*'            => 'required|string|max:30',
+            'satuan'           => 'nullable|array|max:5',
+            'satuan.*'         => 'required|string|max:30',
+        ], [
+            'kodeaktivitas.max' => 'Kode aktivitas maksimal 50 karakter',
+            'var.*.required'    => 'Variable hasil aktivitas wajib diisi',
+            'satuan.*.required' => 'Satuan hasil aktivitas wajib diisi',
+        ]);
+    }
+
+    private function buildData(array $validated, bool $isCreate): array
+    {
+        $vars = $validated['var'] ?? [];
+        $satuans = $validated['satuan'] ?? [];
+
+        $data = [
+            'activitycode'     => $validated['kodeaktivitas'],
+            'activitygroup'    => $validated['grupaktivitas'],
+            'activityname'     => $validated['namaaktivitas'],
+            'activityname2'    => $validated['namaaktivitas2'] ?? null,
+            'description'      => $validated['keterangan'] ?? null,
+            'jenistenagakerja' => $validated['jenistenagakerja'],
+            'usingmaterial'    => $validated['material'],
+            'usingvehicle'     => $validated['vehicle'],
+            'isblokactivity'   => $validated['isblokactivity'],
+            'active'           => $validated['active'],
+            'accno'            => $validated['accno'] ?? null,
+            'jumlahvar'        => count($vars),
+        ];
+
+        // Reset all var/satuan columns
+        for ($i = 1; $i <= 5; $i++) {
+            $data["var{$i}"] = null;
+            $data["satuan{$i}"] = null;
+        }
+
+        // Fill var/satuan
+        foreach ($vars as $index => $value) {
+            $data['var' . ($index + 1)] = $value;
+            $data['satuan' . ($index + 1)] = $satuans[$index] ?? null;
+        }
+
+        if ($isCreate) {
+            $data['inputby'] = Auth::user()->userid;
+            $data['createdat'] = now();
+        } else {
+            $data['updatedby'] = Auth::user()->userid;
+            $data['updatedat'] = now();
+        }
+
+        return $data;
     }
 }

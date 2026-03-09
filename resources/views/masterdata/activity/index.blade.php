@@ -3,11 +3,95 @@
     <x-slot:navbar>{{ $navbar }}</x-slot:navbar>
     <x-slot:nav>{{ $nav }}</x-slot:nav>
 
-    <div class="mx-auto py-1 bg-white shadow-md rounded-md">
-        
+    <div
+        x-data="{
+            open: @json($errors->any()),
+            mode: 'create',
+            form: {
+                grupaktivitas: '',
+                kodeaktivitas: '',
+                namaaktivitas: '',
+                namaaktivitas2: '',
+                keterangan: '',
+                jenistenagakerja: '1',
+                material: '0',
+                vehicle: '0',
+                isblokactivity: '0',
+                active: '1',
+                accno: '',
+                variables: [{ var: '', satuan: '' }]
+            },
+            resetForm() {
+                this.mode = 'create';
+                this.form = {
+                    grupaktivitas: '',
+                    kodeaktivitas: '',
+                    namaaktivitas: '',
+                    namaaktivitas2: '',
+                    keterangan: '',
+                    jenistenagakerja: '1',
+                    material: '0',
+                    vehicle: '0',
+                    isblokactivity: '0',
+                    active: '1',
+                    accno: '',
+                    variables: [{ var: '', satuan: '' }]
+                };
+                this.open = true;
+            },
+            addVariable() {
+                if (this.form.variables.length < 5) {
+                    this.form.variables.push({ var: '', satuan: '' });
+                }
+            },
+            removeVariable(index) {
+                this.form.variables.splice(index, 1);
+            },
+            editActivity(a) {
+                this.mode = 'edit';
+                this.form.grupaktivitas = a.activitygroup || '';
+                this.form.kodeaktivitas = a.activitycode || '';
+                this.form.namaaktivitas = a.activityname || '';
+                this.form.namaaktivitas2 = a.activityname2 || '';
+                this.form.keterangan = a.description || '';
+                this.form.jenistenagakerja = String(a.jenistenagakerja ?? '1');
+                this.form.material = String(a.usingmaterial ?? '0');
+                this.form.vehicle = String(a.usingvehicle ?? '0');
+                this.form.isblokactivity = String(a.isblokactivity ?? '0');
+                this.form.active = String(a.active ?? '1');
+                this.form.accno = a.accno || '';
+
+                let vars = [];
+                for (let i = 1; i <= 5; i++) {
+                    if (a['var' + i]) {
+                        vars.push({ var: a['var' + i], satuan: a['satuan' + i] || '' });
+                    }
+                }
+                this.form.variables = vars.length ? vars : [{ var: '', satuan: '' }];
+                this.open = true;
+            },
+            deleteActivity(code) {
+                if (!confirm('Yakin ingin menghapus data ini?')) return;
+                fetch('{{ url('masterdata/aktivitas') }}/' + code, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ _method: 'DELETE' })
+                })
+                .then(r => r.json())
+                .then(d => { if (d.success) location.reload(); else alert(d.message); })
+                .catch(() => alert('Terjadi kesalahan'));
+            }
+        }"
+        class="mx-auto py-1 bg-white shadow-md rounded-md"
+    >
+
+        {{-- Toolbar --}}
         <div class="flex items-center justify-between px-4 py-2">
             @can('masterdata.aktivitas.create')
-                <button onclick="openCreateModal()"
+                <button @click="resetForm()"
                     class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2">
                     <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5" />
@@ -16,20 +100,18 @@
                 </button>
             @endcan
 
-            {{-- Search Form --}}
             <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-2">
                 <label for="search" class="text-xs font-medium text-gray-700">Search:</label>
                 <input type="text" name="search" id="search" value="{{ request('search') }}"
-                       placeholder="Kode, Nama, atau Group"
-                       class="text-xs mt-1 block w-64 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                       onkeydown="if(event.key==='Enter') this.form.submit()">
+                    placeholder="Kode, Nama, atau Group"
+                    class="text-xs mt-1 block w-64 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    onkeydown="if(event.key==='Enter') this.form.submit()">
             </form>
 
-            {{-- Items per page --}}
             <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-2">
                 <label for="perPage" class="text-xs font-medium text-gray-700">Items per page:</label>
                 <select name="perPage" id="perPage" onchange="this.form.submit()"
-                        class="text-xs mt-1 block w-20 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    class="text-xs mt-1 block w-20 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                     <option value="10" {{ (int)request('perPage', $perPage) === 10 ? 'selected' : '' }}>10</option>
                     <option value="20" {{ (int)request('perPage', $perPage) === 20 ? 'selected' : '' }}>20</option>
                     <option value="50" {{ (int)request('perPage', $perPage) === 50 ? 'selected' : '' }}>50</option>
@@ -38,68 +120,84 @@
             </form>
         </div>
 
+        {{-- Table --}}
         <div class="mx-auto px-4 py-2">
             <div class="overflow-x-auto rounded-md border border-gray-300">
-                <table class="min-w-full bg-white text-sm">
+                <table class="min-w-full bg-white text-sm text-center">
                     <thead>
                         <tr class="bg-gray-100 text-gray-700">
-                            <th class="py-2 px-4 border-b">No.</th>
-                            <th class="py-2 px-4 border-b">GROUP</th>
-                            <th class="py-2 px-4 border-b">KODE</th>
-                            <th class="py-2 px-4 border-b">NAMA</th>
-                            <th class="py-2 px-4 border-b">VAR1</th>
-                            <th class="py-2 px-4 border-b">VAR2</th>
-                            <th class="py-2 px-4 border-b">VAR3</th>
-                            <th class="py-2 px-4 border-b">VAR4</th>
-                            <th class="py-2 px-4 border-b">VAR5</th>
-                            <th class="py-2 px-4 border-b">MATERIAL</th>
-                            <th class="py-2 px-4 border-b">VEHICLE</th>
-                            <th class="py-2 px-4 border-b">JENIS TK</th>
-                            <th class="py-2 px-4 border-b">ACTION</th>
+                            <th class="py-2 px-3 border-b">No.</th>
+                            <th class="py-2 px-3 border-b">Group</th>
+                            <th class="py-2 px-3 border-b">Kode</th>
+                            <th class="py-2 px-3 border-b">Nama</th>
+                            <th class="py-2 px-3 border-b">Nama 2</th>
+                            <th class="py-2 px-3 border-b">Var 1</th>
+                            <th class="py-2 px-3 border-b">Var 2</th>
+                            <th class="py-2 px-3 border-b">Var 3</th>
+                            <th class="py-2 px-3 border-b">Var 4</th>
+                            <th class="py-2 px-3 border-b">Var 5</th>
+                            <th class="py-2 px-3 border-b">Material</th>
+                            <th class="py-2 px-3 border-b">Vehicle</th>
+                            <th class="py-2 px-3 border-b">Jenis TK</th>
+                            <th class="py-2 px-3 border-b">Blok Act.</th>
+                            <th class="py-2 px-3 border-b">Acc No</th>
+                            <th class="py-2 px-3 border-b">Status</th>
+                            <th class="py-2 px-3 border-b">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($activities as $index => $activity)
+                        @forelse($activities as $index => $a)
                             <tr class="hover:bg-gray-50">
-                                <td class="py-2 px-4 border-b text-center">{{ $activities->firstItem() + $index }}</td>
-                                <td class="py-2 px-4 border-b">{{ $activity->activitygroup }} - {{ $activity->group->groupname ?? '-' }}</td>
-                                <td class="py-2 px-4 border-b text-center">{{ $activity->activitycode }}</td>
-                                <td class="py-2 px-4 border-b">{{ $activity->activityname }}</td>
-                                <td class="py-2 px-4 border-b">{{ $activity->var1 ? $activity->var1 . ' - ' . $activity->satuan1 : '-' }}</td>
-                                <td class="py-2 px-4 border-b">{{ $activity->var2 ? $activity->var2 . ' - ' . $activity->satuan2 : '-' }}</td>
-                                <td class="py-2 px-4 border-b">{{ $activity->var3 ? $activity->var3 . ' - ' . $activity->satuan3 : '-' }}</td>
-                                <td class="py-2 px-4 border-b">{{ $activity->var4 ? $activity->var4 . ' - ' . $activity->satuan4 : '-' }}</td>
-                                <td class="py-2 px-4 border-b">{{ $activity->var5 ? $activity->var5 . ' - ' . $activity->satuan5 : '-' }}</td>
-                                <td class="py-2 px-4 border-b text-center">{{ $activity->usingmaterial == 1 ? 'YA' : 'TIDAK' }}</td>
-                                <td class="py-2 px-4 border-b text-center">{{ $activity->usingvehicle == 1 ? 'YA' : 'TIDAK' }}</td>
-                                <td class="py-2 px-4 border-b text-center">{{ $activity->jenistenagakerja == 1 ? 'HARIAN' : 'BORONGAN' }}</td>
-                                <td class="py-2 px-4 border-b">
+                                <td class="py-2 px-3 border-b">{{ $activities->firstItem() + $index }}</td>
+                                <td class="py-2 px-3 border-b text-left">{{ $a->activitygroup }} - {{ $a->group->groupname ?? '-' }}</td>
+                                <td class="py-2 px-3 border-b font-medium">{{ $a->activitycode }}</td>
+                                <td class="py-2 px-3 border-b text-left">{{ $a->activityname }}</td>
+                                <td class="py-2 px-3 border-b text-left">{{ $a->activityname2 ?? '-' }}</td>
+                                <td class="py-2 px-3 border-b">{{ $a->var1 ? $a->var1 . ' (' . $a->satuan1 . ')' : '-' }}</td>
+                                <td class="py-2 px-3 border-b">{{ $a->var2 ? $a->var2 . ' (' . $a->satuan2 . ')' : '-' }}</td>
+                                <td class="py-2 px-3 border-b">{{ $a->var3 ? $a->var3 . ' (' . $a->satuan3 . ')' : '-' }}</td>
+                                <td class="py-2 px-3 border-b">{{ $a->var4 ? $a->var4 . ' (' . $a->satuan4 . ')' : '-' }}</td>
+                                <td class="py-2 px-3 border-b">{{ $a->var5 ? $a->var5 . ' (' . $a->satuan5 . ')' : '-' }}</td>
+                                <td class="py-2 px-3 border-b">{{ $a->usingmaterial ? 'YA' : 'TIDAK' }}</td>
+                                <td class="py-2 px-3 border-b">{{ $a->usingvehicle ? 'YA' : 'TIDAK' }}</td>
+                                <td class="py-2 px-3 border-b">{{ $a->jenistenagakerja == 1 ? 'HARIAN' : 'BORONGAN' }}</td>
+                                <td class="py-2 px-3 border-b">
+                                    @if($a->isblokactivity)
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">Per Blok</span>
+                                    @else
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">Per Plot</span>
+                                    @endif
+                                </td>
+                                <td class="py-2 px-3 border-b">{{ $a->accno ?? '-' }}</td>
+                                <td class="py-2 px-3 border-b">
+                                    @if($a->active)
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Active</span>
+                                    @else
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">Inactive</span>
+                                    @endif
+                                </td>
+                                <td class="py-2 px-3 border-b">
                                     <div class="flex items-center justify-center space-x-2">
                                         @can('masterdata.aktivitas.edit')
-                                            <button onclick='openEditModal(@json($activity))'
+                                            <button @click="editActivity({{ Js::from($a) }})"
                                                 class="group flex items-center">
                                                 <svg class="w-6 h-6 text-blue-500 group-hover:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="m14.304 4.844 2.852 2.852M7 7H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-4.5m2.409-9.91a2.017 2.017 0 0 1 0 2.853l-6.844 6.844L8 14l.713-3.565 6.844-6.844a2.015 2.015 0 0 1 2.852 0Z" />
+                                                    <use xlink:href="#icon-edit-outline" />
                                                 </svg>
                                                 <svg class="w-6 h-6 text-blue-500 hidden group-hover:block" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-                                                <path fill-rule="evenodd"
-                                                        d="M11.32 6.176H5c-1.105 0-2 .949-2 2.118v10.588C3 20.052 3.895 21 5 21h11c1.105 0 2-.948 2-2.118v-7.75l-3.914 4.144A2.46 2.46 0 0 1 12.81 16l-2.681.568c-1.75.37-3.292-1.263-2.942-3.115l.536-2.839c.097-.512.335-.983.684-1.352l2.914-3.086Z"
-                                                        clip-rule="evenodd" />
-                                                <path fill-rule="evenodd"
-                                                        d="M19.846 4.318a2.148 2.148 0 0 0-.437-.692 2.014 2.014 0 0 0-.654-.463 1.92 1.92 0 0 0-1.544 0 2.014 2.014 0 0 0-.654.463l-.546.578 2.852 3.02.546-.579a2.14 2.14 0 0 0 .437-.692 2.244 2.244 0 0 0 0-1.635ZM17.45 8.721 14.597 5.7 9.82 10.76a.54.54 0 0 0-.137.27l-.536 2.84c-.07.37.239.696.588.622l2.682-.567a.492.492 0 0 0 .255-.145l4.778-5.06Z"
-                                                        clip-rule="evenodd" />
+                                                    <use xlink:href="#icon-edit-solid" />
+                                                    <use xlink:href="#icon-edit-solid2" />
                                                 </svg>
                                             </button>
                                         @endcan
                                         @can('masterdata.aktivitas.delete')
-                                            <button type="button" class="group flex items-center text-red-600 hover:text-red-800 focus:ring-2 focus:ring-red-500 rounded-md px-2 py-1 text-sm delete-button"
-                                                data-activitycode="{{ $activity->activitycode }}">
+                                            <button @click="deleteActivity('{{ $a->activitycode }}')"
+                                                class="group flex items-center">
                                                 <svg class="w-6 h-6 text-red-500 group-hover:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <use xlink:href="#icon-trash-outline"/>
+                                                    <use xlink:href="#icon-trash-outline" />
                                                 </svg>
                                                 <svg class="w-6 h-6 text-red-500 hidden group-hover:block" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-                                                    <use xlink:href="#icon-trash-solid"/>
+                                                    <use xlink:href="#icon-trash-solid" />
                                                 </svg>
                                             </button>
                                         @endcan
@@ -108,7 +206,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="13" class="py-4 text-center text-gray-500">Tidak ada data</td>
+                                <td colspan="17" class="py-4 text-center text-gray-500">Tidak ada data</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -118,291 +216,223 @@
 
         {{-- Pagination --}}
         <div class="mx-4 my-1">
-            {{ $activities->appends(['perPage' => $activities->perPage(), 'search' => $search])->links() }}
+            {{ $activities->links() }}
         </div>
-    </div>
 
-    {{-- Modal Form --}}
-    <div id="crud-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75">
-        <div class="flex min-h-full items-center justify-center p-4">
-            <div class="relative bg-white rounded-lg shadow-xl w-full max-w-4xl">
-                
-                {{-- Header --}}
-                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900" id="modal-title">Create Data</h3>
-                    <button type="button" onclick="closeModal()"
-                            class="text-gray-400 hover:text-gray-500">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
+        {{-- Modal --}}
+        <div x-show="open" x-cloak class="relative z-10" role="dialog" aria-modal="true">
+            <div x-show="open" x-transition.opacity class="fixed inset-0 bg-gray-500/75"></div>
 
-                {{-- Form --}}
-                <form id="crud-form" method="POST" class="px-6 py-4">
-                    @csrf
-                    <input type="hidden" id="crud-method" name="_method" value="POST">
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {{-- Left Column --}}
-                        <div class="space-y-3">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1">Grup Aktivitas <span class="text-red-500">*</span></label>
-                                <select name="grupaktivitas" required
-                                        class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">-- Pilih Group --</option>
-                                    @foreach($activityGroup as $group)
-                                        <option value="{{ $group->activitygroup }}">{{ $group->activitygroup }} - {{ $group->groupname }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+            <div class="fixed inset-0 z-10 overflow-y-auto">
+                <div class="flex min-h-full items-center justify-center p-4">
+                    <div x-show="open"
+                        x-transition:enter="ease-out duration-300"
+                        x-transition:enter-start="opacity-0 translate-y-4 sm:scale-95"
+                        x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                        x-transition:leave="ease-in duration-200"
+                        x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                        x-transition:leave-end="opacity-0 translate-y-4 sm:scale-95"
+                        class="relative transform rounded-lg bg-white text-left shadow-xl w-full max-w-4xl">
 
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1">Kode Aktivitas <span class="text-red-500">*</span></label>
-                                <input type="text" name="kodeaktivitas" maxlength="3" required
-                                       class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 uppercase"
-                                       placeholder="Max 3 karakter">
-                            </div>
+                        <form method="POST"
+                            :action="mode === 'edit'
+                                ? '{{ url('masterdata/aktivitas') }}/' + form.kodeaktivitas
+                                : '{{ route('masterdata.aktivitas.store') }}'"
+                            class="px-6 pt-4 pb-6 space-y-4">
+                            @csrf
+                            <template x-if="mode === 'edit'">
+                                <input type="hidden" name="_method" value="PUT">
+                            </template>
 
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1">Nama Aktivitas <span class="text-red-500">*</span></label>
-                                <input type="text" name="namaaktivitas" required
-                                       class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1">Keterangan</label>
-                                <textarea name="keterangan" rows="2" maxlength="150"
-                                       class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">Material? <span class="text-red-500">*</span></label>
-                                    <div class="flex gap-3">
-                                        <label class="inline-flex items-center text-sm">
-                                            <input type="radio" name="material" value="1" class="mr-1"> Ya
-                                        </label>
-                                        <label class="inline-flex items-center text-sm">
-                                            <input type="radio" name="material" value="0" checked class="mr-1"> Tidak
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-700 mb-1">Kendaraan? <span class="text-red-500">*</span></label>
-                                    <div class="flex gap-3">
-                                        <label class="inline-flex items-center text-sm">
-                                            <input type="radio" name="vehicle" value="1" class="mr-1"> Ya
-                                        </label>
-                                        <label class="inline-flex items-center text-sm">
-                                            <input type="radio" name="vehicle" value="0" checked class="mr-1"> Tidak
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-medium text-gray-700 mb-1">Jenis TK <span class="text-red-500">*</span></label>
-                                <div class="flex gap-3">
-                                    <label class="inline-flex items-center text-sm">
-                                        <input type="radio" name="jenistenagakerja" value="1" checked class="mr-1"> Harian
-                                    </label>
-                                    <label class="inline-flex items-center text-sm">
-                                        <input type="radio" name="jenistenagakerja" value="2" class="mr-1"> Borongan
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Right Column - Variables --}}
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="block text-xs font-medium text-gray-700">Hasil Aktivitas (Max 5)</label>
-                                <button type="button" id="btn-tambah-variable"
-                                        class="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 flex items-center gap-1">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            {{-- Header --}}
+                            <div class="flex items-center justify-between border-b border-gray-200 pb-3">
+                                <h3 class="text-lg font-semibold text-gray-900"
+                                    x-text="mode === 'edit' ? 'Edit Aktivitas' : 'Tambah Aktivitas'"></h3>
+                                <button type="button" @click="open = false" class="text-gray-400 hover:text-gray-500">
+                                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
-                                    Tambah
                                 </button>
                             </div>
-                            
-                            <div class="div-variable space-y-2 max-h-80 overflow-y-auto pr-2">
-                                <div class="variable-row flex gap-2 items-start">
-                                    <div class="flex-1">
-                                        <label class="block text-xs text-gray-600 mb-1">Var <span class="input-var">1</span></label>
-                                        <input type="text" name="var[]" required
-                                               class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {{-- Left Column --}}
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Grup Aktivitas <span class="text-red-500">*</span></label>
+                                        <select name="grupaktivitas" x-model="form.grupaktivitas" required
+                                            class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">-- Pilih Group --</option>
+                                            @foreach($activityGroups as $g)
+                                                <option value="{{ $g->activitygroup }}">{{ $g->activitygroup }} - {{ $g->groupname }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
-                                    <div class="flex-1">
-                                        <label class="block text-xs text-gray-600 mb-1">Satuan</label>
-                                        <input type="text" name="satuan[]" required
-                                               class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Kode Aktivitas <span class="text-red-500">*</span></label>
+                                        <input type="text" name="kodeaktivitas" x-model="form.kodeaktivitas"
+                                            @input="form.kodeaktivitas = form.kodeaktivitas.toUpperCase()"
+                                            :readonly="mode === 'edit'"
+                                            :class="mode === 'edit' ? 'bg-gray-100' : ''"
+                                            maxlength="50" required
+                                            class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 uppercase">
                                     </div>
-                                    <div class="pt-6 hidden item-end">
-                                        <button type="button" onclick="deleteAktivitasRow(this)"
-                                                class="text-red-600 hover:text-red-800 p-1">
-                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                            </svg>
-                                        </button>
+
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Nama Aktivitas <span class="text-red-500">*</span></label>
+                                        <input type="text" name="namaaktivitas" x-model="form.namaaktivitas" required
+                                            class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Nama Aktivitas 2</label>
+                                        <input type="text" name="namaaktivitas2" x-model="form.namaaktivitas2" maxlength="150"
+                                            class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Keterangan</label>
+                                        <textarea name="keterangan" x-model="form.keterangan" rows="2" maxlength="150"
+                                            class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Acc No</label>
+                                        <input type="text" name="accno" x-model="form.accno" maxlength="25"
+                                            class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Material? <span class="text-red-500">*</span></label>
+                                            <div class="flex gap-3">
+                                                <label class="inline-flex items-center text-sm">
+                                                    <input type="radio" name="material" value="1" x-model="form.material" class="mr-1"> Ya
+                                                </label>
+                                                <label class="inline-flex items-center text-sm">
+                                                    <input type="radio" name="material" value="0" x-model="form.material" class="mr-1"> Tidak
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Kendaraan? <span class="text-red-500">*</span></label>
+                                            <div class="flex gap-3">
+                                                <label class="inline-flex items-center text-sm">
+                                                    <input type="radio" name="vehicle" value="1" x-model="form.vehicle" class="mr-1"> Ya
+                                                </label>
+                                                <label class="inline-flex items-center text-sm">
+                                                    <input type="radio" name="vehicle" value="0" x-model="form.vehicle" class="mr-1"> Tidak
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Jenis TK <span class="text-red-500">*</span></label>
+                                            <div class="flex gap-3">
+                                                <label class="inline-flex items-center text-sm">
+                                                    <input type="radio" name="jenistenagakerja" value="1" x-model="form.jenistenagakerja" class="mr-1"> Harian
+                                                </label>
+                                                <label class="inline-flex items-center text-sm">
+                                                    <input type="radio" name="jenistenagakerja" value="2" x-model="form.jenistenagakerja" class="mr-1"> Borongan
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Tipe Activity <span class="text-red-500">*</span></label>
+                                            <div class="flex gap-3">
+                                                <label class="inline-flex items-center text-sm">
+                                                    <input type="radio" name="isblokactivity" value="0" x-model="form.isblokactivity" class="mr-1"> Per Plot
+                                                </label>
+                                                <label class="inline-flex items-center text-sm">
+                                                    <input type="radio" name="isblokactivity" value="1" x-model="form.isblokactivity" class="mr-1"> Per Blok
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Status <span class="text-red-500">*</span></label>
+                                        <select name="active" x-model="form.active"
+                                            class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="1">Active</option>
+                                            <option value="0">Inactive</option>
+                                        </select>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
 
-                    {{-- Footer --}}
-                    <div class="mt-6 flex justify-end gap-2 pt-4 border-t border-gray-200">
-                        <button type="button" onclick="closeModal()"
-                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
-                            Cancel
-                        </button>
-                        <button type="submit"
-                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                            Save
-                        </button>
+                                {{-- Right Column - Variables --}}
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label class="block text-xs font-medium text-gray-700">Hasil Aktivitas (Max 5)</label>
+                                        <button type="button" @click="addVariable()"
+                                            x-show="form.variables.length < 5"
+                                            class="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 flex items-center gap-1">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            Tambah
+                                        </button>
+                                    </div>
+
+                                    <div class="space-y-2 max-h-96 overflow-y-auto pr-2">
+                                        <template x-for="(v, i) in form.variables" :key="i">
+                                            <div class="flex gap-2 items-start">
+                                                <div class="flex-1">
+                                                    <label class="block text-xs text-gray-600 mb-1">
+                                                        Var <span x-text="i + 1"></span>
+                                                    </label>
+                                                    <input type="text" :name="'var[]'" x-model="v.var" required
+                                                        class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                                </div>
+                                                <div class="flex-1">
+                                                    <label class="block text-xs text-gray-600 mb-1">Satuan</label>
+                                                    <input type="text" :name="'satuan[]'" x-model="v.satuan" required
+                                                        class="text-sm block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                                </div>
+                                                <div class="pt-5">
+                                                    <button type="button" @click="removeVariable(i)"
+                                                        x-show="form.variables.length > 1"
+                                                        class="text-red-500 hover:text-red-700 p-1">
+                                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <p class="mt-2 text-xs text-gray-500"
+                                       x-text="form.variables.length + ' / 5 variable'"></p>
+                                </div>
+                            </div>
+
+                            {{-- Footer --}}
+                            <div class="flex justify-end gap-2 pt-4 border-t border-gray-200">
+                                <button type="button" @click="open = false"
+                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                                    Cancel
+                                </button>
+                                <button type="submit"
+                                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                                    x-text="mode === 'edit' ? 'Update' : 'Create'">
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
+
+        {{-- Toast --}}
+        @if(session('success'))
+            <div x-data x-init="alert('{{ session('success') }}')"></div>
+        @endif
+        @if($errors->any())
+            <div x-data x-init="alert('{{ $errors->first() }}')"></div>
+        @endif
     </div>
-
-    {{-- Toast --}}
-    @if(session('success'))
-        <script>alert('{{ session('success') }}');</script>
-    @endif
-
-    @if($errors->any())
-        <script>alert('{{ $errors->first() }}');</script>
-    @endif
-
-    <script>
-        const modal = document.getElementById('crud-modal');
-        const form = document.getElementById('crud-form');
-
-        function openCreateModal() {
-            resetRow();
-            resetForm();
-            document.getElementById('modal-title').textContent = "Create Data";
-            form.action = "{{ route('masterdata.aktivitas.store') }}";
-            document.getElementById('crud-method').value = "POST";
-            form.querySelector('input[name="kodeaktivitas"]').removeAttribute('readonly');
-            modal.classList.remove('hidden');
-        }
-
-        function closeModal() {
-            modal.classList.add('hidden');
-        }
-
-        function openEditModal(activity) {
-            resetRow();
-            resetForm();
-            document.getElementById('modal-title').textContent = "Edit Data";
-            
-            const editRoute = "{{ route('masterdata.aktivitas.update', ['aktivitas' => '__activitycode__']) }}";
-            form.action = editRoute.replace('__activitycode__', activity.activitycode);
-            document.getElementById('crud-method').value = 'PUT';
-            
-            form.querySelector('select[name="grupaktivitas"]').value = activity.activitygroup;
-            form.querySelector('input[name="kodeaktivitas"]').value = activity.activitycode;
-            form.querySelector('input[name="kodeaktivitas"]').setAttribute('readonly', 'true');
-            form.querySelector('input[name="namaaktivitas"]').value = activity.activityname;
-            form.querySelector('textarea[name="keterangan"]').value = activity.description || '';
-            
-            form.querySelector(`input[name="material"][value="${activity.usingmaterial}"]`).checked = true;
-            form.querySelector(`input[name="vehicle"][value="${activity.usingvehicle}"]`).checked = true;
-            form.querySelector(`input[name="jenistenagakerja"][value="${activity.jenistenagakerja}"]`).checked = true;
-            
-            const vars = [
-                {var: activity.var1, satuan: activity.satuan1},
-                {var: activity.var2, satuan: activity.satuan2},
-                {var: activity.var3, satuan: activity.satuan3},
-                {var: activity.var4, satuan: activity.satuan4},
-                {var: activity.var5, satuan: activity.satuan5}
-            ];
-            
-            vars.forEach((item, index) => {
-                if (item.var) {
-                    if (index > 0) document.getElementById('btn-tambah-variable').click();
-                    form.querySelectorAll('input[name="var[]"]')[index].value = item.var;
-                    form.querySelectorAll('input[name="satuan[]"]')[index].value = item.satuan;
-                }
-            });
-            
-            modal.classList.remove('hidden');
-        }
-
-        function resetRow() {
-            const rows = document.querySelectorAll('.variable-row');
-            rows.forEach((row, index) => { if (index > 0) row.remove(); });
-        }
-
-        function resetForm() {
-            form.reset();
-            form.querySelector('input[name="material"][value="0"]').checked = true;
-            form.querySelector('input[name="vehicle"][value="0"]').checked = true;
-            form.querySelector('input[name="jenistenagakerja"][value="1"]').checked = true;
-        }
-
-        document.getElementById('btn-tambah-variable').addEventListener('click', function() {
-            const rows = document.querySelectorAll('.variable-row');
-            if (rows.length < 5) {
-                const firstRow = document.querySelector('.variable-row');
-                const newRow = firstRow.cloneNode(true);
-                newRow.querySelector('.item-end').classList.remove('hidden');
-                newRow.querySelectorAll('input').forEach(input => input.value = '');
-                const count = rows.length + 1;
-                newRow.querySelectorAll('.input-var').forEach(span => span.textContent = count);
-                document.querySelector('.div-variable').appendChild(newRow);
-            } else {
-                alert('Maksimal 5 variable hasil aktivitas');
-            }
-        });
-
-        function deleteAktivitasRow(btn) {
-            btn.closest('.variable-row').remove();
-            document.querySelectorAll('.variable-row').forEach((row, index) => {
-                row.querySelectorAll('.input-var').forEach(span => span.textContent = index + 1);
-            });
-        }
-
-        document.querySelectorAll('.delete-button').forEach(button => {
-            button.addEventListener('click', function() {
-                if (confirm('Yakin ingin menghapus data ini?')) {
-                    const activitycode = this.getAttribute('data-activitycode');
-                    const deleteRoute = "{{ route('masterdata.aktivitas.destroy', ['aktivitas' => '__activitycode__']) }}";
-                    
-                    fetch(deleteRoute.replace('__activitycode__', activitycode), {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({_method: 'DELETE'})
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) location.reload();
-                        else alert(data.message || 'Gagal menghapus data');
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('Terjadi kesalahan saat menghapus data');
-                    });
-                }
-            });
-        });
-
-        // Auto uppercase
-        form.querySelector('input[name="kodeaktivitas"]').addEventListener('input', function(e) {
-            e.target.value = e.target.value.toUpperCase();
-        });
-
-        // Close modal on backdrop click
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) closeModal();
-        });
-    </script>
 </x-layout>
