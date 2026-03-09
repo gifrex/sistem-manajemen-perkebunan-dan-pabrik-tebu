@@ -235,24 +235,30 @@ class RkhService
     {
         $raw = $this->rkhRepo->getEstimatedMaterialByRkhNo($companycode, $rkhno);
 
-        return $raw->map(function ($row) {
+        // Activity yang EXCLUDE dari pembulatan
+        $excludeRoundingActivities = ['4.2.2'];
+
+        return $raw->map(function ($row) use ($excludeRoundingActivities) {
             $qtyRaw = (float) $row->luasarea * (float) $row->dosageperha;
 
             if ($qtyRaw > 0) {
-                $truncated = floor($qtyRaw * 100) / 100;
-                if ($truncated == 0) {
-                    $qty = 0.05;
+                if (in_array($row->activitycode, $excludeRoundingActivities)) {
+                    // No rounding, truncate 2 desimal
+                    $qty = floor($qtyRaw * 100) / 100;
+                    if ($qty == 0) $qty = 0.01;
                 } else {
-                    $qty = ceil($truncated / 0.05) * 0.05;
+                    // Normal rounding ke kelipatan 0.05
+                    $truncated = floor($qtyRaw * 100) / 100;
+                    $qty = round($truncated / 0.05) * 0.05;
+                    if ($qty == 0) $qty = 0.05;
                 }
             } else {
                 $qty = 0;
             }
 
-            // Return object yang mirip struktur getMaterialByRkhNo
             return (object) [
                 'plot'               => $row->plot,
-                'lkhno'              => null, // belum ada LKH
+                'lkhno'              => null,
                 'itemcode'           => $row->itemcode,
                 'itemname'           => $row->itemname,
                 'qty'                => round($qty, 3),
