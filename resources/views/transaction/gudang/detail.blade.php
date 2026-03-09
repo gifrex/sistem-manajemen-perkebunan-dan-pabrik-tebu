@@ -439,7 +439,7 @@
                 </tbody>
             </table>
             
-            <!-- 3.8 
+            {{-- 3.8 
             <div class="flex justify-center mt-4 no-print">
             <select @if( !empty($details[0]->costcenter)) disabled @endif
                 name="costcenter"
@@ -459,7 +459,7 @@
                 @endif
             </select>
             </div>
-            -->
+            --}}
                 <!-- Submit Button -->
                 @if(strtoupper($details[0]->flagstatus) == 'ACTIVE' )
                 <div class="flex justify-center mt-4">
