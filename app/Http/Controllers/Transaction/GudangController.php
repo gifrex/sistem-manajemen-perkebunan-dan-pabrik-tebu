@@ -1682,7 +1682,7 @@ public function submit(Request $request)
             ->post('https://rosebrand.sungaibudigroup.com/app/im-purchasing/purchasing/bpb/use_api', [
                 'connection' => $koneksi,
                 'company' => $companyinv->companyinventory,
-                'companytebu'  => session('companycode'),  // ✅ tambah (atau sumber yg benar)
+                'companytebu'  => $first->companyinv,  // ✅ tambah (atau sumber yg benar)
                 'rkhno'        => $request->rkhno,
                 'factory' => $first->factoryinv,
                 'costcenter' => null,
