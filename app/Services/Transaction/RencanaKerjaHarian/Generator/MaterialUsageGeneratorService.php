@@ -349,7 +349,8 @@ class MaterialUsageGeneratorService
                     'hd.itemcode',
                     'hd.dosageperha',
                     'h.itemname',
-                    'h.measure'
+                    'h.measure',
+                    'hg.rounddosage',
                 ])
                 ->get();
                 
@@ -361,19 +362,16 @@ class MaterialUsageGeneratorService
             foreach ($herbisidaDosages as $dosage) {
                 $qtyRaw = $plotLuas * $dosage->dosageperha;
 
-                // Activity yang EXCLUDE dari pembulatan
-                $excludeRoundingActivities = ['4.2.2'];
-
                 if ($qtyRaw > 0) {
-                    if (in_array($lkh->activitycode, $excludeRoundingActivities)) {
-                        // No rounding, truncate 2 desimal
-                        $qty = floor($qtyRaw * 100) / 100;
-                        if ($qty == 0) $qty = 0.01;
-                    } else {
+                    if ($dosage->rounddosage == 1) {
                         // Normal rounding ke kelipatan 0.05
                         $truncated = floor($qtyRaw * 100) / 100;
                         $qty = round($truncated / 0.05) * 0.05;
                         if ($qty == 0) $qty = 0.05;
+                    } else {
+                        // No rounding, truncate 2 desimal
+                        $qty = floor($qtyRaw * 100) / 100;
+                        if ($qty == 0) $qty = 0.01;
                     }
                 } else {
                     $qty = 0;

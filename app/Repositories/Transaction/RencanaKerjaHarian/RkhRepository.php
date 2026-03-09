@@ -887,6 +887,7 @@ class RkhRepository
                 'rl.luasarea',
                 'rl.herbisidagroupid',
                 'hg.herbisidagroupname',
+                'hg.rounddosage',
                 'hd.itemcode',
                 'h.itemname',
                 'hd.dosageperha',
