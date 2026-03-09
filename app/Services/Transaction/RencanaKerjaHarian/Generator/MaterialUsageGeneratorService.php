@@ -359,15 +359,21 @@ class MaterialUsageGeneratorService
             
             // Insert each item for this specific plot (NO MERGING)
             foreach ($herbisidaDosages as $dosage) {
-                // Truncate 2 desimal, ceiling ke kelipatan 0.05, minimum 0.05
                 $qtyRaw = $plotLuas * $dosage->dosageperha;
 
+                // Activity yang EXCLUDE dari pembulatan
+                $excludeRoundingActivities = ['4.2.2'];
+
                 if ($qtyRaw > 0) {
-                    $truncated = floor($qtyRaw * 100) / 100;          // ambil 2 desimal (truncate)
-                    if ($truncated == 0) {
-                        $qty = 0.05;                                   // minimum 0.05
+                    if (in_array($lkh->activitycode, $excludeRoundingActivities)) {
+                        // No rounding, truncate 2 desimal
+                        $qty = floor($qtyRaw * 100) / 100;
+                        if ($qty == 0) $qty = 0.01;
                     } else {
-                        $qty = ceil($truncated / 0.05) * 0.05;         // ceiling ke kelipatan 0.05
+                        // Normal rounding ke kelipatan 0.05
+                        $truncated = floor($qtyRaw * 100) / 100;
+                        $qty = round($truncated / 0.05) * 0.05;
+                        if ($qty == 0) $qty = 0.05;
                     }
                 } else {
                     $qty = 0;
