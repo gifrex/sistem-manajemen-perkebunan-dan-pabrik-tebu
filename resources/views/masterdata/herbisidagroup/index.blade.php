@@ -12,6 +12,7 @@
               herbisidagroupname: '', 
               activitycode: '', 
               description: '',
+              rounddosage: 0,
               items: [{ itemcode: '', dosageperha: '' }]
           },
           resetForm() {
@@ -21,6 +22,7 @@
                   herbisidagroupname: '', 
                   activitycode: '', 
                   description: '',
+                  rounddosage: 0,
                   items: [{ itemcode: '', dosageperha: '' }]
               };
               this.open = true;
@@ -86,6 +88,9 @@
                                   <input type="hidden" name="_method" value="PATCH">
                               </template>
 
+                              {{-- Hidden field for rounddosage - always submitted --}}
+                              <input type="hidden" name="rounddosage" :value="form.rounddosage ? '1' : '0'">
+
                               <h3 class="text-base font-semibold text-gray-900" 
                                   x-text="mode === 'edit' ? 'Edit Herbisida Group' : 'Create Herbisida Group'"></h3>
 
@@ -124,6 +129,18 @@
                                     <label class="block text-xs font-medium text-gray-700">Description</label>
                                     <textarea name="description" x-model="form.description" rows="2"
                                               class="mt-1 block w-full text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                </div>
+
+                                {{-- Round Dosage Checkbox - NO name attribute, driven by hidden input above --}}
+                                <div class="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-md p-3">
+                                    <input type="checkbox" id="rounddosage_cb"
+                                           :checked="form.rounddosage == 1"
+                                           @change="form.rounddosage = $event.target.checked ? 1 : 0"
+                                           class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    <div>
+                                        <label for="rounddosage_cb" class="text-xs font-semibold text-gray-800 cursor-pointer">Pembulatan Dosage</label>
+                                        <p class="text-[11px] text-gray-500 mt-0.5">Jika dicentang, qty material akan dibulatkan ke kelipatan 0.05</p>
+                                    </div>
                                 </div>
                               </div>
 
@@ -202,6 +219,7 @@
                           <th class="py-2 px-4 border-b">Item Code</th>
                           <th class="py-2 px-4 border-b">Item Name</th>
                           <th class="py-2 px-4 border-b">Dosage/HA</th>
+                          <th class="py-2 px-4 border-b">Pembulatan</th>
                           <th class="py-2 px-4 border-b">Aksi</th>
                       </tr>
                   </thead>
@@ -233,41 +251,49 @@
                                   <td class="py-2 px-4 border-b text-right">{{ $data->dosageperha }}</td>
                                   
                                   @if($index === 0)
-    <td class="py-2 px-4 border-b" rowspan="{{ $items->count() }}">
-        <div class="flex items-center justify-center space-x-2">
-            @can('masterdata.herbisidagroup.edit')
-            <button @click="
-                mode = 'edit';
-                form.herbisidagroupid = {{ json_encode($groupId) }};
-                form.herbisidagroupname = {{ json_encode($data->herbisidagroupname) }};
-                form.activitycode = {{ json_encode($data->activitycode) }};
-                form.description = {{ json_encode($data->description ?? '') }};
-                form.items = {{ $items->map(fn($i) => ['itemcode' => $i->itemcode, 'dosageperha' => $i->dosageperha])->toJson() }};
-                open = true;
-            "
-            class="text-blue-600 hover:text-blue-800">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                </svg>
-            </button>
-            @endcan
-            
-            @can('masterdata.herbisidagroup.delete')
-            <form action="{{ url("masterdata/herbisida-group/{$groupId}") }}" 
-                  method="POST"
-                  onsubmit="return confirm('Yakin hapus group ini?');">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="text-red-600 hover:text-red-800">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                </button>
-            </form>
-            @endcan
-        </div>
-    </td>
-@endif
+                                      <td class="py-1 px-2 border-b text-center bg-gray-50 text-[11px]" rowspan="{{ $items->count() }}">
+                                          @if($data->rounddosage == 1)
+                                              <span class="text-blue-700 font-semibold">Pembulatan</span>
+                                          @else
+                                              <span class="text-gray-400">Tidak ada pembulatan</span>
+                                          @endif
+                                      </td>
+                                      <td class="py-2 px-4 border-b" rowspan="{{ $items->count() }}">
+                                          <div class="flex items-center justify-center space-x-2">
+                                              @can('masterdata.herbisidagroup.edit')
+                                              <button @click="
+                                                  mode = 'edit';
+                                                  form.herbisidagroupid = {{ json_encode($groupId) }};
+                                                  form.herbisidagroupname = {{ json_encode($data->herbisidagroupname) }};
+                                                  form.activitycode = {{ json_encode($data->activitycode) }};
+                                                  form.description = {{ json_encode($data->description ?? '') }};
+                                                  form.rounddosage = {{ $data->rounddosage == 1 ? '1' : '0' }};
+                                                  form.items = {{ $items->map(fn($i) => ['itemcode' => $i->itemcode, 'dosageperha' => $i->dosageperha])->toJson() }};
+                                                  open = true;
+                                              "
+                                              class="text-blue-600 hover:text-blue-800">
+                                                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                  </svg>
+                                              </button>
+                                              @endcan
+                                              
+                                              @can('masterdata.herbisidagroup.delete')
+                                              <form action="{{ url("masterdata/herbisida-group/{$groupId}") }}" 
+                                                    method="POST"
+                                                    onsubmit="return confirm('Yakin hapus group ini?');">
+                                                  @csrf
+                                                  @method('DELETE')
+                                                  <button type="submit" class="text-red-600 hover:text-red-800">
+                                                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                      </svg>
+                                                  </button>
+                                              </form>
+                                              @endcan
+                                          </div>
+                                      </td>
+                                  @endif
                               </tr>
                           @endforeach
                       @endforeach
