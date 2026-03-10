@@ -262,27 +262,26 @@
                 Kendaraan isi di SPBU — hanya catatan operasional, <strong>tidak masuk</strong> ke Order Pengeluaran BBM.
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Kendaraan <span class="text-red-500">*</span></label>
-                    <select x-model="form.nokendaraan" required
-                            class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
-                        <option value="">-- Pilih --</option>
-                        <template x-for="k in kendaraanList" :key="k.nokendaraan">
-                            <option :value="k.nokendaraan" x-text="k.nokendaraan + ' (' + k.jenis + ')'"></option>
-                        </template>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Operator <span class="text-red-500">*</span></label>
-                    <select x-model="form.operatorid" required
-                            class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
-                        <option value="">-- Pilih --</option>
-                        <template x-for="op in operatorList" :key="op.tenagakerjaid">
-                            <option :value="op.tenagakerjaid" x-text="op.nama"></option>
-                        </template>
-                    </select>
-                </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Kendaraan <span class="text-red-500">*</span></label>
+                <select x-model="form.nokendaraan" required
+                        @change="onKendaraanChange()"
+                        class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                    <option value="">-- Pilih --</option>
+                    <template x-for="k in kendaraanList" :key="k.nokendaraan">
+                        <option :value="k.nokendaraan" x-text="k.nokendaraan + ' (' + k.jenis + ')'"></option>
+                    </template>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Operator</label>
+                <input type="text" 
+                    :value="form.operatorid 
+                        ? form.operatorid + ' — ' + selectedOperatorNama 
+                        : (form.nokendaraan ? '(Belum ada operator)' : '')" 
+                    readonly
+                    class="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-gray-100 text-gray-700"/>
+                <p class="text-xs text-gray-400 mt-0.5">Otomatis dari master kendaraan</p>
             </div>
 
             <div>
@@ -349,7 +348,7 @@ function supplyData() {
         isLoading: false,
         editId: null,
         kendaraanList: [],
-        operatorList: [],
+        selectedOperatorNama: '',
 
         form: {
             sjsdate: '{{ now()->format("Y-m-d") }}',
@@ -367,20 +366,28 @@ function supplyData() {
 
         async init() {
             try {
-                const [kRes, oRes] = await Promise.all([
-                    fetch('{{ route("transaction.kendaraan-supply.kendaraan-list") }}').then(r => r.json()),
-                    fetch('{{ route("transaction.kendaraan-supply.operator-list") }}').then(r => r.json()),
-                ]);
+                const kRes = await fetch('{{ route("transaction.kendaraan-supply.kendaraan-list") }}').then(r => r.json());
                 this.kendaraanList = kRes.data || [];
-                this.operatorList  = oRes.data || [];
             } catch (e) {
                 console.error('Gagal load dropdown:', e);
             }
         },
 
+        onKendaraanChange() {
+            const found = this.kendaraanList.find(k => k.nokendaraan === this.form.nokendaraan);
+            if (found) {
+                this.form.operatorid = found.idtenagakerja || '';
+                this.selectedOperatorNama = found.operator_nama || '(Belum ada operator)';
+            } else {
+                this.form.operatorid = '';
+                this.selectedOperatorNama = '';
+            }
+        },
+
         openCreateModal() {
-            this.isEdit  = false;
-            this.editId  = null;
+            this.isEdit = false;
+            this.editId = null;
+            this.selectedOperatorNama = '';
             this.form = {
                 sjsdate: '{{ now()->format("Y-m-d") }}',
                 nokendaraan: '', operatorid: '', helperid: '',
@@ -398,15 +405,17 @@ function supplyData() {
                 sjsdate:              item.sjsdate,
                 nokendaraan:          item.nokendaraan,
                 operatorid:           item.operatorid,
-                helperid:             item.helperid  || '',
+                helperid:             item.helperid || '',
                 tujuan:               item.tujuan,
                 keteranganaktivitas:  item.keteranganaktivitas,
                 jumlahrit:            item.jumlahrit,
-                jammulai:             item.jammulai  ? item.jammulai.substring(0, 5)  : '',
+                jammulai:             item.jammulai ? item.jammulai.substring(0, 5) : '',
                 jamselesai:           item.jamselesai ? item.jamselesai.substring(0, 5) : '',
                 sumberbbm:            item.sumberbbm,
                 catatan:              item.catatan || '',
             };
+            const found = this.kendaraanList.find(k => k.nokendaraan === item.nokendaraan);
+            this.selectedOperatorNama = found?.operator_nama || item.operator_nama || '-';
             this.showModal = true;
         },
 
@@ -415,18 +424,22 @@ function supplyData() {
         },
 
         async submitForm() {
-            if (!this.form.nokendaraan || !this.form.operatorid || !this.form.tujuan) {
-                alert('Kendaraan, Operator, dan Tujuan wajib diisi');
+            if (!this.form.nokendaraan || !this.form.tujuan) {
+                alert('Kendaraan dan Tujuan wajib diisi');
+                return;
+            }
+            if (!this.form.operatorid) {
+                alert('Kendaraan ini belum punya operator di master data. Hubungi admin.');
                 return;
             }
             this.isLoading = true;
             try {
-                const url    = this.isEdit
+                const url = this.isEdit
                     ? `{{ url('transaction/kendaraan-supply') }}/${this.editId}`
                     : '{{ route("transaction.kendaraan-supply.store") }}';
                 const method = this.isEdit ? 'PUT' : 'POST';
 
-                const res  = await fetch(url, {
+                const res = await fetch(url, {
                     method,
                     headers: {
                         'Content-Type': 'application/json',
@@ -452,7 +465,7 @@ function supplyData() {
         async deleteItem(id) {
             if (!confirm('Yakin ingin menghapus surat jalan ini?')) return;
             try {
-                const res  = await fetch(`{{ url('transaction/kendaraan-supply') }}/${id}`, {
+                const res = await fetch(`{{ url('transaction/kendaraan-supply') }}/${id}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -479,7 +492,7 @@ function supplyData() {
             )) return;
 
             try {
-                const res  = await fetch(`{{ url('transaction/kendaraan-supply') }}/${id}/submit`, {
+                const res = await fetch(`{{ url('transaction/kendaraan-supply') }}/${id}/submit`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
