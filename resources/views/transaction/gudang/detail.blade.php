@@ -321,20 +321,30 @@
                             </td>
                     
                             <td class="py-0.5 px-2 text-center text-right">
-                                @php
-                                    $qtyRawExp = (float)($stdDosage[$d->itemcode.'|'.$activitycode] ?? 0) * (float)($d->luasrkh ?? 0);
+                    @php
+                        $qtyRawExp = (float)($stdDosage[$d->itemcode.'|'.$activitycode] ?? 0) * (float)($d->luasrkh ?? 0);
 
-                                    if ($qtyRawExp <= 0) {
-                                        $exp = 0;
-                                    } elseif ($qtyRawExp <= 0.05) {
-                                        $exp = 0.05;
-                                    } else {
-                                        $exp = ceil($qtyRawExp / 0.05) * 0.05;
-                                    }
+                        if ($rounddosage ?? 0) {
+                            if ($qtyRawExp <= 0) {
+                                $exp = 0;
+                            } elseif ($qtyRawExp <= 0.05) {
+                                $exp = 0.05;
+                            } else {
+                                $exp = ceil($qtyRawExp / 0.05) * 0.05;
+                            }
+                        } else {
+                            if ($qtyRawExp <= 0) {
+                                $exp = 0;
+                            } elseif ($qtyRawExp < 0.01) {
+                                $exp = 0.01;
+                            } else {
+                                $exp = $qtyRawExp;
+                            }
+                        }
 
-                                    $qty = (float)($d->qty ?? 0);
-                                    $diff = $qty - $exp;
-                                @endphp
+                        $qty = (float)($d->qty ?? 0);
+                        $diff = $qty - $exp;
+                    @endphp
                             
                             <span class="ml-2 text-[10px] font-semibold
                                 {{ abs($diff) > 0.00001 ? ($diff > 0 ? 'text-orange-600' : 'text-green-600') : 'hidden' }}">
@@ -700,23 +710,21 @@
             }
             
             function recalcRowQty(row){
-              const dosage = parseFloat(String(row.find('.selected-dosage').val()).replace(/,/g,'')) || 0;
-              const luas   = parseFloat(row.find('.selected-luas').val()) || 0;
-              const qtyRaw    = dosage * luas;
-              const opt         = row.find('.item-select option:selected');
-              const rounddosage = parseInt(opt.data('rounddosage')) || 0;
-    
+                const dosage = parseFloat(String(row.find('.selected-dosage').val()).replace(/,/g,'')) || 0;
+                const luas   = parseFloat(row.find('.selected-luas').val()) || 0;
+                const qtyRaw = dosage * luas;
+                const opt = row.find('.item-select option:selected');
+                const rounddosage = parseInt(opt.data('rounddosage')) || 0;
+
                 let qty;
                 if (rounddosage) {
-                    qty = roundto5(qtyRaw);     // dibulatkan
+                    qty = roundto5(qtyRaw);
                 } else {
-                    qty = qtyRaw;                // tidak dibulatkan
+                    qty = qtyRaw > 0 && qtyRaw < 0.01 ? 0.01 : qtyRaw;
                 }
-    
-             console.log('recalcRowQty:', {dosage, luas, qtyRaw, qty});
-    
-              row.find('.labelqty').text(qty.toFixed(2));
-            }
+
+                row.find('.labelqty').text(qty.toFixed(2));
+                }
             
             $(document).ready(function(){
               $('.item-select').each(function(){ recalcRowQty($(this).closest('tr')); });

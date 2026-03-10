@@ -1409,7 +1409,7 @@ public function submit(Request $request)
                             $qty = ceil($qtyraw / 0.05) * 0.05;
                         }
                     } else {
-                        $qty = $qtyraw;
+                        $qty = $qtyraw < 0.01 ? 0.01 : $qtyraw;
                     }
                 } else {
                     $qty = 0;
