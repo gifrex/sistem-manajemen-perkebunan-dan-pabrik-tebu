@@ -171,14 +171,14 @@ class HerbisidaGroupController extends Controller
             'items.*.dosageperha' => 'required|numeric|min:0'
         ]);
 
-        $isUsed = DB::table('rkhlst')
-            ->where('activitycode', $group->activitycode)
-            ->where('herbisidagroupid', $group->herbisidagroupid)
-            ->exists();
+        // $isUsed = DB::table('rkhlst')
+        //     ->where('activitycode', $group->activitycode)
+        //     ->where('herbisidagroupid', $group->herbisidagroupid)
+        //     ->exists();
 
-        if ($isUsed) {
-            return back()->with('error', 'Gagal Edit! Group ini sudah digunakan di RKH dan tidak bisa diubah!');
-        }
+        // if ($isUsed) {
+        //     return back()->with('error', 'Gagal Edit! Group ini sudah digunakan di RKH dan tidak bisa diubah!');
+        // }
 
         $itemCodes = array_column($request->items, 'itemcode');
         if (count($itemCodes) !== count(array_unique($itemCodes))) {
