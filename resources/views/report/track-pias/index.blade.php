@@ -1,10 +1,11 @@
-{{-- resources\views\report\track-pias\index.blade.php --}}
+{{-- resources/views/report/track-pias/index.blade.php --}}
 <x-layout>
     <x-slot:title>{{ $title }}</x-slot:title>
     <x-slot:navbar>{{ $navbar }}</x-slot:navbar>
     <x-slot:nav>{{ $nav }}</x-slot:nav>
 
     <div class="max-w-full mx-auto">
+        {{-- FILTER --}}
         <div class="bg-white rounded-lg shadow-lg p-6 mb-6 border border-gray-200">
             <div class="flex justify-between items-start mb-4">
                 <div>
@@ -36,7 +37,6 @@
                         @endforeach
                     </select>
                 </div>
-
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                         Pilih Blok
@@ -59,37 +59,23 @@
             </div>
         </div>
 
+        {{-- LOADING --}}
         <div id="loadingState" class="hidden bg-white rounded-lg shadow-lg p-12 text-center border border-gray-200">
             <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4"></div>
             <p class="text-gray-600 font-medium">Memuat data...</p>
         </div>
 
+        {{-- SUMMARY --}}
         <div id="summarySection" class="hidden mb-6">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-gray-800">
-                    <p class="text-sm text-gray-600 mb-1 font-semibold">Total Plot</p>
-                    <p class="text-3xl font-bold text-gray-900" id="summaryTotalPlots">0</p>
-                </div>
-                <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-blue-600">
-                    <p class="text-sm text-gray-600 mb-1 font-semibold">RON1 Completed</p>
-                    <p class="text-3xl font-bold text-blue-600" id="summaryRON1">0</p>
-                    <p class="text-xs text-gray-500 mt-2"><span id="summaryRON1Percent">0</span>% completion</p>
-                </div>
-                <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-green-600">
-                    <p class="text-sm text-gray-600 mb-1 font-semibold">RON2 Completed</p>
-                    <p class="text-3xl font-bold text-green-600" id="summaryRON2">0</p>
-                    <p class="text-xs text-gray-500 mt-2"><span id="summaryRON2Percent">0</span>% completion</p>
-                </div>
-                <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-orange-600">
-                    <p class="text-sm text-gray-600 mb-1 font-semibold">Total Activities</p>
-                    <p class="text-3xl font-bold text-orange-600" id="summaryTotal">0</p>
-                </div>
+            <div id="summaryCards" class="grid gap-4">
+                {{-- Dirender oleh JS secara dinamis --}}
             </div>
         </div>
 
-        <div id="dataSection" class="hidden space-y-6">
-        </div>
+        {{-- DATA --}}
+        <div id="dataSection" class="hidden space-y-6"></div>
 
+        {{-- EMPTY --}}
         <div id="emptyState" class="bg-white rounded-lg shadow-lg p-12 text-center border border-gray-200">
             <svg class="w-24 h-24 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
@@ -101,70 +87,39 @@
 
     <style>
         @media print {
-            .no-print {
-                display: none !important;
-            }
-            
-            @page {
-                size: landscape;
-                margin: 10mm;
-            }
-            
-            body {
-                font-size: 9pt;
-            }
-            
-            table {
-                page-break-inside: auto;
-            }
-            
-            tr {
-                page-break-inside: avoid;
-                page-break-after: auto;
-            }
+            .no-print { display: none !important; }
+            @page { size: landscape; margin: 10mm; }
+            body { font-size: 9pt; }
+            table { page-break-inside: auto; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
         }
-        
-        .month-cell {
-            min-width: 80px;
-            max-width: 80px;
-        }
-        
-        .ron-cell {
-            min-width: 40px;
-            max-width: 40px;
-            font-size: 11px;
-        }
+        .month-cell { min-width: 80px; }
+        .ron-cell { min-width: 36px; max-width: 36px; font-size: 11px; }
     </style>
 
     <script>
         let currentData = [];
+        let currentMaxRon = 2;
         let allBloksSelected = false;
 
-        // Update selected count
-        document.querySelectorAll('.blok-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', updateSelectedCount);
+        document.querySelectorAll('.blok-checkbox').forEach(cb => {
+            cb.addEventListener('change', updateSelectedCount);
         });
 
         function updateSelectedCount() {
-            const count = document.querySelectorAll('.blok-checkbox:checked').length;
-            document.getElementById('selectedCount').textContent = count;
+            document.getElementById('selectedCount').textContent =
+                document.querySelectorAll('.blok-checkbox:checked').length;
         }
 
         function toggleSelectAll() {
             allBloksSelected = !allBloksSelected;
-            document.querySelectorAll('.blok-checkbox').forEach(checkbox => {
-                checkbox.checked = allBloksSelected;
-            });
+            document.querySelectorAll('.blok-checkbox').forEach(cb => cb.checked = allBloksSelected);
             updateSelectedCount();
         }
 
         function loadData() {
             const selectedBloks = Array.from(document.querySelectorAll('.blok-checkbox:checked')).map(cb => cb.value);
-            
-            if (selectedBloks.length === 0) {
-                alert('Pilih minimal 1 blok terlebih dahulu');
-                return;
-            }
+            if (selectedBloks.length === 0) { alert('Pilih minimal 1 blok terlebih dahulu'); return; }
 
             const year = document.getElementById('filterYear').value;
 
@@ -175,22 +130,16 @@
 
             fetch(`{{ route('report.track-pias.data') }}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({
-                    year: year,
-                    bloks: selectedBloks
-                })
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify({ year, bloks: selectedBloks })
             })
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    currentData = data.data;
+                    currentData   = data.data;
+                    currentMaxRon = data.max_ron || 2;
                     renderSummary(data.summary);
-                    renderTable(data.data, data.year);
-                    
+                    renderTable(data.data, data.year, currentMaxRon);
                     document.getElementById('loadingState').classList.add('hidden');
                     document.getElementById('summarySection').classList.remove('hidden');
                     document.getElementById('dataSection').classList.remove('hidden');
@@ -198,22 +147,49 @@
                     showError(data.message);
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-                showError('Gagal memuat data');
-            });
+            .catch(err => { console.error(err); showError('Gagal memuat data'); });
         }
 
+        // ── SUMMARY (dinamis berdasarkan max_ron) ──
         function renderSummary(summary) {
-            document.getElementById('summaryTotalPlots').textContent = summary.total_plots;
-            document.getElementById('summaryRON1').textContent = summary.total_ron1;
-            document.getElementById('summaryRON2').textContent = summary.total_ron2;
-            document.getElementById('summaryTotal').textContent = summary.total_ron1 + summary.total_ron2;
-            document.getElementById('summaryRON1Percent').textContent = summary.completion_rate_ron1;
-            document.getElementById('summaryRON2Percent').textContent = summary.completion_rate_ron2;
+            const maxRon   = summary.max_ron || 2;
+            const totals   = summary.ron_totals || [];
+            const rates    = summary.ron_rates || [];
+            const colors   = ['blue', 'green', 'orange', 'purple', 'pink'];
+
+            let cards = `
+                <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-gray-800">
+                    <p class="text-sm text-gray-600 mb-1 font-semibold">Total Plot</p>
+                    <p class="text-3xl font-bold text-gray-900">${summary.total_plots}</p>
+                </div>`;
+
+            for (let i = 0; i < maxRon; i++) {
+                const c = colors[i % colors.length];
+                cards += `
+                    <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-${c}-600">
+                        <p class="text-sm text-gray-600 mb-1 font-semibold">RON${i + 1} Completed</p>
+                        <p class="text-3xl font-bold text-${c}-600">${totals[i] || 0}</p>
+                        <p class="text-xs text-gray-500 mt-2">${rates[i] || 0}% completion</p>
+                    </div>`;
+            }
+
+            // Total activities
+            const totalAct = totals.reduce((s, v) => s + v, 0);
+            cards += `
+                <div class="bg-white rounded-lg shadow-md p-5 border-l-4 border-gray-400">
+                    <p class="text-sm text-gray-600 mb-1 font-semibold">Total Activities</p>
+                    <p class="text-3xl font-bold text-gray-700">${totalAct}</p>
+                </div>`;
+
+            const container = document.getElementById('summaryCards');
+            // grid cols = 2 + maxRon + 1 (total plot + rons + total act), cap at 6
+            const cols = Math.min(2 + maxRon, 6);
+            container.className = `grid grid-cols-2 md:grid-cols-${cols} gap-4`;
+            container.innerHTML = cards;
         }
 
-        function renderTable(data, year) {
+        // ── TABLE ──
+        function renderTable(data, year, maxRon) {
             const section = document.getElementById('dataSection');
             section.innerHTML = '';
 
@@ -222,26 +198,20 @@
                 return;
             }
 
-            // Group by blok
-            const groupedByBlok = {};
+            const grouped = {};
             data.forEach(item => {
-                if (!groupedByBlok[item.blok]) {
-                    groupedByBlok[item.blok] = [];
-                }
-                groupedByBlok[item.blok].push(item);
+                if (!grouped[item.blok]) grouped[item.blok] = [];
+                grouped[item.blok].push(item);
             });
 
-            // Render table for each blok
-            Object.keys(groupedByBlok).sort().forEach(blok => {
-                const blokData = groupedByBlok[blok];
-                
-                const tableHtml = `
+            Object.keys(grouped).sort().forEach(blok => {
+                const blokData = grouped[blok];
+                section.innerHTML += `
                     <div class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
                         <div class="bg-gray-800 px-6 py-4">
                             <h3 class="text-lg font-bold text-white">Blok: ${blok}</h3>
-                            <p class="text-xs text-gray-300 mt-1">${blokData.length} Plot • Tahun ${year}</p>
+                            <p class="text-xs text-gray-300 mt-1">${blokData.length} Plot • Tahun ${year} • ${maxRon > 2 ? maxRon + ' RON terdeteksi' : '2 RON'}</p>
                         </div>
-
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-300 text-xs">
                                 <thead class="bg-gray-50">
@@ -250,61 +220,68 @@
                                         <th rowspan="2" class="px-3 py-3 text-left font-semibold text-gray-700 uppercase tracking-wide border-r-2 border-gray-300">Batch</th>
                                         <th rowspan="2" class="px-3 py-3 text-center font-semibold text-gray-700 uppercase tracking-wide border-r-2 border-gray-300">Status</th>
                                         <th rowspan="2" class="px-3 py-3 text-center font-semibold text-gray-700 uppercase tracking-wide border-r-2 border-gray-300">Varietas</th>
-                                        ${renderMonthHeaders()}
+                                        ${renderMonthHeaders(maxRon)}
                                     </tr>
                                     <tr>
-                                        ${renderRONHeaders()}
+                                        ${renderRONHeaders(maxRon)}
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 bg-white">
-                                    ${renderBlokRows(blokData)}
+                                    ${renderBlokRows(blokData, maxRon)}
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                `;
-                
-                section.innerHTML += tableHtml;
+                    </div>`;
             });
         }
 
-        function renderMonthHeaders() {
-            const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-            return months.map(month => 
-                `<th colspan="2" class="px-2 py-2 text-center font-semibold text-gray-700 uppercase tracking-wide border-r border-gray-300 month-cell bg-blue-50">${month}</th>`
+        function renderMonthHeaders(maxRon) {
+            const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+            return months.map(m =>
+                `<th colspan="${maxRon}" class="px-2 py-2 text-center font-semibold text-gray-700 uppercase tracking-wide border-r border-gray-300 bg-blue-50">${m}</th>`
             ).join('');
         }
 
-        function renderRONHeaders() {
+        function renderRONHeaders(maxRon) {
+            const bgColors = ['bg-green-50', 'bg-orange-50', 'bg-purple-50', 'bg-pink-50', 'bg-cyan-50'];
             let html = '';
-            for (let i = 0; i < 12; i++) {
-                html += `
-                    <th class="px-1 py-2 text-center font-semibold text-gray-700 text-xs border-r border-gray-200 ron-cell bg-green-50">R1</th>
-                    <th class="px-1 py-2 text-center font-semibold text-gray-700 text-xs border-r border-gray-300 ron-cell bg-orange-50">R2</th>
-                `;
+            for (let m = 0; m < 12; m++) {
+                for (let r = 0; r < maxRon; r++) {
+                    const bg = bgColors[r % bgColors.length];
+                    const isLast = r === maxRon - 1;
+                    html += `<th class="px-1 py-2 text-center font-semibold text-gray-700 text-xs ${isLast ? 'border-r border-gray-300' : 'border-r border-gray-200'} ron-cell ${bg}">R${r + 1}</th>`;
+                }
             }
             return html;
         }
 
-        function renderBlokRows(blokData) {
+        function renderBlokRows(blokData, maxRon) {
             const statusColors = {
-                'PC': 'bg-yellow-100 text-yellow-800',
+                'PC':  'bg-yellow-100 text-yellow-800',
                 'RC1': 'bg-green-100 text-green-800',
                 'RC2': 'bg-blue-100 text-blue-800',
-                'RC3': 'bg-purple-100 text-purple-800'
+                'RC3': 'bg-purple-100 text-purple-800',
             };
+            const cellFilled = [
+                'bg-green-100 text-green-800 font-semibold',
+                'bg-orange-100 text-orange-800 font-semibold',
+                'bg-purple-100 text-purple-800 font-semibold',
+                'bg-pink-100 text-pink-800 font-semibold',
+                'bg-cyan-100 text-cyan-800 font-semibold',
+            ];
 
             return blokData.map(item => {
                 const monthCells = item.months.map(month => {
-                    const ron1Display = month.ron1 ? month.ron1 : '';
-                    const ron2Display = month.ron2 ? month.ron2 : '';
-                    const ron1Class = month.ron1 ? 'bg-green-100 text-green-800 font-semibold' : 'bg-gray-50';
-                    const ron2Class = month.ron2 ? 'bg-orange-100 text-orange-800 font-semibold' : 'bg-gray-50';
-                    
-                    return `
-                        <td class="px-1 py-2 text-center border-r border-gray-200 ron-cell ${ron1Class}">${ron1Display}</td>
-                        <td class="px-1 py-2 text-center border-r border-gray-300 ron-cell ${ron2Class}">${ron2Display}</td>
-                    `;
+                    let cells = '';
+                    for (let r = 0; r < maxRon; r++) {
+                        const val      = month.rons[r] || '';
+                        const filled   = val !== '';
+                        const cls      = filled ? cellFilled[r % cellFilled.length] : 'bg-gray-50';
+                        const isLast   = r === maxRon - 1;
+                        const borderCls = isLast ? 'border-r border-gray-300' : 'border-r border-gray-200';
+                        cells += `<td class="px-1 py-2 text-center ${borderCls} ron-cell ${cls}">${val}</td>`;
+                    }
+                    return cells;
                 }).join('');
 
                 return `
@@ -312,25 +289,20 @@
                         <td class="px-3 py-3 text-gray-900 font-semibold border-r-2 border-gray-300 sticky left-0 bg-white">${item.plot}</td>
                         <td class="px-3 py-3 text-gray-900 font-mono text-xs border-r-2 border-gray-300">${item.batchno}</td>
                         <td class="px-3 py-3 text-center border-r-2 border-gray-300">
-                            <span class="px-2 py-1 rounded text-xs font-medium ${statusColors[item.lifecycle] || 'bg-gray-100 text-gray-800'}">
-                                ${item.lifecycle}
-                            </span>
+                            <span class="px-2 py-1 rounded text-xs font-medium ${statusColors[item.lifecycle] || 'bg-gray-100 text-gray-800'}">${item.lifecycle}</span>
                         </td>
                         <td class="px-3 py-3 text-center text-gray-700 border-r-2 border-gray-300">${item.varietas || '-'}</td>
                         ${monthCells}
-                    </tr>
-                `;
+                    </tr>`;
             }).join('');
         }
 
-        function showError(message) {
+        function showError(msg) {
             document.getElementById('loadingState').classList.add('hidden');
             document.getElementById('emptyState').classList.remove('hidden');
-            alert(message);
+            alert(msg);
         }
 
-        function handlePrint() {
-            window.print();
-        }
+        function handlePrint() { window.print(); }
     </script>
 </x-layout>
