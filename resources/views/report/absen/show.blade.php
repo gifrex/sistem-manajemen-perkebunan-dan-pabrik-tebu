@@ -11,12 +11,12 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="flex items-center gap-3">
-                            <a href="{{ route('report.absen.index') }}" 
-                               class="text-gray-400 hover:text-gray-600">
+                            <button onclick="history.back()"
+                                class="text-gray-400 hover:text-gray-600">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                                 </svg>
-                            </a>
+                            </button>
                             <div>
                                 <h1 class="text-2xl font-semibold text-gray-900">{{ $absen->absenno }}</h1>
                                 <p class="text-sm text-gray-600 mt-1">
