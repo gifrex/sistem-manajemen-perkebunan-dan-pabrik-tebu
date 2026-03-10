@@ -372,23 +372,22 @@
     {{-- MODAL: INPUT / EDIT KALIBRASI BBM --}}
     {{-- ================================================================ --}}
     <div x-show="showModal" x-cloak
-         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4"
-         @keydown.escape.window="showModal = false">
+        x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4"
+        @keydown.escape.window="showModal = false">
         <div x-show="showModal"
-             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95 translate-y-4" x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-             x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-             class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col ring-1 ring-gray-200" @click.stop>
+            x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95 translate-y-4" x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+            class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col ring-1 ring-gray-200" @click.stop>
 
             {{-- Modal Header --}}
             <div class="px-6 py-4 border-b border-gray-100">
                 <div class="flex items-start justify-between">
                     <div>
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl flex items-center justify-center"
-                                 :class="sourceType === 'LKH' ? 'bg-purple-100' : 'bg-teal-100'">
-                                <svg class="w-5 h-5" :class="sourceType === 'LKH' ? 'text-purple-600' : 'text-teal-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100">
+                                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                                 </svg>
                             </div>
@@ -396,11 +395,11 @@
                                 <h2 class="text-base font-bold text-gray-900" x-text="isEdit ? 'Edit Kalibrasi BBM' : 'Input Kalibrasi BBM'"></h2>
                                 <div class="flex items-center gap-2 mt-0.5">
                                     <span class="text-xs px-2 py-0.5 rounded font-bold"
-                                          :class="sourceType === 'LKH' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'"
-                                          x-text="sourceType"></span>
+                                        :class="sourceType === 'LKH' ? 'bg-gray-200 text-gray-700' : 'bg-gray-200 text-gray-700'"
+                                        x-text="sourceType"></span>
                                     <span class="text-sm font-mono text-gray-500" x-text="sourceno"></span>
                                     <template x-if="isEdit">
-                                        <span class="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded font-medium border border-yellow-200">DRAFT — Editing</span>
+                                        <span class="text-xs px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded font-medium border border-yellow-200">DRAFT — Editing</span>
                                     </template>
                                 </div>
                             </div>
@@ -412,36 +411,25 @@
                 </div>
 
                 {{-- Summary Bar --}}
-                <div class="mt-4 flex items-center gap-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                        </div>
-                        <div>
-                            <div class="text-xs text-gray-400 font-medium leading-none">Kendaraan</div>
-                            <div class="text-sm font-bold text-gray-800" x-text="orderItems.length + ' unit'"></div>
-                        </div>
+                <div class="mt-4 flex items-center gap-6 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <div>
+                        <div class="text-xs text-gray-400 font-medium">Kendaraan</div>
+                        <div class="text-sm font-bold text-gray-800" x-text="orderItems.length + ' unit'"></div>
                     </div>
                     <div class="w-px h-8 bg-gray-200"></div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                        </div>
-                        <div>
-                            <div class="text-xs text-gray-400 font-medium leading-none">Total Solar Diminta</div>
-                            <div class="text-sm font-bold text-green-700" x-text="totalSolar.toFixed(2) + ' Liter'"></div>
-                        </div>
+                    <div>
+                        <div class="text-xs text-gray-400 font-medium">Total Solar Diminta</div>
+                        <div class="text-sm font-bold text-gray-800" x-text="totalSolar.toFixed(2) + ' Liter'"></div>
                     </div>
-                    <div class="w-px h-8 bg-gray-200"></div>
-                    <div class="flex items-center gap-2" x-show="overrideCount > 0">
-                        <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <template x-if="overrideCount > 0">
+                        <div class="flex items-center gap-2">
+                            <div class="w-px h-8 bg-gray-200"></div>
+                            <div>
+                                <div class="text-xs text-gray-400 font-medium">Override</div>
+                                <div class="text-sm font-bold text-yellow-600" x-text="overrideCount + ' item'"></div>
+                            </div>
                         </div>
-                        <div>
-                            <div class="text-xs text-gray-400 font-medium leading-none">Override</div>
-                            <div class="text-sm font-bold text-amber-700" x-text="overrideCount + ' item'"></div>
-                        </div>
-                    </div>
+                    </template>
                 </div>
             </div>
 
@@ -449,17 +437,17 @@
             <div class="overflow-y-auto flex-1 px-6 py-4">
                 {{-- Loading --}}
                 <div x-show="loadingItems" class="text-center py-16">
-                    <svg class="animate-spin h-8 w-8 text-blue-500 mx-auto mb-3" fill="none" viewBox="0 0 24 24">
+                    <svg class="animate-spin h-8 w-8 text-gray-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                     </svg>
                     <p class="text-sm text-gray-400">Memuat data kendaraan...</p>
                 </div>
 
-                {{-- Table-style items --}}
+                {{-- Items --}}
                 <div x-show="!loadingItems">
                     {{-- Table Header --}}
-                    <div class="hidden md:grid grid-cols-12 gap-2 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200 mb-2">
+                    <div class="hidden md:grid grid-cols-12 gap-2 px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-200 mb-2">
                         <div class="col-span-3">Kendaraan</div>
                         <div class="col-span-2 text-right">Hasil Kerja</div>
                         <div class="col-span-2 text-right">Kalibrasi</div>
@@ -468,20 +456,17 @@
                         <div class="col-span-1 text-center">Override</div>
                     </div>
 
-                    {{-- Items --}}
                     <div class="space-y-2">
                         <template x-for="(item, idx) in orderItems" :key="idx">
-                            <div class="rounded-xl border transition-all duration-200"
-                                 :class="item.ismanualoverride
-                                    ? 'border-gray-300 bg-white shadow-sm'
-                                    : 'border-gray-200 bg-white hover:border-gray-300'">
+                            <div class="rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-gray-300">
 
                                 {{-- Main Row --}}
                                 <div class="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-2 items-center px-4 py-3">
-                                    {{-- Kendaraan Info --}}
+
+                                    {{-- Kendaraan --}}
                                     <div class="col-span-3 flex items-center gap-3">
-                                        <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0"
-                                             x-text="idx + 1"></div>
+                                        <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-400 shrink-0"
+                                            x-text="idx + 1"></div>
                                         <div class="min-w-0">
                                             <div class="font-mono font-bold text-gray-800 text-sm truncate" x-text="item.nokendaraan"></div>
                                             <div class="flex items-center gap-1.5 mt-0.5">
@@ -492,95 +477,95 @@
                                         </div>
                                     </div>
 
-                                    {{-- Hasil Kerja --}}
-                                    <div class="col-span-2">
+                                    {{-- Hasil Kerja (READ-ONLY text, no box) --}}
+                                    <div class="col-span-2 text-right">
                                         <label class="block text-xs text-gray-400 mb-1 md:hidden font-medium">Hasil Kerja</label>
-                                        <div class="flex items-center gap-1">
-                                            <input type="number" step="0.01" min="0" x-model.number="item.hasilkerja" @input="calcSolar(idx)"
-                                                   class="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm text-right font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-gray-50/50"/>
-                                            <span class="text-xs text-gray-400 font-medium w-7 text-right shrink-0" x-text="item.satuanhasil"></span>
-                                        </div>
+                                        <span class="text-sm font-semibold text-gray-700" x-text="(item.hasilkerja || 0).toFixed(2)"></span>
+                                        <span class="text-xs text-gray-400 ml-0.5" x-text="item.satuanhasil"></span>
                                     </div>
 
-                                    {{-- Kalibrasi --}}
+                                    {{-- Kalibrasi (EDITABLE input, disabled when override) --}}
                                     <div class="col-span-2">
                                         <label class="block text-xs text-gray-400 mb-1 md:hidden font-medium">Kalibrasi</label>
                                         <div class="flex items-center gap-1">
-                                            <input type="number" step="0.01" min="0" x-model.number="item.nilaikalibrasi" @input="calcSolar(idx)"
-                                                   class="w-full px-2.5 py-2 border border-blue-200 rounded-lg text-sm text-right font-medium bg-blue-50/50 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"/>
+                                            <input type="number" step="0.01" min="0"
+                                                x-model.number="item.nilaikalibrasi"
+                                                @input="calcSolar(idx)"
+                                                :disabled="item.ismanualoverride"
+                                                class="w-full px-2.5 py-2 border rounded-lg text-sm text-right font-medium transition-colors"
+                                                :class="item.ismanualoverride
+                                                    ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
+                                                    : 'border-gray-300 bg-white text-gray-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400'"
+                                            />
                                             <span class="text-xs text-gray-400 font-medium w-9 text-right shrink-0" x-text="item.satuankalibrasi"></span>
                                         </div>
                                     </div>
 
-                                    {{-- Solar Hitung --}}
-                                    <div class="col-span-2">
+                                    {{-- Solar Hitung (READ-ONLY text, no box) --}}
+                                    <div class="col-span-2 text-right">
                                         <label class="block text-xs text-gray-400 mb-1 md:hidden font-medium">Solar Hitung</label>
-                                        <div class="px-2.5 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm font-semibold text-right"
-                                             :class="item.ismanualoverride ? 'text-gray-400 line-through' : 'text-blue-600'"
-                                             x-text="item.solarcalculated.toFixed(2) + ' L'"></div>
+                                        <span class="text-sm font-semibold"
+                                            :class="item.ismanualoverride ? 'text-gray-300 line-through' : 'text-gray-700'"
+                                            x-text="item.solarcalculated.toFixed(2)"></span>
+                                        <span class="text-xs ml-0.5"
+                                            :class="item.ismanualoverride ? 'text-gray-300' : 'text-gray-400'">L</span>
                                     </div>
 
-                                    {{-- Solar Diminta --}}
-                                    <div class="col-span-2">
+                                    {{-- Solar Diminta (READ-ONLY, computed result) --}}
+                                    <div class="col-span-2 text-right">
                                         <label class="block text-xs text-gray-400 mb-1 md:hidden font-medium">Solar Diminta</label>
-                                        <div class="px-2.5 py-2 rounded-lg text-sm font-bold text-right border"
-                                             :class="item.ismanualoverride
-                                                ? 'bg-gray-50 border-gray-300 text-gray-800'
-                                                : 'bg-green-50 border-green-200 text-green-700'"
-                                             x-text="item.solarrequested.toFixed(2) + ' L'"></div>
+                                        <span class="text-sm font-bold"
+                                            :class="item.ismanualoverride ? 'text-yellow-600' : 'text-gray-900'"
+                                            x-text="item.solarrequested.toFixed(2)"></span>
+                                        <span class="text-xs text-gray-400 ml-0.5">L</span>
                                     </div>
 
                                     {{-- Override Toggle --}}
                                     <div class="col-span-1 flex justify-center">
                                         <button type="button" @click="item.ismanualoverride = !item.ismanualoverride; calcSolar(idx)"
                                                 class="relative w-9 h-5 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1"
-                                                :class="item.ismanualoverride ? 'bg-amber-500 focus:ring-amber-400' : 'bg-gray-300 focus:ring-gray-400'">
+                                                :class="item.ismanualoverride ? 'bg-yellow-500 focus:ring-yellow-400' : 'bg-gray-300 focus:ring-gray-400'">
                                             <span class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"
-                                                  :class="item.ismanualoverride ? 'translate-x-4' : 'translate-x-0'"></span>
+                                                :class="item.ismanualoverride ? 'translate-x-4' : 'translate-x-0'"></span>
                                         </button>
                                     </div>
                                 </div>
 
-                                {{-- Override Panel (expanded) --}}
+                                {{-- Override Panel --}}
                                 <div x-show="item.ismanualoverride" x-collapse.duration.200ms
-                                     class="border-t border-gray-200 bg-gray-50/80 px-4 py-3">
-                                    <div class="flex items-start gap-3">
-                                        <div class="w-7 h-7 rounded-md bg-gray-200 flex items-center justify-center shrink-0 mt-0.5">
-                                            <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    class="border-t border-gray-100 bg-gray-50/50 px-4 py-3">
+                                    <div class="text-xs font-medium text-gray-500 mb-2">Manual Override — input solar manual</div>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Solar Override (Liter)</label>
+                                            <input type="number" step="0.01" min="0"
+                                                x-model.number="item.solaroverride"
+                                                @input="calcSolar(idx)"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-right font-semibold text-gray-800 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder-gray-300"
+                                                placeholder="0.00"/>
                                         </div>
-                                        <div class="flex-1">
-                                            <div class="text-xs font-semibold text-gray-600 mb-2">Manual Override — Nilai solar ditentukan manual</div>
-                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                <div>
-                                                    <label class="block text-xs text-gray-500 mb-1 font-medium">Solar Override (Liter)</label>
-                                                    <input type="number" step="0.01" min="0" x-model.number="item.solaroverride" @input="calcSolar(idx)"
-                                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-right font-semibold text-gray-800 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder-gray-300"
-                                                           placeholder="0.00"/>
-                                                </div>
-                                                <div class="md:col-span-2">
-                                                    <label class="block text-xs text-gray-500 mb-1 font-medium">Alasan <span class="text-red-500">*</span></label>
-                                                    <input type="text" x-model="item.overridereason"
-                                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder-gray-300"
-                                                           placeholder="Contoh: Kendaraan pindah activity di pertengahan hari, kondisi lapangan berbeda"/>
-                                                </div>
-                                            </div>
+                                        <div class="md:col-span-2">
+                                            <label class="block text-xs text-gray-500 mb-1">Alasan <span class="text-red-500">*</span></label>
+                                            <input type="text" x-model="item.overridereason"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder-gray-300"
+                                                placeholder="Contoh: Kendaraan pindah activity, kondisi lapangan berbeda"/>
                                         </div>
                                     </div>
                                 </div>
 
-                                {{-- Catatan Row (always visible, minimal) --}}
+                                {{-- Catatan --}}
                                 <div class="px-4 py-2 border-t border-gray-100">
                                     <div class="flex items-center gap-2">
                                         <svg class="w-3.5 h-3.5 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
                                         <input type="text" x-model="item.catatan" placeholder="Catatan tambahan (opsional)"
-                                               class="w-full px-0 py-1 border-0 text-sm text-gray-600 placeholder-gray-300 focus:ring-0 bg-transparent"/>
+                                            class="w-full px-0 py-1 border-0 text-sm text-gray-600 placeholder-gray-300 focus:ring-0 bg-transparent"/>
                                     </div>
                                 </div>
                             </div>
                         </template>
                     </div>
 
-                    {{-- Empty state --}}
+                    {{-- Empty --}}
                     <div x-show="orderItems.length === 0 && !loadingItems" class="text-center py-12 text-gray-400 text-sm">
                         Tidak ada data kendaraan
                     </div>
@@ -600,7 +585,7 @@
                             Batal
                         </button>
                         <button @click="saveOrder()" :disabled="isLoading || orderItems.length === 0 || loadingItems"
-                                class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold transition flex items-center gap-2 shadow-sm">
+                                class="px-6 py-2.5 bg-gray-800 text-white rounded-lg hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold transition flex items-center gap-2">
                             <svg x-show="isLoading" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>

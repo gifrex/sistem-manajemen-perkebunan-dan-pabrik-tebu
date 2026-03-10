@@ -427,7 +427,7 @@
   <!-- Action Buttons -->
   <div class="mt-6 flex flex-wrap justify-center gap-3">
     <button
-      onclick="window.location.href = '{{ route('transaction.rencanakerjaharian.index') }}';"
+      onclick="history.back()"
       class="bg-gray-700 hover:bg-gray-800 text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase transition-colors flex items-center"
     >
       <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

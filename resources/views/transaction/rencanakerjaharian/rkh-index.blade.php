@@ -680,7 +680,7 @@
                     const data = await response.json();
                     if (data.success) {
                         this.showGenerateDTHModal = false;
-                        globalThis.open(data.redirect_url, '_blank');
+                        window.location.href = data.redirect_url;
                     } else {
                         alert('Gagal generate DTH: ' + data.message);
                     }

@@ -522,8 +522,7 @@
                                     <td class="border border-gray-300 px-2 py-2 text-center" x-text="index + 1"></td>
                                     <td class="border border-gray-300 px-2 py-2 text-center font-semibold" x-text="item.companycode"></td>
                                     <td class="border border-gray-300 px-2 py-2">
-                                        <a :href="`{{ route('report.report-surat-jalan-timbangan.index') }}/${item.suratjalanno}`" 
-                                           target="_blank"
+                                        <a :href="`{{ route('report.report-surat-jalan-timbangan.index') }}/${item.suratjalanno}`"
                                            class="font-semibold text-blue-600 hover:text-blue-800 underline"
                                            x-text="item.suratjalanno"></a>
                                     </td>

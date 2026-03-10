@@ -364,11 +364,15 @@ class KendaraanSupplyController extends Controller
     {
         $companycode = Session::get('companycode');
 
-        $data = DB::table('kendaraan')
-            ->where('companycode', $companycode)
-            ->where('isactive', 1)
-            ->select('id', 'nokendaraan', 'jenis')
-            ->orderBy('nokendaraan')
+        $data = DB::table('kendaraan as k')
+            ->leftJoin('tenagakerja as tk', function ($j) use ($companycode) {
+                $j->on('k.idtenagakerja', '=', 'tk.tenagakerjaid')
+                ->where('tk.companycode', $companycode);
+            })
+            ->where('k.companycode', $companycode)
+            ->where('k.isactive', 1)
+            ->select('k.id', 'k.nokendaraan', 'k.jenis', 'k.idtenagakerja', 'tk.nama as operator_nama')
+            ->orderBy('k.nokendaraan')
             ->get();
 
         return response()->json(['success' => true, 'data' => $data]);
