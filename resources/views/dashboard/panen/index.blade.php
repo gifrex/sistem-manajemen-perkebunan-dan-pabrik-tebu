@@ -3,7 +3,7 @@
     <x-slot:navbar>{{ $navbar }}</x-slot:navbar>
     <x-slot:nav>{{ $nav }}</x-slot:nav>
 
-    <div x-data="dashboardPanen()" x-init="loadData()" class="space-y-4">
+    <div x-data="dashboardPanen()" class="space-y-4">
         
         <!-- Loading State -->
         <div x-show="loading" class="flex justify-center items-center py-12">
@@ -170,6 +170,13 @@
                 } finally {
                     this.loading = false;
                 }
+            },
+
+            init() {
+                this.loadData();
+                setInterval(() => {
+                    this.loadData();
+                }, 300000);
             },
 
             applyFilters() {
