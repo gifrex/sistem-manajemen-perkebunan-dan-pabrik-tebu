@@ -310,20 +310,8 @@ class TenagaKerjaController extends Controller
                     continue;
                 }
                 
-
                 if (!in_array($gender, ['L', 'P'])) {
                     $errors[] = "Baris $rowNumber: Gender harus L atau P";
-                    $errorCount++;
-                    continue;
-                }
-
-                // Check if mandor exists
-                $mandorExists = User::where('userid', $mandoruserid)
-                    ->where('idjabatan', 5)
-                    ->exists();
-
-                if (!$mandorExists) {
-                    $errors[] = "Baris $rowNumber: Mandor dengan UserID '$mandoruserid' tidak ditemukan";
                     $errorCount++;
                     continue;
                 }
