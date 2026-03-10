@@ -46,11 +46,29 @@ class PerhitunganUpahApiMobile extends Controller
             
             $jenistenagakerja = $activity->jenistenagakerja;
             
-            if (in_array($jenistenagakerja, [2, 3, 5])) {
+            if (in_array($jenistenagakerja, [2, 5])) {
                 return response()->json([
                     'status' => 0,
                     'description' => 'Jenis tenaga kerja ini tidak menggunakan API upah per pekerja'
                 ], 400);
+            }
+            
+            // Jenis 3: bypass, return success tanpa insert
+            if ($jenistenagakerja == 3) {
+                return response()->json([
+                    'status' => 1,
+                    'description' => 'Jenis tenaga kerja 3 - tidak memerlukan perhitungan upah',
+                    'data' => [
+                        'total_upah' => 0,
+                        'jam_kerja' => 0,
+                        'breakdown' => [
+                            'upah_harian' => 0,
+                            'upah_perjam' => 0,
+                            'upah_lembur' => 0,
+                            'premi' => 0
+                        ]
+                    ]
+                ], 200);
             }
             
             if ($jenistenagakerja == 4) {
