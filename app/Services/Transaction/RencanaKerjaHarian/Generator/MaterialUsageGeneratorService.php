@@ -369,8 +369,8 @@ class MaterialUsageGeneratorService
                         $qty = round($truncated / 0.05) * 0.05;
                         if ($qty == 0) $qty = 0.05;
                     } else {
-                        // No rounding, truncate 2 desimal
-                        $qty = floor($qtyRaw * 100) / 100;
+                        // No rounding, round normal 2 desimal
+                        $qty = round($qtyRaw, 2);
                         if ($qty == 0) $qty = 0.01;
                     }
                 } else {

@@ -244,7 +244,7 @@ class RkhService
                     $qty = round($truncated / 0.05) * 0.05;
                     if ($qty == 0) $qty = 0.05;
                 } else {
-                    $qty = floor($qtyRaw * 100) / 100;
+                    $qty = round($qtyRaw, 2);
                     if ($qty == 0) $qty = 0.01;
                 }
             } else {
