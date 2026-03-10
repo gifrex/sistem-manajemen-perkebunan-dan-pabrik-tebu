@@ -1390,13 +1390,13 @@ public function submit(Request $request)
                         if ($qtyraw <= 0.05) {
                             $qty = 0.05;
                         } else {
-                            $qty = ceil($qtyraw / 0.05) * 0.05;
+                            $qty = round(round($qtyraw / 0.05) * 0.05, 2);
                         }
                     } else {
                         if ($qtyraw <= 0.01) {
                             $qty = 0.01;
                         } else {
-                            $qty = ceil($qtyraw / 0.01) * 0.01;
+                            $qty = round($qtyraw, 2);
                         }
                     }
                 } else {
@@ -1405,7 +1405,14 @@ public function submit(Request $request)
 
                 $existingKey = $lkhno . '-' . $itemcode . '-' . $key;
                 $existing = $existingData->get($existingKey);
-                
+                Log::info('QTY_FINAL_DEBUG', [
+                    'itemcode' => $itemcode,
+                    'plot' => $key,
+                    'qtyraw' => $qtyraw,
+                    'rounddosage' => $rounddosage,
+                    'qty_final' => $qty,
+                ]);
+
                 $insertData[] = [
                     'companycode' => session('companycode'),
                     'rkhno' => $request->rkhno,
