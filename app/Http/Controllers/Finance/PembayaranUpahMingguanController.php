@@ -67,7 +67,8 @@ class PembayaranUpahMingguanController extends Controller
                 $q->select('mandorid')
                     ->from('lkhhdr')
                     ->where('companycode', $companycode)
-                    ->where('jenistenagakerja', $tk);
+                    ->where('jenistenagakerja', $tk)
+                    ->where('status', 'APPROVED');
             })
             ->select('userid', 'name')
             ->orderBy('name')
