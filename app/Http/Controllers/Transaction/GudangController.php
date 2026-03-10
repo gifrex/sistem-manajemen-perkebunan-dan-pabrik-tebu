@@ -1374,8 +1374,10 @@ public function submit(Request $request)
 
                 // ambil group & flag rounding
                 $groupId     = $detail->herbisidagroupid ?? null;
-                $rounddosage = $groupId !== null ? ($roundingByGroup[$groupId] ?? 1) : 1; // default: masih rounded seperti lama
-                //3.8
+               // $rounddosage = $groupId !== null ? ($roundingByGroup[$groupId] ?? 1) : 1; // default: masih rounded seperti lama
+               $itemMeta = $herbisidaItems[$itemcode] ?? null;
+               $rounddosage = $itemMeta->rounddosage ?? 0; 
+               //3.8
                 $rowCostcenter = $groupId !== null ? ($costcenterByGroup[$groupId] ?? null) : null;
                 if (!$rowCostcenter) {
                     return $releaseLockAndBack(
@@ -1385,24 +1387,31 @@ public function submit(Request $request)
                     );
                 }
                 //3.8
-                if ($qtyraw > 0) {
-                    if ($rounddosage) {
-                        if ($qtyraw <= 0.05) {
-                            $qty = 0.05;
-                        } else {
-                            $qty = round(round($qtyraw / 0.05) * 0.05, 2);
-                        }
-                    } else {
-                        if ($qtyraw <= 0.01) {
-                            $qty = 0.01;
-                        } else {
-                            $qty = round($qtyraw, 2);
-                        }
-                    }
-                } else {
+                if ($qtyraw <= 0) {
                     $qty = 0;
                 }
+                elseif ($rounddosage) {
+                    if ($qtyraw <= 0.05) {
+                        $qty = 0.05;
+                    } else {
+                        $qty = ceil($qtyraw / 0.05) * 0.05;
+                    }
+                }
+                else {
+                    if ($qtyraw <= 0.01) {
+                        $qty = 0.01;
+                    } else {
+                        $qty = ceil($qtyraw / 0.01) * 0.01;
+                    }
+                }
 
+                $qty = round($qty,2);
+                Log::info('ROUNDING_DEBUG',[
+                    'itemcode'=>$itemcode,
+                    'qtyraw'=>$qtyraw,
+                    'rounddosage'=>$rounddosage,
+                    'qty'=>$qty
+                ]);
                 $existingKey = $lkhno . '-' . $itemcode . '-' . $key;
                 $existing = $existingData->get($existingKey);
                 Log::info('QTY_FINAL_DEBUG', [
@@ -1563,7 +1572,7 @@ public function submit(Request $request)
             'itemprice' => 0,
             'currcode' => 'IDR',
             'itemnote' => $detail->herbisidagroupname,
-            'qtybpb' => round($totalQty, 3),
+            'qtybpb' => $totalQty,
             'Keterangan' => $detail->herbisidagroupname . ' - ' . $detail->name. ' | rkhno:' . $request->rkhno . ' company:' . session('companycode'),
             'vehiclenumber' => '',
             'flagstatus' => $isFromApproval ? 'ACTIVE' : $detail->flagstatus,
