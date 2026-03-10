@@ -1162,7 +1162,7 @@ public function koreksi_submit(Request $request)
 
 
 public function submit(Request $request)
-{ 
+{   
     //kunci proses di cache agar ga dobel submit 
     $lockKey = 'submit_lock_' . session('companycode') . '_' . $request->rkhno;
     if (Cache::has($lockKey)) {
