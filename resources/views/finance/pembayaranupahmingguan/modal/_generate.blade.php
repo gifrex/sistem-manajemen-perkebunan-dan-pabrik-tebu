@@ -32,8 +32,8 @@
                      <div class="pt-4 text-gray-400 font-medium text-sm">s/d</div>
                      <div class="flex-1">
                          <label class="block text-xs text-gray-500 mb-1">Sampai</label>
-                         <input type="date" id="gen_end_date" readonly
-                             class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-100 text-gray-500 text-sm cursor-not-allowed" />
+                         <input type="date" id="gen_end_date"
+                             class="w-full px-3 py-2 rounded-lg border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 text-sm transition-all duration-200" />
                      </div>
                  </div>
                  <p class="text-xs text-indigo-500 mt-1.5 flex items-center gap-1">
@@ -42,7 +42,7 @@
                              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
                              clip-rule="evenodd" />
                      </svg>
-                     End date otomatis H+6 dari start date (1 minggu penuh)
+                     End date default H+6 dari start date, dapat diubah sesuai kebutuhan
                  </p>
              </div>
          </div>

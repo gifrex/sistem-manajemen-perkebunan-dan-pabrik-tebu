@@ -85,14 +85,78 @@
                             </select>
                         </div>
 
+                        <!-- Mandor Filter -->
+                        @if (session('tenagakerjarum'))
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Mandor:</label>
+                                <div class="relative" id="mandor-filter-wrapper">
+                                    <button type="button" id="mandor-btn" onclick="toggleMandorDropdown()"
+                                        class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 text-sm font-medium text-gray-700 transition-all duration-200">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        <span id="mandor-btn-label">
+                                            @if (!empty($filterMandors))
+                                                {{ count($filterMandors) }} Mandor dipilih
+                                            @else
+                                                Semua Mandor
+                                            @endif
+                                        </span>
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    <div id="mandor-dropdown"
+                                        class="absolute left-0 z-20 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-xl hidden">
+                                        <div class="p-2 border-b border-gray-100">
+                                            <input type="text" id="mandor-search-input" placeholder="Cari mandor..."
+                                                class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                oninput="filterMandorList(this.value)" />
+                                        </div>
+                                        <div class="max-h-52 overflow-y-auto py-1" id="mandor-list">
+                                            <label
+                                                class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-600">
+                                                <input type="checkbox" id="mandor-all"
+                                                    class="rounded border-gray-300 text-indigo-600"
+                                                    onchange="toggleAllMandors(this.checked)" />
+                                                <span class="font-medium">Semua Mandor</span>
+                                            </label>
+                                            <hr class="my-1 border-gray-100" />
+                                            @foreach ($mandorList as $mandor)
+                                                <label
+                                                    class="mandor-item flex items-center gap-2 px-3 py-2 hover:bg-indigo-50 cursor-pointer text-sm text-gray-700"
+                                                    data-name="{{ strtolower($mandor->name) }}">
+                                                    <input type="checkbox"
+                                                        class="mandor-cb rounded border-gray-300 text-indigo-600"
+                                                        value="{{ $mandor->userid }}"
+                                                        {{ in_array($mandor->userid, $filterMandors ?? []) ? 'checked' : '' }}
+                                                        onchange="onMandorChange()" />
+                                                    {{ $mandor->name }}
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                        <div class="p-2 border-t border-gray-100 flex gap-2">
+                                            <button type="button" onclick="applyMandorFilter()"
+                                                class="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md transition-all duration-200">
+                                                Terapkan
+                                            </button>
+                                            <button type="button" onclick="clearMandorFilter()"
+                                                class="flex-1 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-md transition-all duration-200">
+                                                Reset
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
                         <!-- Date Filter -->
-                        <div class="flex items-center gap-3">
-                            <label class="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">
                                 Range Tanggal:
                             </label>
                             <div class="relative">
@@ -172,7 +236,7 @@
                             <input type="text" id="search" autocomplete="off" name="search"
                                 value="{{ old('search', $search) }}"
                                 class="w-80 pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-                                placeholder="Search Kegiatan..." />
+                                placeholder="Search Kegiatan or lkhno..." />
                         </div>
                     </div>
                 </div>
@@ -193,109 +257,118 @@
             </div>
         @endif
 
-        <!-- Table Section -->
-        <div class="px-6 py-5">
-            @if (session('tenagakerjarum') == null || !$startDate || !$endDate)
-                <div class="text-center py-12">
-                    <svg class="w-20 h-20 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Belum Ada Data</h3>
-                    <p class="text-gray-500 text-sm">Silakan pilih Jenis Tenaga Kerja dan Range Tanggal</p>
-                </div>
-            @else
-                <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm" id="tables">
-                    <table class="min-w-full bg-white text-sm">
-                        <thead>
-                            <tr class="bg-gradient-to-r from-gray-100 to-gray-50">
-                                <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                    No.</th>
-                                <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                    LKH No.</th>
-                                <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-left whitespace-nowrap">
-                                    Kegiatan</th>
-                                <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-left whitespace-nowrap">
-                                    Plot</th>
-                                <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                    Tanggal</th>
-                                <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                    Total Biaya (Rp)</th>
-                                <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                    {{ session('tenagakerjarum') == 'Harian' ? 'TKH' : 'TKB' }}
-                                </th>
-                                <th
-                                    class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                    Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            @forelse ($rum as $item)
-                                <tr class="hover:bg-indigo-50 transition-colors duration-150">
-                                    <td class="py-3 px-4 text-center text-gray-700">{{ $item->no }}.</td>
-                                    <td class="py-3 px-4 text-center text-gray-700 font-medium">{{ $item->lkhno }}
-                                    </td>
-                                    <td class="py-3 px-4 text-left text-gray-700">{{ $item->activityname }}</td>
-                                    <td class="py-3 px-4 text-left text-gray-700 max-w-xs truncate">
-                                        {{ $item->plots }}</td>
-                                    <td class="py-3 px-4 text-center text-gray-700">{{ $item->lkhdate }}</td>
-                                    <td class="py-3 px-4 text-center text-gray-700">{{ $item->totalupahall }}</td>
-                                    <td class="py-3 px-4 text-center">
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                                            {{ $item->totalworkers ?? '-' }}
-                                        </span>
-                                    </td>
-                                    <td class="py-3 px-4 text-center">
-                                        <button onclick="showList('{{ $item->lkhno }}')"
-                                            class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-all duration-200"
-                                            title="View Details">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                                                <path stroke-width="2"
-                                                    d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z" />
-                                            </svg>
-                                            Detail
-                                        </button>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="8" class="py-8 text-center text-gray-500">
-                                        Tidak ada data rekap upah yang sesuai dengan filter Anda
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            @endif
-        </div>
-
-        <!-- Pagination -->
-        @if (session('tenagakerjarum') != null && $startDate && $endDate)
-            <div class="px-6 pb-2" id="pagination-links">
-                @if ($rum->hasPages())
-                    {{ $rum->appends(['perPage' => $rum->perPage()])->links() }}
+        <!-- Table + Pagination (AJAX target) -->
+        <div id="table-container">
+            <!-- Table Section -->
+            <div class="px-6 py-5">
+                @if (session('tenagakerjarum') == null || !$startDate || !$endDate)
+                    <div class="text-center py-12">
+                        <svg class="w-20 h-20 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">Belum Ada Data</h3>
+                        <p class="text-gray-500 text-sm">Silakan pilih Jenis Tenaga Kerja dan Range Tanggal</p>
+                    </div>
                 @else
-                    <div class="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg">
-                        <p class="text-sm text-gray-600">
-                            Menampilkan <span class="font-semibold text-gray-800">{{ $rum->count() }}</span> dari
-                            <span class="font-semibold text-gray-800">{{ $rum->total() }}</span> hasil
-                        </p>
+                    <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm" id="tables">
+                        <table class="min-w-full bg-white text-sm">
+                            <thead>
+                                <tr class="bg-gradient-to-r from-gray-100 to-gray-50">
+                                    <th
+                                        class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                        No.</th>
+                                    <th
+                                        class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                        LKH No.</th>
+                                    <th
+                                        class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-left whitespace-nowrap">
+                                        Kegiatan</th>
+                                    <th
+                                        class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-left whitespace-nowrap">
+                                        Mandor</th>
+                                    <th
+                                        class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-left whitespace-nowrap">
+                                        Plot</th>
+                                    <th
+                                        class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                        Tanggal</th>
+                                    <th
+                                        class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                        Total Biaya (Rp)</th>
+                                    <th
+                                        class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                        {{ session('tenagakerjarum') == 'Harian' ? 'TKH' : 'TKB' }}
+                                    </th>
+                                    <th
+                                        class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                        Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                @forelse ($rum as $item)
+                                    <tr class="hover:bg-indigo-50 transition-colors duration-150">
+                                        <td class="py-3 px-4 text-center text-gray-700">{{ $item->no }}.</td>
+                                        <td class="py-3 px-4 text-center text-gray-700 font-medium">
+                                            {{ $item->lkhno }}
+                                        </td>
+                                        <td class="py-3 px-4 text-left text-gray-700">{{ $item->activityname }}</td>
+                                        <td class="py-3 px-4 text-left text-gray-700">{{ $item->mandorname ?? '-' }}
+                                        </td>
+                                        <td class="py-3 px-4 text-left text-gray-700 max-w-xs truncate">
+                                            {{ $item->plots }}</td>
+                                        <td class="py-3 px-4 text-center text-gray-700">{{ $item->lkhdate }}</td>
+                                        <td class="py-3 px-4 text-center text-gray-700">{{ $item->totalupahall }}</td>
+                                        <td class="py-3 px-4 text-center">
+                                            <span
+                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                                {{ $item->totalworkers ?? '-' }}
+                                            </span>
+                                        </td>
+                                        <td class="py-3 px-4 text-center">
+                                            <button onclick="showList('{{ $item->lkhno }}')"
+                                                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-all duration-200"
+                                                title="View Details">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                                    <path stroke-width="2"
+                                                        d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z" />
+                                                </svg>
+                                                Detail
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="9" class="py-8 text-center text-gray-500">
+                                            Tidak ada data rekap upah yang sesuai dengan filter Anda
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 @endif
             </div>
-        @endif
+
+            <!-- Pagination -->
+            @if (session('tenagakerjarum') != null && $startDate && $endDate)
+                <div class="px-6 pb-2" id="pagination-links">
+                    @if ($rum->hasPages())
+                        {{ $rum->appends(['perPage' => $rum->perPage()])->links() }}
+                    @else
+                        <div class="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg">
+                            <p class="text-sm text-gray-600">
+                                Menampilkan <span class="font-semibold text-gray-800">{{ $rum->count() }}</span> dari
+                                <span class="font-semibold text-gray-800">{{ $rum->total() }}</span> hasil
+                            </p>
+                        </div>
+                    @endif
+                </div>
+            @endif
+        </div>{{-- end #table-container --}}
     </div>
 
     <!-- Detail Modal -->
@@ -366,6 +439,9 @@
                                     <th
                                         class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                                         Cost/Unit</th>
+                                    <th
+                                        class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                        Upah Lembur</th>
                                     <th
                                         class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                                         Biaya (Rp)</th>
@@ -452,18 +528,181 @@
         .overflow-x-auto::-webkit-scrollbar-thumb:hover {
             background: #a0aec0;
         }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 
     <script>
+        // Init mandor "all" checkbox state on load
+        document.addEventListener('DOMContentLoaded', function() {
+            const cbs = document.querySelectorAll('.mandor-cb');
+            const allCb = document.getElementById('mandor-all');
+            if (allCb && cbs.length > 0) {
+                const checked = [...cbs].filter(cb => cb.checked);
+                allCb.checked = checked.length === cbs.length;
+            }
+        });
+
         function toggleDropdown() {
             document.getElementById('menu-dropdown').classList.toggle('hidden');
         }
 
+        // ── Mandor Filter (AJAX) ─────────────────────────────────────────────────
+        function toggleMandorDropdown() {
+            document.getElementById('mandor-dropdown').classList.toggle('hidden');
+        }
+
+        function filterMandorList(val) {
+            const lower = val.toLowerCase();
+            document.querySelectorAll('.mandor-item').forEach(el => {
+                el.classList.toggle('hidden', !el.dataset.name.includes(lower));
+            });
+        }
+
+        function onMandorChange() {
+            const cbs = document.querySelectorAll('.mandor-cb');
+            const allCb = document.getElementById('mandor-all');
+            const checked = [...cbs].filter(cb => cb.checked);
+            if (allCb) allCb.checked = checked.length === cbs.length;
+            updateMandorLabel(checked.length);
+        }
+
+        function toggleAllMandors(checked) {
+            document.querySelectorAll('.mandor-cb').forEach(cb => cb.checked = checked);
+            updateMandorLabel(checked ? document.querySelectorAll('.mandor-cb').length : 0);
+        }
+
+        function updateMandorLabel(count) {
+            const btn = document.getElementById('mandor-btn-label');
+            if (btn) btn.textContent = count > 0 ? count + ' Mandor dipilih' : 'Semua Mandor';
+        }
+
+        function buildFilterUrl(mandorIds) {
+            const params = new URLSearchParams({
+                start_date: document.getElementById('start_date').value,
+                end_date: document.getElementById('end_date').value,
+                search: document.getElementById('search').value,
+                perPage: document.getElementById('perPage').value,
+            });
+            if (mandorIds && mandorIds.length) params.set('mandor_ids', mandorIds.join(','));
+            return '{{ route('report.rekap-upah-mingguan.index') }}?' + params.toString();
+        }
+
+        function showMandorLoading() {
+            const tables = document.getElementById('tables');
+            if (!tables) return;
+
+            const wrapper = tables.closest('.overflow-x-auto') || tables.parentElement;
+            if (!wrapper || wrapper.querySelector('#mandor-loading-overlay')) return;
+
+            const prevPosition = wrapper.style.position;
+            wrapper.style.position = 'relative';
+            wrapper.dataset.prevPosition = prevPosition;
+
+            const overlay = document.createElement('div');
+            overlay.id = 'mandor-loading-overlay';
+            overlay.innerHTML = `
+                <div class="flex flex-col items-center justify-center gap-3">
+                    <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-gray-600 text-sm font-semibold tracking-wide">Memuat data...</span>
+                </div>`;
+
+            Object.assign(overlay.style, {
+                position: 'absolute',
+                inset: '0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(255, 255, 255, 0.75)',
+                backdropFilter: 'blur(2px)',
+                zIndex: '50',
+                borderRadius: 'inherit',
+                minHeight: '100px',
+            });
+
+            wrapper.appendChild(overlay);
+        }
+
+        function hideMandorLoading() {
+            const overlay = document.getElementById('mandor-loading-overlay');
+            if (!overlay) return;
+
+            const wrapper = overlay.parentElement;
+            overlay.remove();
+
+            if (wrapper) {
+                wrapper.style.position = wrapper.dataset.prevPosition || '';
+                delete wrapper.dataset.prevPosition;
+            }
+        }
+
+        function fetchMandorFilter(mandorIds) {
+            document.getElementById('mandor-dropdown').classList.add('hidden');
+
+            const container = document.getElementById('table-container');
+            container.style.pointerEvents = 'none';
+            showMandorLoading();
+
+            fetch(buildFilterUrl(mandorIds), {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(r => r.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContainer = doc.getElementById('table-container');
+                    if (newContainer) {
+                        container.innerHTML = newContainer.innerHTML;
+                    }
+                    hideMandorLoading();
+                    container.style.pointerEvents = '';
+                })
+                .catch(() => {
+                    hideMandorLoading();
+                    container.style.pointerEvents = '';
+                });
+        }
+
+        function applyMandorFilter() {
+            const checked = [...document.querySelectorAll('.mandor-cb:checked')].map(cb => cb.value);
+            updateMandorLabel(checked.length);
+            fetchMandorFilter(checked);
+        }
+
+        function clearMandorFilter() {
+            document.querySelectorAll('.mandor-cb').forEach(cb => cb.checked = false);
+            const allCb = document.getElementById('mandor-all');
+            if (allCb) allCb.checked = false;
+            updateMandorLabel(0);
+            fetchMandorFilter([]);
+        }
+
         document.addEventListener("click", function(event) {
+            // Close date dropdown
             const dropdown = document.getElementById("menu-dropdown");
             const button = document.getElementById("menu-button");
-            if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+            if (dropdown && !dropdown.contains(event.target) && !button.contains(event.target)) {
                 dropdown.classList.add("hidden");
+            }
+            // Close mandor dropdown
+            const mandorDropdown = document.getElementById("mandor-dropdown");
+            const mandorBtn = document.getElementById("mandor-btn");
+            if (mandorDropdown && mandorBtn &&
+                !mandorDropdown.contains(event.target) && !mandorBtn.contains(event.target)) {
+                mandorDropdown.classList.add("hidden");
             }
         });
 
@@ -534,6 +773,7 @@
                                     <td class="px-4 py-3 text-sm text-gray-700">${item.namatenagakerja}</td>
                                     <td class="px-4 py-3 text-sm text-gray-700">${item.luasrkh || ''}</td>
                                     <td class="px-4 py-3 text-sm text-gray-700">${item.upah || '-'}</td>
+                                    <td class="px-4 py-3 text-sm text-gray-700">${item.upahlembur || '-'}</td>
                                     <td class="px-4 py-3 text-sm text-gray-700">${item.total || '-'}</td>
                                 </tr>`;
                         @else
@@ -557,7 +797,7 @@
                         }).format(totalBiaya);
                         tableBody.innerHTML += `
                             <tr class="font-bold bg-indigo-50">
-                                <td colspan="5" class="px-4 py-3 text-right border-t-2 border-indigo-400 text-gray-900">Total Biaya:</td>
+                                <td colspan="6" class="px-4 py-3 text-right border-t-2 border-indigo-400 text-gray-900">Total Biaya:</td>
                                 <td class="px-4 py-3 border-t-2 border-indigo-400 text-indigo-700">${totalFormatted}</td>
                             </tr>`;
                     @endif
@@ -591,8 +831,13 @@
             const tenagaKerja = document.getElementById('tenagakerjarum').value;
             if (!tenagaKerja) return alert('Harap pilih tenaga kerja terlebih dahulu');
             if (!startDate || !endDate) return alert('Harap pilih range tanggal terlebih dahulu');
-            window.open(`{{ route('report.rekap-upah-mingguan.preview') }}?start_date=${startDate}&end_date=${endDate}`,
-                '_blank');
+            const mandorIds = [...document.querySelectorAll('.mandor-cb:checked')].map(cb => cb.value);
+            const params = new URLSearchParams({
+                start_date: startDate,
+                end_date: endDate
+            });
+            if (mandorIds.length) params.set('mandor_ids', mandorIds.join(','));
+            window.open(`{{ route('report.rekap-upah-mingguan.preview') }}?${params.toString()}`, '_blank');
         }
 
         function printBp() {
@@ -610,8 +855,13 @@
             const startDate = document.getElementById('start_date').value;
             const endDate = document.getElementById('end_date').value;
             if (!startDate || !endDate) return alert('Harap pilih range tanggal terlebih dahulu');
-            window.location.href =
-                `{{ route('report.rekap-upah-mingguan.export-excel') }}?start_date=${startDate}&end_date=${endDate}`;
+            const mandorIds = [...document.querySelectorAll('.mandor-cb:checked')].map(cb => cb.value);
+            const params = new URLSearchParams({
+                start_date: startDate,
+                end_date: endDate
+            });
+            if (mandorIds.length) params.set('mandor_ids', mandorIds.join(','));
+            window.location.href = `{{ route('report.rekap-upah-mingguan.export-excel') }}?${params.toString()}`;
         }
     </script>
 </x-layout>

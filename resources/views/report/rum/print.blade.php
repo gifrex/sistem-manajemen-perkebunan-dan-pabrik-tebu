@@ -129,6 +129,13 @@
                 print-color-adjust: exact !important;
             }
 
+            /* LKH sub-header row */
+            .bg-indigo-50 {
+                background-color: #eef2ff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
             /* Subtotal row untuk Harian */
             .bg-yellow-50 {
                 background-color: #fefce8 !important;
@@ -258,6 +265,7 @@
                             <th class="border border-gray-300 px-2 py-2" style="width: 10%;">Tanggal Kegiatan</th>
                             @if (session('tenagakerjarum') == 'Harian')
                                 <th class="border border-gray-300 px-2 py-2" style="width: 10%;">Cost/Unit</th>
+                                <th class="border border-gray-300 px-2 py-2" style="width: 10%;">Upah Lembur</th>
                             @endif
                             <th class="border border-gray-300 px-2 py-2" style="width: 14%;">Biaya (Rp)</th>
                         </tr>
@@ -294,7 +302,7 @@
 
                                 <!-- Row Header Kegiatan -->
                                 <tr class="bg-blue-50">
-                                    <td colspan="{{ session('tenagakerjarum') == 'Harian' ? '9' : '7' }}"
+                                    <td colspan="{{ session('tenagakerjarum') == 'Harian' ? '10' : '7' }}"
                                         class="border border-gray-300 px-3 py-2 font-bold text-left">
                                         Kegiatan: {{ $activityName }}
                                     </td>
@@ -305,6 +313,20 @@
                                         $subtotal = 0;
                                         $itemCount = count($items);
                                         $firstItem = $items[0];
+                                    @endphp
+
+                                    <!-- Sub-header per LKH: No. LKH & Mandor -->
+                                    <tr class="bg-indigo-50">
+                                        <td colspan="{{ session('tenagakerjarum') == 'Harian' ? '10' : '7' }}"
+                                            class="border border-gray-300 px-3 py-1 text-xs text-indigo-700">
+                                            <span class="font-semibold">No. LKH: {{ $lkhno }}</span>
+                                            &nbsp;|&nbsp;
+                                            <span class="font-semibold">Mandor:</span>
+                                            {{ $firstItem->mandorname ?? '-' }}
+                                        </td>
+                                    </tr>
+
+                                    @php
 
                                         // Cek berapa baris yang memiliki plot yang sama secara berurutan
                                         $plotSpans = [];
@@ -391,6 +413,9 @@
                                                     {{ $item->upah }}
                                                 </td>
                                                 <td class="border border-gray-300 px-2 py-2 text-right">
+                                                    {{ $item->upahlembur }}
+                                                </td>
+                                                <td class="border border-gray-300 px-2 py-2 text-right">
                                                     {{ $item->total }}</td>
                                             @endif
                                         </tr>
@@ -428,7 +453,7 @@
 
                                 <tr class="bg-yellow-50 font-bold">
                                     <td class="border border-gray-300 px-2 py-2 text-center"
-                                        colspan="{{ session('tenagakerjarum') == 'Harian' ? '8' : '6' }}">
+                                        colspan="{{ session('tenagakerjarum') == 'Harian' ? '9' : '6' }}">
                                         Subtotal {{ $activityName }}
                                     </td>
                                     <td class="border border-gray-300 px-2 py-2 text-right">
@@ -445,7 +470,7 @@
                             <!-- Row Total Keseluruhan -->
                             <tr class="bg-green-100 font-bold text-base">
                                 <td class="border border-gray-300 px-2 py-2 text-center"
-                                    colspan="{{ session('tenagakerjarum') == 'Harian' ? '8' : '6' }}">
+                                    colspan="{{ session('tenagakerjarum') == 'Harian' ? '9' : '6' }}">
                                     TOTAL KESELURUHAN
                                 </td>
                                 <td class="border border-gray-300 px-2 py-2 text-right">
@@ -454,7 +479,7 @@
                             </tr>
                         @else
                             <tr>
-                                <td colspan="{{ session('tenagakerjarum') == 'Harian' ? '9' : '7' }}"
+                                <td colspan="{{ session('tenagakerjarum') == 'Harian' ? '10' : '7' }}"
                                     class="border border-gray-300 px-2 py-2 text-center">
                                     Tidak ada data
                                 </td>

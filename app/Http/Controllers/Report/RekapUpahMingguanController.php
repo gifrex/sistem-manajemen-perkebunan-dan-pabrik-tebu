@@ -49,19 +49,42 @@ class RekapUpahMingguanController extends Controller
         $tk = $tenagakerjarum === 'Harian' ? 1 : 2;
         $companycode = session('companycode');
 
+        $filterMandors = $request->input('mandor_ids', []);
+        if (is_string($filterMandors)) {
+            $filterMandors = array_filter(explode(',', $filterMandors));
+        }
+
+        $mandorList = DB::table('user')
+            ->whereIn('userid', function ($q) use ($companycode, $tk) {
+                $q->select('mandorid')
+                    ->from('lkhhdr')
+                    ->where('companycode', $companycode)
+                    ->where('jenistenagakerja', $tk)
+                    ->where('status', 'APPROVED');
+            })
+            ->select('userid', 'name')
+            ->orderBy('name')
+            ->get();
+
         // OPTIMIZED: Single query with conditional search
         $rum = DB::table('lkhhdr as a')
             ->leftJoin('activity as c', 'c.activitycode', '=', 'a.activitycode')
+            ->leftJoin('user as u', function ($join) {
+                $join->on('u.userid', '=', 'a.mandorid')
+                    ->on('u.companycode', '=', 'a.companycode');
+            })
             ->where('a.companycode', $companycode)
             ->where('a.status', 'APPROVED')
             ->where('c.active', 1)
             ->where('a.jenistenagakerja', $tk)
             ->when($startDate, fn($q) => $q->whereDate('a.lkhdate', '>=', $startDate))
             ->when($endDate, fn($q) => $q->whereDate('a.lkhdate', '<=', $endDate))
+            ->when(!empty($filterMandors), fn($q) => $q->whereIn('a.mandorid', $filterMandors))
             ->when(!empty($search), function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('a.activitycode', 'like', '%' . $search . '%')
-                        ->orWhere('c.activityname', 'like', '%' . $search . '%');
+                        ->orWhere('c.activityname', 'like', '%' . $search . '%')
+                        ->orWhere('a.lkhno', 'like', '%' . $search . '%');
                 });
             })
             ->select(
@@ -73,7 +96,8 @@ class RekapUpahMingguanController extends Controller
                 'a.totalupahall',
                 'a.lkhdate',
                 'a.totalworkers',
-                'c.activityname'
+                'c.activityname',
+                'u.name as mandorname'
             )
             ->distinct()
             ->orderBy('a.lkhdate', 'desc')
@@ -102,10 +126,10 @@ class RekapUpahMingguanController extends Controller
         }
 
         if ($request->ajax()) {
-            return view('report.rum.index', compact('title', 'search', 'perPage', 'rum', 'startDate', 'endDate'));
+            return view('report.rum.index', compact('title', 'search', 'perPage', 'rum', 'startDate', 'endDate', 'mandorList', 'filterMandors'));
         }
 
-        return view('report.rum.index', compact('title', 'perPage', 'search', 'rum', 'startDate', 'endDate'));
+        return view('report.rum.index', compact('title', 'perPage', 'search', 'rum', 'startDate', 'endDate', 'mandorList', 'filterMandors'));
     }
 
     public function show($lkhno)
@@ -169,7 +193,10 @@ class RekapUpahMingguanController extends Controller
                     $join->on('a.lkhno', '=', 'd.lkhno')
                         ->on('a.companycode', '=', 'd.companycode');
                 })
-                ->join('tenagakerja as tk', 'd.tenagakerjaid', '=', 'tk.tenagakerjaid')
+                ->join('tenagakerja as tk', function ($join) {
+                    $join->on('d.tenagakerjaid', '=', 'tk.tenagakerjaid')
+                        ->on('d.companycode', '=', 'tk.companycode');
+                })
                 ->leftJoin('activity as c', 'a.activitycode', '=', 'c.activitycode')
                 ->where('a.lkhno', $lkhno)
                 ->where('a.companycode', $companycode)
@@ -180,6 +207,7 @@ class RekapUpahMingguanController extends Controller
                     'd.tenagakerjaid',
                     'tk.nama as namatenagakerja',
                     'd.upahharian as upah',
+                    'd.upahlembur',
                     'd.totalupah as total'
                 )
                 ->orderBy('tk.nama', 'asc')
@@ -266,9 +294,11 @@ class RekapUpahMingguanController extends Controller
                 $item->total = Number::currency($totalValue, 'IDR', 'id');
             } else {
                 $upahValue = is_numeric($item->upah) ? floatval($item->upah) : 0;
+                $upahlembur = is_numeric($item->upahlembur) ? floatval($item->upahlembur) : 0;
                 $totalValue = is_numeric($item->total) ? floatval($item->total) : 0;
 
                 $item->upah = Number::currency($upahValue, 'IDR', 'id');
+                $item->upahlembur = Number::currency($upahlembur, 'IDR', 'id');
                 $item->total = Number::currency($totalValue, 'IDR', 'id');
             }
         }
@@ -284,6 +314,11 @@ class RekapUpahMingguanController extends Controller
         $tenagakerjarum = session('tenagakerjarum');
         $tk = $tenagakerjarum === 'Harian' ? 1 : 2;
         $companycode = session('companycode');
+
+        $filterMandors = $request->input('mandor_ids', []);
+        if (is_string($filterMandors)) {
+            $filterMandors = array_filter(explode(',', $filterMandors));
+        }
 
         if ($tk == 1) {
             // OPTIMIZED: Harian - Agregasi plot details per lkhno
@@ -304,11 +339,14 @@ class RekapUpahMingguanController extends Controller
                     $join->on('a.lkhno', '=', 'dw.lkhno')
                         ->on('a.companycode', '=', 'dw.companycode');
                 })
-                // ->join('tenagakerja as tk', 'dw.tenagakerjaid', '=', 'tk.tenagakerjaid')
                 ->leftJoin('activity as c', 'a.activitycode', '=', 'c.activitycode')
+                ->leftJoin('user as u', function ($join) {
+                    $join->on('u.userid', '=', 'a.mandorid')
+                        ->on('u.companycode', '=', 'a.companycode');
+                })
                 ->leftJoin(
-                    DB::raw('(SELECT lkhno, companycode, MIN(plot) as first_plot 
-                    FROM lkhdetailplot 
+                    DB::raw('(SELECT lkhno, companycode, MIN(plot) as first_plot
+                    FROM lkhdetailplot
                     GROUP BY lkhno, companycode) as b'),
                     function ($join) {
                         $join->on('a.lkhno', '=', 'b.lkhno')
@@ -322,6 +360,7 @@ class RekapUpahMingguanController extends Controller
                 })
                 ->when($startDate, fn($q) => $q->whereDate('a.lkhdate', '>=', $startDate))
                 ->when($endDate, fn($q) => $q->whereDate('a.lkhdate', '<=', $endDate))
+                ->when(!empty($filterMandors), fn($q) => $q->whereIn('a.mandorid', $filterMandors))
                 ->where('a.companycode', $companycode)
                 ->where('a.status', 'APPROVED')
                 ->where('a.jenistenagakerja', $tk)
@@ -336,10 +375,11 @@ class RekapUpahMingguanController extends Controller
                     'a.totalupahall',
                     'a.totalworkers',
                     'c.activityname',
+                    'u.name as mandorname',
                     'dw.tenagakerjaid',
                     DB::raw("(SELECT nama FROM tenagakerja WHERE tenagakerjaid = dw.tenagakerjaid LIMIT 1) as namatenagakerja"),
-                    // 'tk.nama as namatenagakerja',
                     'dw.upahharian as upah',
+                    'dw.upahlembur',
                     'dw.totalupah as total',
                     'e.lifecyclestatus',
                     DB::raw("CONCAT(
@@ -349,7 +389,7 @@ class RekapUpahMingguanController extends Controller
                         WHEN 7 THEN 'JUL' WHEN 8 THEN 'AGU' WHEN 9 THEN 'SEP'
                         WHEN 10 THEN 'OKT' WHEN 11 THEN 'NOV' WHEN 12 THEN 'DES'
                     END,
-                    \"'\", 
+                    \"'\",
                     RIGHT(YEAR(e.batchdate), 2)
                 ) AS batchdate")
                 )
@@ -373,6 +413,10 @@ class RekapUpahMingguanController extends Controller
                         ->on('a.companycode', '=', 'b.companycode');
                 })
                 ->leftJoin('activity as c', 'a.activitycode', '=', 'c.activitycode')
+                ->leftJoin('user as u', function ($join) {
+                    $join->on('u.userid', '=', 'a.mandorid')
+                        ->on('u.companycode', '=', 'a.companycode');
+                })
                 ->leftJoin('upahborongan as ub', function ($join) {
                     $join->on('ub.activitycode', '=', 'a.activitycode')
                         ->on('ub.companycode', '=', 'a.companycode');
@@ -384,6 +428,7 @@ class RekapUpahMingguanController extends Controller
                 })
                 ->when($startDate, fn($q) => $q->whereDate('a.lkhdate', '>=', $startDate))
                 ->when($endDate, fn($q) => $q->whereDate('a.lkhdate', '<=', $endDate))
+                ->when(!empty($filterMandors), fn($q) => $q->whereIn('a.mandorid', $filterMandors))
                 ->where('a.companycode', $companycode)
                 ->where('a.status', 'APPROVED')
                 ->where('a.jenistenagakerja', $tk)
@@ -401,6 +446,7 @@ class RekapUpahMingguanController extends Controller
                     'b.luasrkh as luasan',
                     'b.luashasil as hasil',
                     'c.activityname',
+                    'u.name as mandorname',
                     'e.lifecyclestatus',
                     DB::raw("CONCAT(
                     CASE MONTH(e.batchdate)
@@ -409,7 +455,7 @@ class RekapUpahMingguanController extends Controller
                         WHEN 7 THEN 'JUL' WHEN 8 THEN 'AGU' WHEN 9 THEN 'SEP'
                         WHEN 10 THEN 'OKT' WHEN 11 THEN 'NOV' WHEN 12 THEN 'DES'
                     END,
-                    \"'\", 
+                    \"'\",
                     RIGHT(YEAR(e.batchdate), 2)
                 ) AS batchdate"),
                     'ub.amount as upah'
@@ -430,6 +476,7 @@ class RekapUpahMingguanController extends Controller
                 $item->total = Number::currency($total, 'IDR', 'id');
             } else {
                 $item->upah = Number::currency($item->upah ?? 0, 'IDR', 'id');
+                $item->upahlembur = Number::currency($item->upahlembur ?? 0, 'IDR', 'id');
                 $item->total = Number::currency($item->total ?? 0, 'IDR', 'id');
             }
 
@@ -470,8 +517,12 @@ class RekapUpahMingguanController extends Controller
         $tk = $tenagakerjarum === 'Harian' ? 1 : 2;
         $companycode = session('companycode');
 
+        $filterMandors = $request->input('mandor_ids', []);
+        if (is_string($filterMandors)) {
+            $filterMandors = array_filter(explode(',', $filterMandors));
+        }
+
         if ($tk == 1) {
-            // OPTIMIZED: Harian - Sama seperti previewReport
             $plotDetails = DB::table('lkhdetailplot')
                 ->select(
                     'lkhno',
@@ -491,9 +542,13 @@ class RekapUpahMingguanController extends Controller
                 })
                 ->join('tenagakerja as tk', 'dw.tenagakerjaid', '=', 'tk.tenagakerjaid')
                 ->leftJoin('activity as c', 'a.activitycode', '=', 'c.activitycode')
+                ->leftJoin('user as u', function ($join) {
+                    $join->on('u.userid', '=', 'a.mandorid')
+                        ->on('u.companycode', '=', 'a.companycode');
+                })
                 ->leftJoin(
-                    DB::raw('(SELECT lkhno, companycode, MIN(plot) as first_plot 
-                FROM lkhdetailplot 
+                    DB::raw('(SELECT lkhno, companycode, MIN(plot) as first_plot
+                FROM lkhdetailplot
                 GROUP BY lkhno, companycode) as b'),
                     function ($join) {
                         $join->on('a.lkhno', '=', 'b.lkhno')
@@ -507,6 +562,7 @@ class RekapUpahMingguanController extends Controller
                 })
                 ->when($startDate, fn($q) => $q->whereDate('a.lkhdate', '>=', $startDate))
                 ->when($endDate, fn($q) => $q->whereDate('a.lkhdate', '<=', $endDate))
+                ->when(!empty($filterMandors), fn($q) => $q->whereIn('a.mandorid', $filterMandors))
                 ->where('a.companycode', $companycode)
                 ->where('a.status', 'APPROVED')
                 ->where('a.jenistenagakerja', $tk)
@@ -521,9 +577,11 @@ class RekapUpahMingguanController extends Controller
                     'a.totalupahall',
                     'a.totalworkers',
                     'c.activityname',
+                    'u.name as mandorname',
                     'dw.tenagakerjaid',
                     'tk.nama as namatenagakerja',
                     'dw.upahharian as upah',
+                    'dw.upahlembur',
                     'dw.totalupah as total',
                     'e.lifecyclestatus',
                     DB::raw("CONCAT(
@@ -533,7 +591,7 @@ class RekapUpahMingguanController extends Controller
                     WHEN 7 THEN 'JUL' WHEN 8 THEN 'AGU' WHEN 9 THEN 'SEP'
                     WHEN 10 THEN 'OKT' WHEN 11 THEN 'NOV' WHEN 12 THEN 'DES'
                 END,
-                \"'\", 
+                \"'\",
                 RIGHT(YEAR(e.batchdate), 2)
             ) AS batchdate")
                 )
@@ -541,7 +599,6 @@ class RekapUpahMingguanController extends Controller
                 ->orderBy('tk.nama', 'asc')
                 ->get();
 
-            // Tambahkan plot details ke setiap item
             foreach ($data as $item) {
                 $plotDetail = $plotDetails->get($item->lkhno);
                 $item->plot = $plotDetail->plots ?? '';
@@ -551,13 +608,16 @@ class RekapUpahMingguanController extends Controller
             }
 
         } elseif ($tk == 2) {
-            // OPTIMIZED: Borongan - Sama seperti previewReport
             $data = DB::table('lkhhdr as a')
                 ->join('lkhdetailplot as b', function ($join) {
                     $join->on('a.lkhno', '=', 'b.lkhno')
                         ->on('a.companycode', '=', 'b.companycode');
                 })
                 ->leftJoin('activity as c', 'a.activitycode', '=', 'c.activitycode')
+                ->leftJoin('user as u', function ($join) {
+                    $join->on('u.userid', '=', 'a.mandorid')
+                        ->on('u.companycode', '=', 'a.companycode');
+                })
                 ->leftJoin('upahborongan as ub', function ($join) {
                     $join->on('ub.activitycode', '=', 'a.activitycode')
                         ->on('ub.companycode', '=', 'a.companycode');
@@ -569,6 +629,7 @@ class RekapUpahMingguanController extends Controller
                 })
                 ->when($startDate, fn($q) => $q->whereDate('a.lkhdate', '>=', $startDate))
                 ->when($endDate, fn($q) => $q->whereDate('a.lkhdate', '<=', $endDate))
+                ->when(!empty($filterMandors), fn($q) => $q->whereIn('a.mandorid', $filterMandors))
                 ->where('a.companycode', $companycode)
                 ->where('a.status', 'APPROVED')
                 ->where('a.jenistenagakerja', $tk)
@@ -586,6 +647,7 @@ class RekapUpahMingguanController extends Controller
                     'b.luasrkh as luasan',
                     'b.luashasil as hasil',
                     'c.activityname',
+                    'u.name as mandorname',
                     'e.lifecyclestatus',
                     DB::raw("CONCAT(
                 CASE MONTH(e.batchdate)
@@ -594,7 +656,7 @@ class RekapUpahMingguanController extends Controller
                     WHEN 7 THEN 'JUL' WHEN 8 THEN 'AGU' WHEN 9 THEN 'SEP'
                     WHEN 10 THEN 'OKT' WHEN 11 THEN 'NOV' WHEN 12 THEN 'DES'
                 END,
-                \"'\", 
+                \"'\",
                 RIGHT(YEAR(e.batchdate), 2)
             ) AS batchdate"),
                     'ub.amount as upah'
@@ -610,7 +672,12 @@ class RekapUpahMingguanController extends Controller
             $data = collect();
         }
 
-        // Group data by activityname first, then by lkhno (sama seperti preview)
+        return $this->writeExcelFile($data, $tenagakerjarum, $companycode, $startDate, $endDate);
+    }
+
+    private function writeExcelFile($data, $tenagakerjarum, $companycode, $startDate, $endDate)
+    {
+        // Group data by activityname, then by lkhno
         $groupedByActivity = [];
         foreach ($data as $item) {
             $activityName = $item->activityname;
@@ -690,22 +757,28 @@ class RekapUpahMingguanController extends Controller
         $activityHeaderStyle = (new StyleBuilder())
             ->setBorder($border)
             ->setFontBold()
-            ->setBackgroundColor(Color::rgb(239, 246, 255)) // bg-blue-50
+            ->setBackgroundColor(Color::rgb(239, 246, 255))
             ->build();
 
         $subtotalStyle = (new StyleBuilder())
             ->setFontBold()
-            ->setBackgroundColor(Color::rgb(254, 252, 232)) // bg-yellow-50
+            ->setBackgroundColor(Color::rgb(254, 252, 232))
             ->setBorder($border)
             ->setCellAlignment(CellAlignment::RIGHT)
             ->build();
 
         $totalStyle = (new StyleBuilder())
             ->setFontBold()
-            ->setBackgroundColor(Color::rgb(220, 252, 231)) // bg-green-100
+            ->setBackgroundColor(Color::rgb(220, 252, 231))
             ->setBorder($border)
             ->setCellAlignment(CellAlignment::RIGHT)
             ->setFontSize(12)
+            ->build();
+
+        $lkhSubHeaderStyle = (new StyleBuilder())
+            ->setFontBold()
+            ->setBackgroundColor(Color::rgb(238, 242, 255))
+            ->setBorder($border)
             ->build();
 
         // Parse dates for header
@@ -718,6 +791,7 @@ class RekapUpahMingguanController extends Controller
             : $start->translatedFormat('d F Y') . ' s.d ' . $end->translatedFormat('d F Y');
 
         $jenistk = $tenagakerjarum == 'Harian' ? 'Harian' : 'Borongan';
+        $isHarian = $tenagakerjarum == 'Harian';
 
         // Header rows
         $writer->addRow(WriterEntityFactory::createRowFromArray(['', '', '', '', 'Rekap Upah Mingguan'], $headerStyle));
@@ -729,14 +803,12 @@ class RekapUpahMingguanController extends Controller
         $writer->addRow(WriterEntityFactory::createRowFromArray(['']));
 
         // Table header
-        if ($tenagakerjarum == 'Harian') {
-            $headerRow = ['No.', 'Tenaga Kerja', 'Plot', 'Luas (Ha)', 'Status Tanam', 'Hasil (Ha)', 'Tanggal Kegiatan', 'Cost/Unit', 'Biaya (Rp)'];
-        } else {
-            $headerRow = ['No.', 'Plot', 'Luas (Ha)', 'Status Tanam', 'Hasil (Ha)', 'Tanggal Kegiatan', 'Biaya (Rp)'];
-        }
+        $headerRow = $isHarian
+            ? ['No.', 'Tenaga Kerja', 'Plot', 'Luas (Ha)', 'Status Tanam', 'Hasil (Ha)', 'Tanggal Kegiatan', 'Cost/Unit', 'Upah Lembur', 'Biaya (Rp)']
+            : ['No.', 'Plot', 'Luas (Ha)', 'Status Tanam', 'Hasil (Ha)', 'Tanggal Kegiatan', 'Biaya (Rp)'];
         $writer->addRow(WriterEntityFactory::createRowFromArray($headerRow, $tableHeaderStyle));
 
-        // Data rows
+        $colCount = $isHarian ? 10 : 7;
         $rowNumber = 1;
         $totalKeseluruhan = 0;
 
@@ -744,22 +816,28 @@ class RekapUpahMingguanController extends Controller
             $activitySubtotal = 0;
 
             // Activity header row
-            $activityHeaderRow = $tenagakerjarum == 'Harian'
-                ? ['Kegiatan: ' . $activityName, '', '', '', '', '', '', '', '']
-                : ['Kegiatan: ' . $activityName, '', '', '', '', '', ''];
-
             $cells = [];
-            foreach ($activityHeaderRow as $cellValue) {
-                $cells[] = WriterEntityFactory::createCell($cellValue, $activityHeaderStyle);
+            foreach (array_fill(0, $colCount, '') as $i => $v) {
+                $cells[] = WriterEntityFactory::createCell($i === 0 ? "Kegiatan: {$activityName}" : '', $activityHeaderStyle);
             }
             $writer->addRow(WriterEntityFactory::createRow($cells));
 
             foreach ($lkhGroups as $lkhno => $items) {
                 $subtotal = 0;
-                $itemCount = count($items);
+                $mandorname = $items[0]->mandorname ?? '-';
+
+                // Sub-header per LKH
+                $subHeaderCells = [];
+                foreach (array_fill(0, $colCount, '') as $i => $v) {
+                    $subHeaderCells[] = WriterEntityFactory::createCell(
+                        $i === 0 ? "No. LKH: {$lkhno}  |  Mandor: {$mandorname}" : '',
+                        $lkhSubHeaderStyle
+                    );
+                }
+                $writer->addRow(WriterEntityFactory::createRow($subHeaderCells));
 
                 foreach ($items as $index => $item) {
-                    if ($tenagakerjarum == 'Harian') {
+                    if ($isHarian) {
                         $rowData = [
                             WriterEntityFactory::createCell($rowNumber, $centerStyle),
                             WriterEntityFactory::createCell($item->namatenagakerja ?? '', $normalStyle),
@@ -768,13 +846,13 @@ class RekapUpahMingguanController extends Controller
                             WriterEntityFactory::createCell($item->statustanam ?? '', $normalStyle),
                             WriterEntityFactory::createCell(number_format($item->hasil, 2, ',', '.'), $rightStyle),
                             WriterEntityFactory::createCell(\Carbon\Carbon::parse($item->lkhdate)->format('Y-m-d'), $centerStyle),
-                            WriterEntityFactory::createCell(number_format($item->upah ?? 0, 0, ',', '.'), $rightStyle),
-                            WriterEntityFactory::createCell(number_format($item->total ?? 0, 0, ',', '.'), $rightStyle),
+                            WriterEntityFactory::createCell(number_format($item->upah ?? 0, 2, ',', '.'), $rightStyle),
+                            WriterEntityFactory::createCell(number_format($item->upahlembur ?? 0, 2, ',', '.'), $rightStyle),
+                            WriterEntityFactory::createCell(number_format($item->total ?? 0, 2, ',', '.'), $rightStyle),
                         ];
-
                         $totalValue = floatval($item->total ?? 0);
                     } else {
-                        // Borongan - hanya tampilkan tanggal dan biaya di row pertama
+                        // Borongan - tanggal & biaya hanya di baris pertama per LKH
                         if ($index === 0) {
                             $rowData = [
                                 WriterEntityFactory::createCell($rowNumber, $centerStyle),
@@ -783,7 +861,7 @@ class RekapUpahMingguanController extends Controller
                                 WriterEntityFactory::createCell($item->statustanam, $normalStyle),
                                 WriterEntityFactory::createCell(number_format($item->hasil, 2, ',', '.'), $rightStyle),
                                 WriterEntityFactory::createCell(\Carbon\Carbon::parse($item->lkhdate)->format('Y-m-d'), $centerStyle),
-                                WriterEntityFactory::createCell(number_format($item->totalupahall ?? 0, 0, ',', '.'), $rightStyle),
+                                WriterEntityFactory::createCell(number_format($item->totalupahall ?? 0, 2, ',', '.'), $rightStyle),
                             ];
                             $totalValue = floatval($item->totalupahall ?? 0);
                         } else {
@@ -809,60 +887,19 @@ class RekapUpahMingguanController extends Controller
             }
 
             // Subtotal row
-            if ($tenagakerjarum == 'Harian') {
-                $subtotalRow = [
-                    WriterEntityFactory::createCell('', $subtotalStyle),
-                    WriterEntityFactory::createCell('', $subtotalStyle),
-                    WriterEntityFactory::createCell('', $subtotalStyle),
-                    WriterEntityFactory::createCell('', $subtotalStyle),
-                    WriterEntityFactory::createCell('', $subtotalStyle),
-                    WriterEntityFactory::createCell('', $subtotalStyle),
-                    WriterEntityFactory::createCell('', $subtotalStyle),
-                    WriterEntityFactory::createCell('Subtotal ' . $activityName, $subtotalStyle),
-                    WriterEntityFactory::createCell('Rp ' . number_format($activitySubtotal, 2, ',', '.'), $subtotalStyle),
-                ];
-            } else {
-                $subtotalRow = [
-                    WriterEntityFactory::createCell('', $subtotalStyle),
-                    WriterEntityFactory::createCell('', $subtotalStyle),
-                    WriterEntityFactory::createCell('', $subtotalStyle),
-                    WriterEntityFactory::createCell('', $subtotalStyle),
-                    WriterEntityFactory::createCell('', $subtotalStyle),
-                    WriterEntityFactory::createCell('Subtotal ' . $activityName, $subtotalStyle),
-                    WriterEntityFactory::createCell('Rp ' . number_format($activitySubtotal, 2, ',', '.'), $subtotalStyle),
-                ];
-            }
+            $subtotalCells = array_fill(0, $colCount - 2, WriterEntityFactory::createCell('', $subtotalStyle));
+            $subtotalCells[] = WriterEntityFactory::createCell("Subtotal {$activityName}", $subtotalStyle);
+            $subtotalCells[] = WriterEntityFactory::createCell('Rp ' . number_format($activitySubtotal, 2, ',', '.'), $subtotalStyle);
+            $writer->addRow(WriterEntityFactory::createRow($subtotalCells));
 
-            $writer->addRow(WriterEntityFactory::createRow($subtotalRow));
             $totalKeseluruhan += $activitySubtotal;
         }
 
         // Total keseluruhan row
-        if ($tenagakerjarum == 'Harian') {
-            $totalRow = [
-                WriterEntityFactory::createCell('', $totalStyle),
-                WriterEntityFactory::createCell('', $totalStyle),
-                WriterEntityFactory::createCell('', $totalStyle),
-                WriterEntityFactory::createCell('', $totalStyle),
-                WriterEntityFactory::createCell('', $totalStyle),
-                WriterEntityFactory::createCell('', $totalStyle),
-                WriterEntityFactory::createCell('', $totalStyle),
-                WriterEntityFactory::createCell('TOTAL KESELURUHAN', $totalStyle),
-                WriterEntityFactory::createCell('Rp ' . number_format($totalKeseluruhan, 2, ',', '.'), $totalStyle),
-            ];
-        } else {
-            $totalRow = [
-                WriterEntityFactory::createCell('', $totalStyle),
-                WriterEntityFactory::createCell('', $totalStyle),
-                WriterEntityFactory::createCell('', $totalStyle),
-                WriterEntityFactory::createCell('', $totalStyle),
-                WriterEntityFactory::createCell('', $totalStyle),
-                WriterEntityFactory::createCell('TOTAL KESELURUHAN', $totalStyle),
-                WriterEntityFactory::createCell('Rp ' . number_format($totalKeseluruhan, 2, ',', '.'), $totalStyle),
-            ];
-        }
-
-        $writer->addRow(WriterEntityFactory::createRow($totalRow));
+        $totalCells = array_fill(0, $colCount - 2, WriterEntityFactory::createCell('', $totalStyle));
+        $totalCells[] = WriterEntityFactory::createCell('TOTAL KESELURUHAN', $totalStyle);
+        $totalCells[] = WriterEntityFactory::createCell('Rp ' . number_format($totalKeseluruhan, 2, ',', '.'), $totalStyle);
+        $writer->addRow(WriterEntityFactory::createRow($totalCells));
 
         // Footer
         $writer->addRow(WriterEntityFactory::createRowFromArray(['']));
