@@ -132,7 +132,7 @@
       <div class="p-3 max-h-[300px] overflow-y-auto">
         <div class="space-y-1">
           
-          {{-- ✅ "ALL" Option (FIXED: Exact same as others) --}}
+          {{-- "ALL" Option --}}
           <div 
             @click="selectBlokForBlokActivity('ALL')"
             class="p-2 border-2 rounded-lg cursor-pointer transition-all hover:border-blue-400 hover:shadow-sm"
@@ -157,15 +157,44 @@
             </div>
           </div>
 
+          {{-- "NON" Option --}}
+          <div 
+            @click="!(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL') && selectBlokForBlokActivity('NON')"
+            class="p-2 border-2 rounded-lg transition-all"
+            :class="{
+              'border-yellow-500 bg-yellow-50 shadow-sm': (getSelectedBlokForActivity(currentActivityForPlots) || []).includes('NON'),
+              'opacity-40 cursor-not-allowed': (getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL'),
+              'cursor-pointer hover:border-yellow-400 hover:shadow-sm hover:bg-gray-50': !(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL'),
+              'border-gray-200': !(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('NON')
+            }">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold text-gray-800">NON</span>
+                <span class="text-xs text-gray-500">(Non-blok / Umum)</span>
+              </div>
+              <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0"
+                   :class="(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('NON') ? 'bg-yellow-500 border-yellow-500' : 'border-gray-300 bg-white'">
+                <svg x-show="(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('NON')" 
+                     class="w-2.5 h-2.5 text-white" 
+                     fill="none" 
+                     stroke="currentColor" 
+                     viewBox="0 0 24 24"
+                     x-transition>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+
           {{-- Individual Bloks --}}
           <template x-for="blok in filteredBloksForActivity()" :key="blok">
             <div 
-              @click="!(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL') && selectBlokForBlokActivity(blok)"
+              @click="!(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL') && !(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('NON') && selectBlokForBlokActivity(blok)"
               class="p-2 border-2 rounded-lg transition-all"
               :class="{
                 'border-blue-500 bg-blue-50 shadow-sm': (getSelectedBlokForActivity(currentActivityForPlots) || []).includes(blok),
-                'opacity-40 cursor-not-allowed': (getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL'),
-                'cursor-pointer hover:border-blue-400 hover:shadow-sm hover:bg-gray-50': !(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL'),
+                'opacity-40 cursor-not-allowed': (getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL') || (getSelectedBlokForActivity(currentActivityForPlots) || []).includes('NON'),
+                'cursor-pointer hover:border-blue-400 hover:shadow-sm hover:bg-gray-50': !(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('ALL') && !(getSelectedBlokForActivity(currentActivityForPlots) || []).includes('NON'),
                 'border-gray-200': !(getSelectedBlokForActivity(currentActivityForPlots) || []).includes(blok)
               }">
               <div class="flex items-center justify-between">
