@@ -185,17 +185,33 @@ self.addEventListener('fetch', event => {
     }
     
     // Skip dynamic content
-    if (shouldNeverCache(url, method)) {
-        if (isDev()) {
-            logSW('Dev: Not intercepting:', url);
-            return; // Let browser handle
+        if (shouldNeverCache(url, method)) {
+            if (isDev()) {
+                logSW('Dev: Not intercepting:', url);
+                return; // Let browser handle
+            }
+            event.respondWith(fetchWithTimeout(request));
+            return;
         }
-        event.respondWith(fetchWithTimeout(request));
+        
+        if (request.mode === 'navigate') {
+        event.respondWith(
+            fetchWithTimeout(request, 15000)
+                .then(response => {
+                    if (!response.ok) {
+                        logSW('Navigation error, status:', response.status);
+                        return response;
+                    }
+                    return response;
+                })
+                .catch(error => {
+                    logSW('Navigation failed, serving offline page:', error.message);
+                    return caches.match(`${BASE_PATH}offline.html`)
+                        .then(cached => cached || new Response('Offline', { status: 503 }));
+                })
+        );
         return;
     }
-    
-    // Continue with existing logic...
-    // [Rest remains unchanged]
 });
 
 // Tambahkan message handler untuk debugging
