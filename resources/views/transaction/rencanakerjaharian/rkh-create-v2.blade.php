@@ -590,14 +590,14 @@
           this.blokActivityAssignments[actCode] = [];
         }
 
-        if (blok === 'ALL') {
-          // ALL exclusive: toggle ALL, clear yang lain
-          const isAllSelected = this.blokActivityAssignments[actCode].includes('ALL');
-          this.blokActivityAssignments[actCode] = isAllSelected ? [] : ['ALL'];
-          showToast(isAllSelected ? 'ALL deselected' : 'ALL Bloks selected', 'success', 2000);
+        if (blok === 'ALL' || blok === 'NON') {
+          // ALL dan NON exclusive: toggle, clear yang lain
+          const isSelected = this.blokActivityAssignments[actCode].includes(blok);
+          this.blokActivityAssignments[actCode] = isSelected ? [] : [blok];
+          showToast(isSelected ? `${blok} deselected` : `${blok} selected`, 'success', 2000);
         } else {
-          // Individual: hapus ALL dulu, lalu toggle blok ini
-          let current = this.blokActivityAssignments[actCode].filter(b => b !== 'ALL');
+          // Individual: hapus ALL dan NON dulu, lalu toggle blok ini
+          let current = this.blokActivityAssignments[actCode].filter(b => b !== 'ALL' && b !== 'NON');
           const idx = current.indexOf(blok);
           if (idx > -1) {
             current.splice(idx, 1);
@@ -608,7 +608,7 @@
           }
           this.blokActivityAssignments[actCode] = current;
         }
-      },
+    },
 
       getSelectedBlokForActivity(actCode) {
         return this.blokActivityAssignments[actCode] || [];

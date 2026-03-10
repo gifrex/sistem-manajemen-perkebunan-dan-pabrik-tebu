@@ -79,6 +79,26 @@
             </div>
           </div>
 
+          {{-- Blok Activity (non-plot) --}}
+          <div x-show="activity.isblokactivity == 1 && (blokActivityAssignments[actCode] || []).length > 0" class="mb-4">
+              <table class="w-full text-sm border-collapse">
+                  <thead>
+                      <tr class="bg-gray-50 border-y border-gray-300">
+                          <th class="text-left px-3 py-2 font-semibold text-gray-700 w-12">No</th>
+                          <th class="text-left px-3 py-2 font-semibold text-gray-700">Blok</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      <template x-for="(blok, bIndex) in (blokActivityAssignments[actCode] || [])" :key="`${actCode}-blok-${blok}`">
+                          <tr class="border-b border-gray-200 hover:bg-gray-50">
+                              <td class="px-3 py-2 text-gray-600" x-text="bIndex + 1"></td>
+                              <td class="px-3 py-2 font-mono font-semibold text-gray-800" x-text="blok"></td>
+                          </tr>
+                      </template>
+                  </tbody>
+              </table>
+          </div>
+
           {{-- Plot Table --}}
           <div class="mb-4">
             <table class="w-full text-sm border-collapse">
