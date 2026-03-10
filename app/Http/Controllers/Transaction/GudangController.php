@@ -94,26 +94,10 @@ class GudangController extends Controller
                 });
             }
 
-            \Log::info('GUDANG HOME DEBUG:', [
-                'companycode' => session('companycode'),
-                'search' => $search,
-                'startDate' => $startDate,
-                'endDate' => $endDate,
-                'perPage' => $perPage,
-                'sql' => $usehdr->toSql(),
-                'bindings' => $usehdr->getBindings()
-            ]);
-
             $usehdr = $usehdr->select('a.*', 'c.name', 'd.nouse', 'b.rkhdate')
                 ->orderBy('a.createdat', 'desc')
                 ->paginate($perPage)
                 ->appends($request->query());
-
-            \Log::info('GUDANG HOME RESULT:', [
-                'total' => $usehdr->total(),
-                'count' => $usehdr->count(),
-                'data' => $usehdr->items()
-            ]);
 
             return view('transaction.gudang.home')->with([
                 'title' => 'Gudang',
@@ -1409,7 +1393,11 @@ public function submit(Request $request)
                             $qty = ceil($qtyraw / 0.05) * 0.05;
                         }
                     } else {
-                        $qty = $qtyraw < 0.01 ? 0.01 : $qtyraw;
+                        if ($qtyraw <= 0.01) {
+                            $qty = 0.01;
+                        } else {
+                            $qty = ceil($qtyraw / 0.01) * 0.01;
+                        }
                     }
                 } else {
                     $qty = 0;

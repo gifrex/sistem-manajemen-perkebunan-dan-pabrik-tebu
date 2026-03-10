@@ -335,10 +335,10 @@
                         } else {
                             if ($qtyRawExp <= 0) {
                                 $exp = 0;
-                            } elseif ($qtyRawExp < 0.01) {
+                            } elseif ($qtyRawExp <= 0.01) {
                                 $exp = 0.01;
                             } else {
-                                $exp = $qtyRawExp;
+                                $exp = ceil($qtyRawExp / 0.01) * 0.01;
                             }
                         }
 
@@ -610,6 +610,15 @@
 
                 return Math.ceil(num / 0.05) * 0.05;
             };
+
+            const roundto1 = (num) => {
+                num = parseFloat(num) || 0;
+
+                if (num <= 0) return 0;
+                if (num <= 0.01) return 0.01;
+
+                return Math.ceil(num / 0.01) * 0.01;
+            };
             
     
     function recalcTotals(){
@@ -720,7 +729,7 @@
                 if (rounddosage) {
                     qty = roundto5(qtyRaw);
                 } else {
-                    qty = qtyRaw > 0 && qtyRaw < 0.01 ? 0.01 : qtyRaw;
+                    qty = roundto1(qtyRaw);
                 }
 
                 row.find('.labelqty').text(qty.toFixed(2));
