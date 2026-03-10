@@ -632,8 +632,7 @@
                                     </td>
                                     <td class="px-4 py-3 text-center">
                                         <a 
-                                            href="{{ route('report.report-surat-jalan-timbangan.index') }}/${sj.suratjalanno}" 
-                                            target="_blank"
+                                            href="{{ route('report.report-surat-jalan-timbangan.index') }}/${sj.suratjalanno}"
                                             class="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                                         >
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

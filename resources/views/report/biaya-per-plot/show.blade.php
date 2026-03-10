@@ -177,8 +177,7 @@
                                     <tr class="hover:bg-gray-50">
                                         <td class="px-3 py-2 text-sm text-gray-600" x-text="formatDate(item.lkhdate)"></td>
                                         <td class="px-3 py-2 text-sm font-medium">
-                                            <a :href="`{{ url('transaction/kerjaharian/rencanakerjaharian/lkh') }}/${item.lkhno}/show`" 
-                                               target="_blank"
+                                            <a :href="`{{ url('transaction/kerjaharian/rencanakerjaharian/lkh') }}/${item.lkhno}/show`"
                                                class="text-blue-600 hover:text-blue-800 underline"
                                                x-text="item.lkhno"></a>
                                         </td>
@@ -233,8 +232,7 @@
                                     <tr class="hover:bg-gray-50">
                                         <td class="px-3 py-2 text-sm text-gray-600" x-text="formatDate(item.lkhdate)"></td>
                                         <td class="px-3 py-2 text-sm font-medium">
-                                            <a :href="`{{ url('transaction/kerjaharian/rencanakerjaharian/lkh') }}/${item.lkhno}/show`" 
-                                               target="_blank"
+                                            <a :href="`{{ url('transaction/kerjaharian/rencanakerjaharian/lkh') }}/${item.lkhno}/show`"
                                                class="text-blue-600 hover:text-blue-800 underline"
                                                x-text="item.lkhno"></a>
                                         </td>

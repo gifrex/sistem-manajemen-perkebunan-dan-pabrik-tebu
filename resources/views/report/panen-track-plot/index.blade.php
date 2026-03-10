@@ -525,7 +525,7 @@
                     ? `<div class="space-y-1">${day.list_sj.map(sj => `
                         <div class="flex items-center gap-2">
                             <span class="w-1.5 h-1.5 bg-gray-800 rounded-full flex-shrink-0"></span>
-                            <a href="{{ route('report.report-surat-jalan-timbangan.index') }}/${sj}" target="_blank" class="text-gray-800 font-mono text-xs font-semibold underline">${sj}</a>
+                            <a href="{{ route('report.report-surat-jalan-timbangan.index') }}/${sj}" class="text-gray-800 font-mono text-xs font-semibold underline">${sj}</a>
                         </div>
                     `).join('')}</div>`
                     : '<span class="text-gray-400 italic text-xs">-</span>';

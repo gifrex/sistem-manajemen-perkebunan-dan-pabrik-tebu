@@ -675,7 +675,6 @@
                                             </div>
                                         </div>
                                         <a :href="'{{ route('usermanagement.jabatan.index') }}?search=' + encodeURIComponent(userPermissions.role.namajabatan)"
-                                            target="_blank"
                                             class="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-150">
                                             View Details
                                         </a>

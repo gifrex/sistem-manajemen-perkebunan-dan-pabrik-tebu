@@ -171,7 +171,6 @@
                                         </div>
                                         <div>
                                             <a href="{{ route('transaction.rencanakerjaharian.show', $rkh->rkhno) }}"
-                                                target="_blank"
                                                 class="font-semibold text-slate-900 hover:text-blue-600 text-sm transition-colors">{{ $rkh->rkhno }}</a>
                                             <div class="flex items-center gap-2 mt-0.5">
                                                 <span
@@ -287,7 +286,6 @@
                                         </div>
                                         <div>
                                             <a href="{{ route('transaction.rencanakerjaharian.showLKH', $lkh->lkhno) }}"
-                                                target="_blank"
                                                 class="font-semibold text-slate-900 hover:text-blue-600 text-sm transition-colors">{{ $lkh->lkhno }}</a>
                                             <p class="text-xs text-slate-400 mt-0.5">
                                                 {{ \Carbon\Carbon::parse($lkh->lkhdate)->format('d M Y') }}</p>
@@ -401,7 +399,6 @@
                                         </div>
                                         <div>
                                             <a href="{{ route('report.absen.show', $absen->absenno) }}"
-                                                target="_blank"
                                                 class="font-semibold text-slate-900 hover:text-blue-600 text-sm transition-colors">{{ $absen->absenno }}</a>
                                             <p class="text-xs text-slate-400 mt-0.5">
                                                 {{ \Carbon\Carbon::parse($absen->uploaddate)->format('d M Y H:i') }}
@@ -427,7 +424,7 @@
                                     </div>
                                 </div>
                                 <div class="px-5 py-3 bg-slate-50/70 border-t border-slate-100 flex gap-2">
-                                    <a href="{{ route('report.absen.show', $absen->absenno) }}" target="_blank"
+                                    <a href="{{ route('report.absen.show', $absen->absenno) }}"
                                         class="inline-flex items-center justify-center gap-1.5 py-2 px-4 bg-slate-700 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition-colors active:scale-[0.98]">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
                                             viewBox="0 0 24 24">
@@ -702,7 +699,6 @@
                                         <div>
                                             <div class="flex items-center gap-2">
                                                 <a href="{{ route('transaction.order-bbm.show', $bbm->orderno) }}"
-                                                    target="_blank"
                                                     class="font-semibold text-slate-900 hover:text-blue-600 text-sm transition-colors">
                                                     Order #{{ $bbm->orderno }}
                                                 </a>
@@ -792,7 +788,7 @@
                                             Decline
                                         </button>
                                     </form>
-                                    <a href="{{ route('transaction.order-bbm.show', $bbm->orderno) }}" target="_blank"
+                                    <a href="{{ route('transaction.order-bbm.show', $bbm->orderno) }}"
                                         class="inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700 text-sm font-medium rounded-lg border border-slate-200 transition-colors active:scale-[0.98]"
                                         title="Lihat Detail">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -844,7 +840,6 @@
                                             </div>
                                             <div>
                                                 <a href="{{ route('transaction.gudang.detail', ['rkhno' => $approval->transactionnumber]) }}"
-                                                    target="_blank"
                                                     class="font-semibold text-slate-900 hover:text-blue-600 text-sm transition-colors">{{ $approval->transactionnumber }}</a>
                                                 <div class="flex items-center gap-2 mt-0.5">
                                                     <span
