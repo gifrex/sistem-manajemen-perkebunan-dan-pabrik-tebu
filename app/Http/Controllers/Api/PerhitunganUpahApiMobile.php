@@ -168,6 +168,7 @@ class PerhitunganUpahApiMobile extends Controller
             $validated = $request->validate([
                 'companycode' => 'required|string|max:4',
                 'lkhno' => 'required|string',
+                'insentifhk' => 'nullable|numeric|min:0',
             ]);
             
             $lkh = DB::table('lkhhdr')
@@ -207,7 +208,7 @@ class PerhitunganUpahApiMobile extends Controller
                 ->where('effectivedate', '<=', $lkh->lkhdate)
                 ->where(function($q) use ($lkh) {
                     $q->whereNull('enddate')
-                      ->orWhere('enddate', '>=', $lkh->lkhdate);
+                    ->orWhere('enddate', '>=', $lkh->lkhdate);
                 })
                 ->orderBy('effectivedate', 'DESC')
                 ->value('amount');
@@ -215,7 +216,7 @@ class PerhitunganUpahApiMobile extends Controller
             if (!$rate) {
                 return response()->json([
                     'status' => 0,
-                    'description' => 'Tidak ditemukan upah borongan aktif untuk Company: ' . $validated['companycode'] . ', Activity: ' . $lkh->activitycode . ', Tanggal: ' . \Carbon\Carbon::parse($lkh->lkhdate)->format('d/m/Y')
+                    'description' => 'Tidak ditemukan upah borongan aktif untuk Company: ' . $validated['companycode'] . ', Activity: ' . $lkh->activitycode . ', Tanggal: ' . Carbon::parse($lkh->lkhdate)->format('d/m/Y')
                 ], 404);
             }
             
@@ -226,6 +227,29 @@ class PerhitunganUpahApiMobile extends Controller
                 ->where('lkhno', $validated['lkhno'])
                 ->count();
             
+            // Hitung insentif jika ada
+            $insentifhk = floatval($validated['insentifhk'] ?? 0);
+            $totalinsentif = 0;
+            
+            if ($insentifhk > 0) {
+                $activity = DB::table('activity')
+                    ->where('activitycode', $lkh->activitycode)
+                    ->value('activitygroup');
+                
+                if ($activity) {
+                    $dailyRate = $this->getHarianRate(
+                        $validated['companycode'],
+                        $activity,
+                        $this->getDayType($lkh->lkhdate),
+                        $lkh->lkhdate
+                    );
+                    
+                    if ($dailyRate) {
+                        $totalinsentif = round($insentifhk * $dailyRate, 2);
+                    }
+                }
+            }
+            
             DB::table('lkhhdr')
                 ->where('companycode', $validated['companycode'])
                 ->where('lkhno', $validated['lkhno'])
@@ -233,6 +257,8 @@ class PerhitunganUpahApiMobile extends Controller
                     'totalupahall' => $totalUpah,
                     'totalhasil' => round($totalArea, 2),
                     'totalworkers' => $totalWorkers,
+                    'insentifhk' => $insentifhk > 0 ? $insentifhk : null,
+                    'totalinsentif' => $totalinsentif > 0 ? $totalinsentif : null,
                     'updatedat' => now()
                 ]);
             
@@ -244,7 +270,9 @@ class PerhitunganUpahApiMobile extends Controller
                     'total_area' => round($totalArea, 2),
                     'rate_per_ha' => round($rate, 2),
                     'total_upah' => $totalUpah,
-                    'total_workers' => $totalWorkers
+                    'total_workers' => $totalWorkers,
+                    'insentifhk' => $insentifhk > 0 ? $insentifhk : null,
+                    'totalinsentif' => $totalinsentif > 0 ? $totalinsentif : null
                 ]
             ], 200);
             
