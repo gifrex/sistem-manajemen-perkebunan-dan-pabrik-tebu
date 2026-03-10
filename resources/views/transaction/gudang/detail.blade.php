@@ -321,31 +321,36 @@
                             </td>
                     
                             <td class="py-0.5 px-2 text-center text-right">
-                                @php
-                                $qtyRawExp = (float)($stdDosage[$d->itemcode.'|'.$activitycode] ?? 0) * (float)($d->luasrkh ?? 0);
+                    @php
+                        $qtyRawExp = (float)($stdDosage[$d->itemcode.'|'.$activitycode] ?? 0) * (float)($d->luasrkh ?? 0);
 
-                                // Pembulatan ke 0.05
-                                if ($qtyRawExp > 0) {
-                                    $truncatedExp = floor($qtyRawExp * 100) / 100; // truncate 2 digit
+                        if ($rounddosage ?? 0) {
+                            if ($qtyRawExp <= 0) {
+                                $exp = 0;
+                            } elseif ($qtyRawExp <= 0.05) {
+                                $exp = 0.05;
+                            } else {
+                                $exp = ceil($qtyRawExp / 0.05) * 0.05;
+                            }
+                        } else {
+                            if ($qtyRawExp <= 0) {
+                                $exp = 0;
+                            } elseif ($qtyRawExp < 0.01) {
+                                $exp = 0.01;
+                            } else {
+                                $exp = $qtyRawExp;
+                            }
+                        }
 
-                                    if ($truncatedExp <= 0) {
-                                        $exp = 0.05;
-                                    } else {
-                                        $exp = ceil($truncatedExp / 0.05) * 0.05;  // Pembulatan ke kelipatan 0.05
-                                    }
-                                } else {
-                                    $exp = 0;
-                                }
-
-                                $qty = (float)($d->qty ?? 0);
-                                $diff = $qty - $exp;
-                            @endphp
+                        $qty = (float)($d->qty ?? 0);
+                        $diff = $qty - $exp;
+                    @endphp
                             
                             <span class="ml-2 text-[10px] font-semibold
                                 {{ abs($diff) > 0.00001 ? ($diff > 0 ? 'text-orange-600' : 'text-green-600') : 'hidden' }}">
-                                • 
+                                •
                             </span>
-                            <span class="labelqty">{{ $d->qty }}</span>
+                            <span class="labelqty">{{ number_format($d->qty, 2, '.', '') }}</span>
                                         
                             </td>
                     
@@ -392,8 +397,9 @@
                 $totals = [];
                 foreach ($detailmaterial as $d) {
                     // langsung ambil luas per plot
-                    $luas = (float) $d->luasrkh;
-                    $qty  = (float) $d->dosageperha * $luas;
+                    //$luas = (float) $d->luasrkh;
+                    //$qty  = (float) $d->dosageperha * $luas;
+                    $qty = (float)($d->qty ?? 0);
                     $code = $d->itemcode;
             
                     if (!isset($totals[$code])) {
@@ -597,69 +603,53 @@
             const fmt2 = n => (Number(n)||0).toFixed(2);
     
             const roundto5 = (num) => {
+                num = parseFloat(num) || 0;
+
                 if (num <= 0) return 0;
+                if (num <= 0.05) return 0.05;
 
-                const truncated = Math.floor(num * 100) / 100;
-                if (truncated <= 0) return 0.05;
-
-                return Math.ceil(truncated / 0.05) * 0.05;
+                return Math.ceil(num / 0.05) * 0.05;
             };
             
     
     function recalcTotals(){
-      const totals = {};
-    
-      $('.item-select').each(function(){
+    const totals = {};
+
+    $('.item-select').each(function(){
         const $tr  = $(this).closest('tr');
         const $opt = $(this).find('option:selected');
-    
+
         const code = $tr.find('.selected-itemcode').val() || $(this).val();
         const name = $opt.data('itemname') || '';
         const unit = $tr.find('.selected-unit').val() || $opt.data('measure') || '';
-    
-        const dosage = parseFloat(String($tr.find('.selected-dosage').val()).replace(/,/g,'')) || 0;
-        const luas   = parseFloat($tr.find('.selected-luas').val()) || 0;
-        const qtyRaw = dosage * luas;
-    
-        const rounddosage = parseInt($opt.data('rounddosage')) || 0;
-    
-        let qty;
-        if (rounddosage) {
-          qty = roundto5(qtyRaw);
-        } else {
-          qty = qtyRaw;
-        }
-    
-        // ✅ BACA RETUR dari kolom "Qty Retur" (kolom index 5)
+        const qty  = parseFloat(($tr.find('.labelqty').text() || '0').replace(/,/g,'')) || 0;
+
         const returText = $tr.find('td').eq(5).text().trim();
         const retur = parseFloat(returText) || 0;
-    
-        // ✅ INIT dengan retur & pemakaian
+
         if (!totals[code]) {
-          totals[code] = {
+        totals[code] = {
             itemname: name,
             unit: unit,
             qty: 0,
             retur: 0,
             pemakaian: 0,
             parts: []
-          };
+        };
         }
-    
-        totals[code].qty   += qty;
+
+        totals[code].qty += qty;
         totals[code].retur += retur;
         totals[code].parts.push(fmt2(qty));
-      });
-    
-      // ✅ HITUNG PEMAKAIAN
-      Object.keys(totals).forEach(code => {
+    });
+
+    Object.keys(totals).forEach(code => {
         totals[code].pemakaian = totals[code].qty - totals[code].retur;
-      });
-    
-      // ✅ RENDER 7 KOLOM
-      $('#totals-body').html(
+    });
+
+    $('#totals-body').html(
         Object.entries(totals).map(([code, r]) => `
-          <tr class="hover:bg-gray-50 align-top">
+        <tr class="hover:bg-gray-50 align-top">
             <td class="py-0.5 px-3 font-medium">${code}</td>
             <td class="py-0.5 px-3">${r.itemname || '-'}</td>
             <td class="py-0.5 px-3">${r.unit || '-'}</td>
@@ -667,9 +657,9 @@
             <td class="py-0.5 px-3 text-center text-gray-500">${r.parts.join(' + ')}</td>
             <td class="py-0.5 px-3 text-right bg-red-50 font-semibold text-red-700">${fmt2(r.retur)}</td>
             <td class="py-0.5 px-3 text-right bg-green-50 font-semibold text-green-700">${fmt2(r.pemakaian)}</td>
-          </tr>
+        </tr>
         `).join('')
-      );
+    );
     }
     
     
@@ -720,23 +710,21 @@
             }
             
             function recalcRowQty(row){
-              const dosage = parseFloat(String(row.find('.selected-dosage').val()).replace(/,/g,'')) || 0;
-              const luas   = parseFloat(row.find('.selected-luas').val()) || 0;
-              const qtyRaw    = dosage * luas;
-              const opt         = row.find('.item-select option:selected');
-              const rounddosage = parseInt(opt.data('rounddosage')) || 0;
-    
+                const dosage = parseFloat(String(row.find('.selected-dosage').val()).replace(/,/g,'')) || 0;
+                const luas   = parseFloat(row.find('.selected-luas').val()) || 0;
+                const qtyRaw = dosage * luas;
+                const opt = row.find('.item-select option:selected');
+                const rounddosage = parseInt(opt.data('rounddosage')) || 0;
+
                 let qty;
                 if (rounddosage) {
-                    qty = roundto5(qtyRaw);     // dibulatkan
+                    qty = roundto5(qtyRaw);
                 } else {
-                    qty = qtyRaw;                // tidak dibulatkan
+                    qty = qtyRaw > 0 && qtyRaw < 0.01 ? 0.01 : qtyRaw;
                 }
-    
-             console.log('recalcRowQty:', {dosage, luas, qtyRaw, qty});
-    
-              row.find('.labelqty').text(qty.toFixed(2));
-            }
+
+                row.find('.labelqty').text(qty.toFixed(2));
+                }
             
             $(document).ready(function(){
               $('.item-select').each(function(){ recalcRowQty($(this).closest('tr')); });
