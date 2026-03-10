@@ -61,6 +61,12 @@
                             <span class="font-medium text-gray-700">Total Upah:</span> 
                             <span class="font-bold text-gray-900">Rp {{ number_format($lkhData->totalupahall ?? 0, 2, ',', '.') }}</span>
                         </div>
+                        @if($lkhData->insentifhk > 0)
+                        <div class="flex justify-between">
+                            <span class="font-medium text-gray-700">Insentif:</span> 
+                            <span class="font-bold text-gray-900">{{ number_format($lkhData->insentifhk, 0) }} HK — Rp {{ number_format($lkhData->totalinsentif ?? 0, 2, ',', '.') }}</span>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -241,6 +247,17 @@
                                     <span class="font-semibold text-gray-800">Total Upah:</span> 
                                     <span class="font-bold text-lg text-gray-900">Rp {{ number_format($lkhData->totalupahall ?? 0, 2, ',', '.') }}</span>
                                 </div>
+                                @if($lkhData->insentifhk > 0)
+                                <div class="pt-2 border-t border-gray-300"></div>
+                                <div class="flex justify-between">
+                                    <span class="font-medium text-gray-700">Insentif:</span> 
+                                    <span class="font-bold text-gray-900">{{ number_format($lkhData->insentifhk, 0) }} HK</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="font-semibold text-gray-800">Total Insentif:</span> 
+                                    <span class="font-bold text-lg text-gray-900">Rp {{ number_format($lkhData->totalinsentif ?? 0, 2, ',', '.') }}</span>
+                                </div>
+                                @endif
                             </div>
                             <div class="mt-3 pt-3 border-t border-gray-300">
                                 <p class="text-xs text-gray-600 italic">
