@@ -1403,16 +1403,12 @@ public function submit(Request $request)
                 //3.8
                 if ($qtyraw > 0) {
                     if ($rounddosage) {
-                        // truncate 2 desimal, lalu ceiling ke 0.05, minimum 0.05
-                        $truncated = floor($qtyraw * 100) / 100;
-
-                        if ($truncated <= 0) {
+                        if ($qtyraw <= 0.05) {
                             $qty = 0.05;
                         } else {
-                            $qty = ceil($truncated / 0.05) * 0.05;
+                            $qty = ceil($qtyraw / 0.05) * 0.05;
                         }
                     } else {
-                        // tidak dibulatkan
                         $qty = $qtyraw;
                     }
                 } else {
