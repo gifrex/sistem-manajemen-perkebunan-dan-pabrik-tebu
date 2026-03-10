@@ -316,17 +316,6 @@ class TenagaKerjaController extends Controller
                     continue;
                 }
 
-                // Check if jenis tenaga kerja exists
-                $jenisExists = DB::table('jenistenagakerja')
-                    ->where('idjenistenagakerja', $jenistenagakerja)
-                    ->exists();
-
-                if (!$jenisExists) {
-                    $errors[] = "Baris $rowNumber: Jenis Tenaga Kerja ID '$jenistenagakerja' tidak ditemukan";
-                    $errorCount++;
-                    continue;
-                }
-
                 // Check if NIK already exists (hanya cek yang active)
                 if (!empty($nik)) {
                     $nikExists = TenagaKerja::where('nik', $nik)->where('companycode', $companycode)->where('mandoruserid', $mandoruserid)
@@ -402,7 +391,7 @@ class TenagaKerjaController extends Controller
         $nextId = $this->generateNextId($companycode);
 
         // Double check if the ID already exists
-        $exists = TenagaKerja::where('companycode', $companycode)
+        $exists = TenagaKerja::where('companycode', $companycode)->where('mandoruserid', $request->mandor)
             ->where('tenagakerjaid', $nextId)
             ->exists();
         if ($exists) {
@@ -437,7 +426,7 @@ class TenagaKerjaController extends Controller
             ->firstOrFail();
 
         // Check NIK yang sama tapi beda ID dan masih aktif
-        $ceknik = TenagaKerja::where('nik', $request->nik)
+        $ceknik = TenagaKerja::where('nik', $request->nik)->where('companycode', $companycode)->where('mandoruserid', $request->mandor)
             ->where('tenagakerjaid', '!=', $id)
             ->where('isactive', 1)
             ->first();
