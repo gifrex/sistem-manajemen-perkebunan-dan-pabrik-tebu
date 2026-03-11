@@ -1192,14 +1192,6 @@ public function submit(Request $request)
     if (!$first) {
         return $releaseLockAndBack('error', 'Header usematerial tidak ditemukan.', 1);
     }
-    Log::info('SUBMIT DEBUG FIRST:', [
-        'session_company' => session('companycode'),
-        'rkhno' => $request->rkhno,
-        'first_company' => $first->companycode ?? null,
-        'first_factory' => $first->factoryinv ?? null,
-        'first_flagstatus' => $first->flagstatus ?? null,
-        'details_count' => $details->count(),
-    ]);
 
     $roundingByGroup = DB::table('herbisidagroup')
     ->pluck('rounddosage', 'herbisidagroupid');
@@ -1314,6 +1306,15 @@ public function submit(Request $request)
                 $unit = $request->unit[$lkhno][$itemcode][$key] ?? null;
                 $luas = $request->luas[$lkhno][$itemcode][$key] ?? 0;
                 $qtyraw = $luas * $dosage ?? 0;
+                Log::info('BEFORE_ROUNDING', [
+                    'lkhno' => $lkhno,
+                    'itemcode' => $itemcode,
+                    'plot' => $key,
+                    'luas' => $luas,
+                    'dosage' => $dosage,
+                    'qtyraw' => $qtyraw,
+                    'groupId' => $detail->herbisidagroupid ?? null,
+                ]);
 
                 //tambahan cek standar cek dosage standard 
                 if (!$isFromApproval) {
@@ -1614,11 +1615,6 @@ public function submit(Request $request)
                 ];
             })->toArray();
 
-            Log::warning('DEBUG_BEFORE_INSERT_USEMATERIALLST', [
-                'rkhno' => $request->rkhno,
-                'companycode' => session('companycode'),
-                'sample' => $debugItems,
-            ]);
             
             $missing = [];
             foreach ($insertData as $r) {
@@ -1636,12 +1632,6 @@ public function submit(Request $request)
                     ];
                 }
             }
-
-            Log::warning('DEBUG_HERBISIDA_MASTER_CHECK', [
-                'rkhno' => $request->rkhno,
-                'missing_count' => count($missing),
-                'missing_sample' => array_slice($missing, 0, 10),
-            ]);
 
 
             //
@@ -1678,16 +1668,7 @@ public function submit(Request $request)
             'api_itemcodes' => array_slice(array_keys($apiPayload ?? []), 0, 10),
         ]);
 
-        $response = Http::withOptions([
-                'verify' => false,
-                'curl' => [
-                    CURLOPT_SSL_VERIFYPEER => false,
-                    CURLOPT_SSL_VERIFYHOST => 0,
-                ],
-                'headers' => [
-                    'Accept' => 'application/json',
-                ],
-            ])
+        $response = Http::withoutVerifying()
             ->asJson()
             ->timeout(30)
             ->post('https://rosebrand.sungaibudigroup.com/app/im-purchasing/purchasing/bpb/use_api', [
@@ -1702,6 +1683,31 @@ public function submit(Request $request)
                 'rkhdate'      => $rkhdate,
                 'type'         => $isFromApproval ? 'KS' : ''
             ]);
+
+        // $response = Http::withOptions([
+        //         'verify' => false,
+        //         'curl' => [
+        //             CURLOPT_SSL_VERIFYPEER => false,
+        //             CURLOPT_SSL_VERIFYHOST => 0,
+        //         ],
+        //         'headers' => [
+        //             'Accept' => 'application/json',
+        //         ],
+        //     ])
+        //     ->asJson()
+        //     ->timeout(30)
+        //     ->post('https://rosebrand.sungaibudigroup.com/app/im-purchasing/purchasing/bpb/use_api', [
+        //         'connection'   => $koneksi,
+        //         'company'      => $first->companyinv,
+        //         'companytebu'  => session('companycode'),
+        //         'rkhno'        => $request->rkhno,
+        //         'factory'      => $first->factoryinv,
+        //         'costcenter'   => null,
+        //         'isi'          => array_values($apiPayload),
+        //         'userid'       => substr(auth()->user()->userid, 0, 10),
+        //         'rkhdate'      => $rkhdate,
+        //         'type'         => $isFromApproval ? 'KS' : ''
+        //     ]);
         
         // $response = Http::withoutVerifying()
         //     ->withOptions(['headers' => ['Accept' => 'application/json']])
@@ -1753,22 +1759,6 @@ public function submit(Request $request)
         // Check response
         if ($response->status() == 200 && isset($responseData['status']) && $responseData['status'] == 1) {
             //new
-            Log::info('SUBMIT BEFORE UPDATE USEMATERIALLST', [
-                'rkhno' => $request->rkhno,
-                'session_companycode' => session('companycode'),
-                'db_lst_count' => usemateriallst::where('rkhno', $request->rkhno)
-                    ->where('companycode', session('companycode'))
-                    ->count(),
-                'db_lst_null_nouse_count' => usemateriallst::where('rkhno', $request->rkhno)
-                    ->where('companycode', session('companycode'))
-                    ->whereNull('nouse')
-                    ->count(),
-                'db_lst_itemcodes_sample' => usemateriallst::where('rkhno', $request->rkhno)
-                    ->where('companycode', session('companycode'))
-                    ->limit(10)
-                    ->pluck('itemcode')
-                    ->toArray(),
-            ]);
             
             // ===== FIX: stockitem dari API use_api adalah associative array (key = itemcode) =====
             $itemPriceMap = [];
