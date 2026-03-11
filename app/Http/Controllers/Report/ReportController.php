@@ -216,7 +216,7 @@ class ReportController extends Controller
             ->join('lkhdetailplot', 'batch.plot', '=', 'lkhdetailplot.plot')
             ->join('lkhhdr', 'lkhhdr.lkhno', '=', 'lkhdetailplot.lkhno')
             ->where('batch.companycode', '=', session('companycode'))
-            ->where('lkhhdr.activitycode', '=', '4.2.1')
+            ->where('lkhhdr.activitycode', '=', '4.2.2')
             ->where('batch.isactive', '=', 1)
             ->when($startDate, function ($query) use ($startDate) {
                 $query->whereDate('lkhhdr.lkhdate', '>=', $startDate);
@@ -293,7 +293,7 @@ class ReportController extends Controller
             ->join('lkhdetailplot', 'batch.plot', '=', 'lkhdetailplot.plot')
             ->join('lkhhdr', 'lkhhdr.lkhno', '=', 'lkhdetailplot.lkhno')
             ->where('batch.companycode', '=', session('companycode'))
-            ->where('lkhhdr.activitycode', '=', '4.2.1')
+            ->where('lkhhdr.activitycode', '=', '4.2.2')
             ->where('batch.isactive', '=', 1)
             ->when($startDate, function ($query) use ($startDate) {
                 $query->whereDate('lkhhdr.lkhdate', '>=', $startDate);
