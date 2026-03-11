@@ -17,7 +17,7 @@ use App\Models\usemateriallst;
 use App\Models\MasterData\HerbisidaDosage;
 use App\Models\MasterData\Herbisida;
 
-class GudangController extends Controller
+class GudangControllerExp extends Controller
 {
 
     public function __construct()
