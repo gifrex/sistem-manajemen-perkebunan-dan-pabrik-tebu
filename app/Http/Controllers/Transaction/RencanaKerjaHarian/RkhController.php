@@ -595,4 +595,20 @@ class RkhController extends Controller
             ], 500);
         }
     }
-}
+
+    public function printView($rkhno)
+    {
+        try {
+            $companycode = Session::get('companycode');
+            $data = $this->rkhService->getShowPageData($rkhno, $companycode);
+
+            return view('transaction.rencanakerjaharian.rkh-print', array_merge($data, [
+                'title' => 'Print RKH - ' . $rkhno,
+            ]));
+
+        } catch (\Exception $e) {
+            \Log::error('RKH Print Error', ['rkhno' => $rkhno, 'message' => $e->getMessage()]);
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+    }

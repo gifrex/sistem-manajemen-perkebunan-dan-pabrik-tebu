@@ -252,23 +252,16 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
           </svg>
           Rekap Material
-          @if($isMaterialEstimated ?? false)
+          @if(($isMaterialEstimated ?? false) && collect($rkhDetails)->where('usingmaterial', 1)->count() > 0)
             <span class="ml-1.5 text-[10px] bg-yellow-800 px-1.5 py-0.5 rounded">(Estimasi)</span>
           @endif
         </button>
         @endif
-        <button onclick="window.print()"
-                class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors flex items-center">
-          <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-          </svg>
-          Print
-        </button>
       </div>
     </div>
 
     {{-- Estimated banner --}}
-    @if($isMaterialEstimated ?? false)
+    @if(($isMaterialEstimated ?? false) && collect($rkhDetails)->where('usingmaterial', 1)->count() > 0)
     <div class="mx-4 mt-4 p-3 bg-yellow-50 border border-yellow-300 rounded-lg flex items-start gap-2">
       <svg class="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.27 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
@@ -449,7 +442,7 @@
     @endif
 
     <button
-      onclick="window.print()"
+      onclick="window.open('{{ route('transaction.rencanakerjaharian.print', $rkhHeader->rkhno) }}', '_blank')"
       class="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-lg text-sm font-bold uppercase transition-colors flex items-center border-2 border-green-700"
     >
       <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
