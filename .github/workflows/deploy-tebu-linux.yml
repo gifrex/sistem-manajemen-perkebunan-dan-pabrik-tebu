@@ -64,6 +64,7 @@ jobs:
               \"cd /opt/apps/tebu\",
               \"echo $B64_COMPOSE | base64 -d > docker-compose.yml\",
               \"echo $B64_NGINX | base64 -d > docker/nginx/default.conf\",
+              \"sudo docker system prune -af\",
               \"sudo docker compose pull\",
               \"sudo docker compose up -d --force-recreate\",
               \"sudo docker exec tebu-app chown -R 82:82 storage bootstrap/cache\",
