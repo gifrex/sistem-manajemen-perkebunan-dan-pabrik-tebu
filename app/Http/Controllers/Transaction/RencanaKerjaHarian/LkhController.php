@@ -348,4 +348,46 @@ class LkhController extends Controller
             ], 500);
         }
     }
+
+    public function printLKH($lkhno)
+    {
+        try {
+            $companycode = Session::get('companycode');
+            $pageData = $this->lkhService->getShowLkhPageData($lkhno, $companycode);
+
+            if (!$pageData) {
+                return back()->with('error', 'Data LKH tidak ditemukan');
+            }
+
+            if ($pageData['lkhData']->jenistenagakerja == 2) {
+                $pageData['boronganRate'] = $this->masterDataRepo->getBoronganRate(
+                    $companycode,
+                    $pageData['lkhData']->activitycode,
+                    $pageData['lkhData']->lkhdate
+                );
+            }
+
+            $activityType = $pageData['activity_type'];
+
+            if ($activityType === 'bsm') {
+                return view('transaction.rencanakerjaharian.lkh-print.lkh-print-bsm', array_merge([
+                    'title' => 'Print LKH BSM - ' . $lkhno,
+                ], $pageData));
+            }
+
+            if ($activityType === 'panen') {
+                return view('transaction.rencanakerjaharian.lkh-print.lkh-print-panen', array_merge([
+                    'title' => 'Print LKH Panen - ' . $lkhno,
+                ], $pageData));
+            }
+
+            return view('transaction.rencanakerjaharian.lkh-print.lkh-print', array_merge([
+                'title' => 'Print LKH - ' . $lkhno,
+            ], $pageData));
+
+        } catch (\Exception $e) {
+            \Log::error('LKH Print Error', ['lkhno' => $lkhno, 'message' => $e->getMessage()]);
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
 }
