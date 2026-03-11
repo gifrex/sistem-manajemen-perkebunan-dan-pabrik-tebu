@@ -328,21 +328,20 @@ class ReportController extends Controller
             ->get();
 
         if ($zpk->isEmpty()) {
-            return back()->with('export_empty', 'Tidak ada data ZPK pada periode yang dipilih untuk diekspor.');
+            return response()->json(['error' => 'Tidak ada data ZPK pada periode yang dipilih untuk diekspor.'], 200);
         }
 
         $spreadsheet = $this->buildZPKSpreadsheet($zpk, $startDate, $endDate);
-        $writer = new Xlsx($spreadsheet);
         $filename = 'ZPKReport' . ($startDate ? "_{$startDate}_sd_{$endDate}" : '') . '.xlsx';
 
-        return response()->stream(
-            function () use ($writer) {
+        return response()->streamDownload(
+            function () use ($spreadsheet) {
+                $writer = new Xlsx($spreadsheet);
                 $writer->save('php://output');
             },
-            200,
+            $filename,
             [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'Content-Disposition' => 'attachment;filename="' . $filename . '"',
                 'Cache-Control' => 'max-age=0',
             ]
         );

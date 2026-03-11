@@ -3,26 +3,6 @@
     <x-slot:navbar>{{ $navbar }}</x-slot:navbar>
     <x-slot:nav>{{ $nav }}</x-slot:nav>
 
-    @if (session('export_empty'))
-        <div id="notif-export-empty"
-            class="mb-4 flex items-center gap-3 px-4 py-3 bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-lg shadow-sm text-sm">
-            <svg class="w-5 h-5 flex-shrink-0 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd"
-                    d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z"
-                    clip-rule="evenodd" />
-            </svg>
-            <span>{{ session('export_empty') }}</span>
-            <button onclick="document.getElementById('notif-export-empty').remove()"
-                class="ml-auto text-yellow-500 hover:text-yellow-700">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd"
-                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                        clip-rule="evenodd" />
-                </svg>
-            </button>
-        </div>
-    @endif
-
     <div class="mx-auto py-6 bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg border border-gray-200">
         <!-- Header Section -->
         <div class="px-6 pb-4 border-b border-gray-200">
@@ -323,14 +303,14 @@
             const iconSpin = document.getElementById('icon-spin');
             const label = document.getElementById('label-export');
 
-            // Baca tanggal dari input saat ini (bukan dari URL yang di-generate saat load)
             const startDate = document.getElementById('start_date').value;
             const endDate = document.getElementById('end_date').value;
             const baseUrl = btn.getAttribute('data-base-url');
+
             const params = new URLSearchParams();
             if (startDate) params.append('start_date', startDate);
             if (endDate) params.append('end_date', endDate);
-            const url = params.toString() ? baseUrl + '?' + params.toString() : baseUrl;
+            const url = baseUrl + '?' + params.toString();
 
             btn.disabled = true;
             btn.classList.add('opacity-75', 'cursor-not-allowed');
@@ -338,16 +318,58 @@
             iconSpin.classList.remove('hidden');
             label.textContent = 'Mengekspor...';
 
-            window.location.href = url;
+            fetch(url)
+                .then(function(response) {
+                    const contentType = response.headers.get('Content-Type') || '';
+                    if (contentType.includes('application/json')) {
+                        return response.json().then(function(json) {
+                            showToast('error', json.error || 'Tidak ada data untuk diekspor.');
+                        });
+                    }
+                    return response.blob().then(function(blob) {
+                        const disposition = response.headers.get('Content-Disposition') || '';
+                        const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                        const filename = match ? match[1].replace(/['"]/g, '') : 'ZPKReport.xlsx';
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = filename;
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                    });
+                })
+                .catch(function() {
+                    showToast('error', 'Gagal mengekspor data. Silakan coba lagi.');
+                })
+                .finally(function() {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                    iconExport.classList.remove('hidden');
+                    iconSpin.classList.add('hidden');
+                    label.textContent = 'Export Excel';
+                });
+        }
 
-            // reset tombol setelah 5 detik (estimasi download selesai)
+        function showToast(type, msg) {
+            const colors = type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white';
+            const icon = type === 'success' ?
+                '<svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>' :
+                '<svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>';
+            const t = document.createElement('div');
+            t.className =
+                `fixed top-6 right-6 z-[9999] flex items-start gap-3 px-5 py-4 rounded-xl shadow-xl ${colors} max-w-sm transition-all duration-300 opacity-0 translate-y-2`;
+            t.innerHTML = `${icon}<span class="text-sm font-medium">${msg}</span>`;
+            document.body.appendChild(t);
             setTimeout(function() {
-                btn.disabled = false;
-                btn.classList.remove('opacity-75', 'cursor-not-allowed');
-                iconExport.classList.remove('hidden');
-                iconSpin.classList.add('hidden');
-                label.textContent = 'Export Excel';
-            }, 5000);
+                t.style.opacity = '1';
+                t.style.transform = 'translateY(0)';
+            }, 10);
+            setTimeout(function() {
+                t.style.opacity = '0';
+                t.style.transform = 'translateY(-8px)';
+                setTimeout(function() {
+                    t.remove();
+                }, 300);
+            }, 4000);
         }
 
         function toggleDropdown() {
