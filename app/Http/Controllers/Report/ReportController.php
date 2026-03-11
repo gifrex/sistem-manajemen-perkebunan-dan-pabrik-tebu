@@ -286,24 +286,24 @@ class ReportController extends Controller
 
     public function excelZPK(Request $request)
     {
-        // $startDate = $request->input('start_date');
-        // $endDate = $request->input('end_date');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
 
-        $querys = DB::table('masterlist')
-            ->join('lkhdetailplot', 'masterlist.plot', '=', 'lkhdetailplot.plot')
+        $querys = DB::table('batch')
+            ->join('lkhdetailplot', 'batch.plot', '=', 'lkhdetailplot.plot')
             ->join('lkhhdr', 'lkhhdr.lkhno', '=', 'lkhdetailplot.lkhno')
-            ->where('masterlist.companycode', '=', session('companycode'))
-            ->where('lkhhdr.activitycode', '=', '4.2.2')
-            ->where('masterlist.isactive', '=', 1)
-            ->orderBy('plot', 'desc');
+            ->where('batch.companycode', '=', session('companycode'))
+            ->where('lkhhdr.activitycode', '=', '4.2.1')
+            ->where('batch.isactive', '=', 1)
+            ->when($startDate, function ($query) use ($startDate) {
+                $query->whereDate('lkhhdr.lkhdate', '>=', $startDate);
+            })
+            ->when($endDate, function ($query) use ($endDate) {
+                $query->whereDate('lkhhdr.lkhdate', '<=', $endDate);
+            })
+            ->orderBy('batch.plot', 'desc');
 
-        // if ($startDate) {
-        //     $query->whereDate('agrohdr.tanggalpengamatan', '>=', $startDate);
-        // }
-        // if ($endDate) {
-        //     $query->whereDate('agrohdr.tanggalpengamatan', '<=', $endDate);
-        // }
-        $zpk = $querys->select('masterlist.*', 'lkhhdr.lkhdate')->get();
+        $zpk = $querys->select('batch.*', 'lkhhdr.lkhdate')->get();
 
         $now = Carbon::now();
 
@@ -320,17 +320,26 @@ class ReportController extends Controller
         $sheet->setCellValue('H1', 'Varietas');
         $sheet->setCellValue('I1', 'PKP');
         $sheet->setCellValue('J1', 'Tanggal ZPK');
-        $sheet->setCellValue('K1', 'Tanggal Panen');
+        $sheet->setCellValue('K1', 'Perkiraan Panen Awal');
+        $sheet->setCellValue('L1', 'Perkiraan Panen Akhir');
 
-        $sheet->getStyle('A1:K1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:L1')->getFont()->setBold(true);
         $sheet->freezePane('A2');
 
         $row = 2;
         foreach ($zpk as $list) {
-
             $tanggaltanam = Carbon::parse($list->batchdate);
             $umur = $tanggaltanam->diffInMonths($now);
             $bulantanam = $tanggaltanam->locale('id')->translatedFormat('F');
+
+            if ($list->lkhdate) {
+                $lkhdate = Carbon::parse($list->lkhdate);
+                $perkiraan_panen_awal = $lkhdate->copy()->addDays(28)->format('d/m/Y');
+                $perkiraan_panen_akhir = $lkhdate->copy()->addDays(35)->format('d/m/Y');
+            } else {
+                $perkiraan_panen_awal = '';
+                $perkiraan_panen_akhir = '';
+            }
 
             $sheet->setCellValue('A' . $row, $list->companycode);
             $sheet->setCellValue('B' . $row, $list->blok);
@@ -340,19 +349,16 @@ class ReportController extends Controller
             $sheet->setCellValue('F' . $row, round($umur) . ' Bulan');
             $sheet->setCellValue('G' . $row, $list->kodestatus);
             $sheet->setCellValue('H' . $row, $list->kodevarietas);
-            $sheet->setCellValue('I' . $row, $list->jaraktanam);
+            $sheet->setCellValue('I' . $row, $list->pkp);
             $sheet->setCellValue('J' . $row, $list->lkhdate ?? '');
-            $sheet->setCellValue('K' . $row, $list->tanggalpanen ?? '');
+            $sheet->setCellValue('K' . $row, $perkiraan_panen_awal);
+            $sheet->setCellValue('L' . $row, $perkiraan_panen_akhir);
 
             $row++;
         }
 
         $writer = new Xlsx($spreadsheet);
-        // if ($startDate && $endDate) {
-        //     $filename = "AgronomiReport_{$startDate}_sd_{$endDate}.xlsx";
-        // } else {
         $filename = "ZPKReport.xlsx";
-        // }
         return response()->stream(
             function () use ($writer) {
                 $writer->save('php://output');
