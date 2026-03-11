@@ -212,27 +212,38 @@ class ReportController extends Controller
 
         $perPage = $request->session()->get('perPage', 10);
 
-        $querys = DB::table('batch')
-            ->join('lkhdetailplot', 'batch.plot', '=', 'lkhdetailplot.plot')
-            ->join('lkhhdr', 'lkhhdr.lkhno', '=', 'lkhdetailplot.lkhno')
-            ->where('batch.companycode', '=', session('companycode'))
-            ->where('lkhhdr.activitycode', '=', '4.2.2')
-            ->where('batch.isactive', '=', 1)
+        $querys = DB::table('batch as a')
+            ->join('lkhdetailplot as b', function ($join) {
+                $join->on('b.plot', '=', 'a.plot')
+                    ->on('b.companycode', '=', 'a.companycode');
+            })
+            ->join('lkhhdr as c', function ($join) {
+                $join->on('c.lkhno', '=', 'b.lkhno')
+                    ->on('c.companycode', '=', 'b.companycode');
+            })
+            ->leftJoin('masterlist as d', function ($join) {
+                $join->on('a.plot', '=', 'd.plot')
+                    ->on('a.companycode', '=', 'd.companycode')
+                    ->where('d.isactive', '=', 1);
+            })
+            ->where('a.companycode', '=', session('companycode'))
+            ->where('c.activitycode', '=', '4.2.2')
+            ->where('a.isactive', '=', 1)
             ->when($startDate, function ($query) use ($startDate) {
-                $query->whereDate('lkhhdr.lkhdate', '>=', $startDate);
+                $query->whereDate('c.lkhdate', '>=', $startDate);
             })
             ->when($endDate, function ($query) use ($endDate) {
-                $query->whereDate('lkhhdr.lkhdate', '<=', $endDate);
+                $query->whereDate('c.lkhdate', '<=', $endDate);
             });
         if (!empty($search)) {
             $querys->where(function ($query) use ($search) {
-                $query->where('kodevarietas', 'like', '%' . $search . '%')
-                    ->orWhere('plot', 'like', '%' . $search . '%')
-                    ->orWhere('kodestatus', 'like', '%' . $search . '%');
+                $query->where('a.kodevarietas', 'like', '%' . $search . '%')
+                    ->orWhere('a.plot', 'like', '%' . $search . '%')
+                    ->orWhere('a.kodestatus', 'like', '%' . $search . '%');
             });
         }
 
-        $zpk = $querys->select('batch.*', 'lkhhdr.lkhdate')
+        $zpk = $querys->select('a.*', 'c.lkhdate', DB::raw('d.blok as blok'))
             ->paginate($perPage);
 
         foreach ($zpk as $item) {
@@ -289,76 +300,41 @@ class ReportController extends Controller
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
-        $querys = DB::table('batch')
-            ->join('lkhdetailplot', 'batch.plot', '=', 'lkhdetailplot.plot')
-            ->join('lkhhdr', 'lkhhdr.lkhno', '=', 'lkhdetailplot.lkhno')
-            ->where('batch.companycode', '=', session('companycode'))
-            ->where('lkhhdr.activitycode', '=', '4.2.2')
-            ->where('batch.isactive', '=', 1)
+        $zpk = DB::table('batch as a')
+            ->join('lkhdetailplot as b', function ($join) {
+                $join->on('b.plot', '=', 'a.plot')
+                    ->on('b.companycode', '=', 'a.companycode');
+            })
+            ->join('lkhhdr as c', function ($join) {
+                $join->on('c.lkhno', '=', 'b.lkhno')
+                    ->on('c.companycode', '=', 'b.companycode');
+            })
+            ->leftJoin('masterlist as d', function ($join) {
+                $join->on('a.plot', '=', 'd.plot')
+                    ->on('a.companycode', '=', 'd.companycode')
+                    ->where('d.isactive', '=', 1);
+            })
+            ->where('a.companycode', '=', session('companycode'))
+            ->where('c.activitycode', '=', '4.2.2')
+            ->where('a.isactive', '=', 1)
             ->when($startDate, function ($query) use ($startDate) {
-                $query->whereDate('lkhhdr.lkhdate', '>=', $startDate);
+                $query->whereDate('c.lkhdate', '>=', $startDate);
             })
             ->when($endDate, function ($query) use ($endDate) {
-                $query->whereDate('lkhhdr.lkhdate', '<=', $endDate);
+                $query->whereDate('c.lkhdate', '<=', $endDate);
             })
-            ->orderBy('batch.plot', 'desc');
+            ->orderBy('a.plot', 'desc')
+            ->select('a.*', 'c.lkhdate', DB::raw('d.blok as blok'))
+            ->get();
 
-        $zpk = $querys->select('batch.*', 'lkhhdr.lkhdate')->get();
-
-        $now = Carbon::now();
-
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-
-        $sheet->setCellValue('A1', 'Kebun');
-        $sheet->setCellValue('B1', 'Blok');
-        $sheet->setCellValue('C1', 'Plot');
-        $sheet->setCellValue('D1', 'Luas (Ha)');
-        $sheet->setCellValue('E1', 'Bulan Tanam');
-        $sheet->setCellValue('F1', 'Umur');
-        $sheet->setCellValue('G1', 'Kategori');
-        $sheet->setCellValue('H1', 'Varietas');
-        $sheet->setCellValue('I1', 'PKP');
-        $sheet->setCellValue('J1', 'Tanggal ZPK');
-        $sheet->setCellValue('K1', 'Perkiraan Panen Awal');
-        $sheet->setCellValue('L1', 'Perkiraan Panen Akhir');
-
-        $sheet->getStyle('A1:L1')->getFont()->setBold(true);
-        $sheet->freezePane('A2');
-
-        $row = 2;
-        foreach ($zpk as $list) {
-            $tanggaltanam = Carbon::parse($list->batchdate);
-            $umur = $tanggaltanam->diffInMonths($now);
-            $bulantanam = $tanggaltanam->locale('id')->translatedFormat('F');
-
-            if ($list->lkhdate) {
-                $lkhdate = Carbon::parse($list->lkhdate);
-                $perkiraan_panen_awal = $lkhdate->copy()->addDays(28)->format('d/m/Y');
-                $perkiraan_panen_akhir = $lkhdate->copy()->addDays(35)->format('d/m/Y');
-            } else {
-                $perkiraan_panen_awal = '';
-                $perkiraan_panen_akhir = '';
-            }
-
-            $sheet->setCellValue('A' . $row, $list->companycode);
-            $sheet->setCellValue('B' . $row, $list->blok);
-            $sheet->setCellValue('C' . $row, $list->plot);
-            $sheet->setCellValue('D' . $row, $list->batcharea);
-            $sheet->setCellValue('E' . $row, $bulantanam);
-            $sheet->setCellValue('F' . $row, round($umur) . ' Bulan');
-            $sheet->setCellValue('G' . $row, $list->kodestatus);
-            $sheet->setCellValue('H' . $row, $list->kodevarietas);
-            $sheet->setCellValue('I' . $row, $list->pkp);
-            $sheet->setCellValue('J' . $row, $list->lkhdate ?? '');
-            $sheet->setCellValue('K' . $row, $perkiraan_panen_awal);
-            $sheet->setCellValue('L' . $row, $perkiraan_panen_akhir);
-
-            $row++;
+        if ($zpk->isEmpty()) {
+            return back()->with('export_empty', 'Tidak ada data ZPK pada periode yang dipilih untuk diekspor.');
         }
 
+        $spreadsheet = $this->buildZPKSpreadsheet($zpk, $startDate, $endDate);
         $writer = new Xlsx($spreadsheet);
-        $filename = "ZPKReport.xlsx";
+        $filename = 'ZPKReport' . ($startDate ? "_{$startDate}_sd_{$endDate}" : '') . '.xlsx';
+
         return response()->stream(
             function () use ($writer) {
                 $writer->save('php://output');
@@ -370,5 +346,133 @@ class ReportController extends Controller
                 'Cache-Control' => 'max-age=0',
             ]
         );
+    }
+
+    private function buildZPKSpreadsheet($zpk, ?string $startDate, ?string $endDate): Spreadsheet
+    {
+        $now = Carbon::now();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Report ZPK');
+
+        $alignCenter = \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER;
+        $alignVCenter = \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER;
+        $fillSolid = \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID;
+        $borderThin = \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN;
+
+        // ── Baris 1: Judul ───────────────────────────────────────────
+        $sheet->mergeCells('A1:L1');
+        $sheet->setCellValue('A1', 'Report ZPK (Zat Pemacu Kemasakan)');
+        $sheet->getStyle('A1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 14],
+            'alignment' => ['horizontal' => $alignCenter, 'vertical' => $alignVCenter],
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(22);
+
+        // ── Baris 2: Periode ─────────────────────────────────────────
+        $sheet->mergeCells('A2:L2');
+        $rangeLabel = ($startDate && $endDate)
+            ? "Periode: {$startDate} s/d {$endDate}"
+            : 'Data aplikasi zat pemacu kemasakan dan jadwal panen tebu';
+        $sheet->setCellValue('A2', $rangeLabel);
+        $sheet->getStyle('A2')->applyFromArray([
+            'font' => ['italic' => true, 'size' => 10, 'color' => ['rgb' => '6B7280']],
+            'alignment' => ['horizontal' => $alignCenter],
+        ]);
+
+        // ── Baris 3: Kosong ──────────────────────────────────────────
+        $sheet->getRowDimension(3)->setRowHeight(6);
+
+        // ── Baris 4: Header kolom ────────────────────────────────────
+        $headers = [
+            'A' => ['No.', 'E5E7EB'],
+            'B' => ['Kebun', 'E5E7EB'],
+            'C' => ['Blok', 'E5E7EB'],
+            'D' => ['Plot', 'E5E7EB'],
+            'E' => ['Luas (Ha)', 'BFDBFE'],
+            'F' => ['Bulan Tanam', 'E5E7EB'],
+            'G' => ['Umur', 'BBF7D0'],
+            'H' => ['Kategori', 'E5E7EB'],
+            'I' => ['Varietas', 'E5E7EB'],
+            'J' => ['PKP', 'FDE68A'],
+            'K' => ['Tanggal ZPK', 'DDD6FE'],
+            'L' => ['Perkiraan Panen', 'FECACA'],
+        ];
+
+        foreach ($headers as $col => [$label, $bg]) {
+            $cell = "{$col}4";
+            $sheet->setCellValue($cell, $label);
+            $sheet->getStyle($cell)->applyFromArray([
+                'font' => ['bold' => true],
+                'fill' => ['fillType' => $fillSolid, 'startColor' => ['rgb' => $bg]],
+                'alignment' => ['horizontal' => $alignCenter, 'vertical' => $alignVCenter],
+                'borders' => ['allBorders' => ['borderStyle' => $borderThin, 'color' => ['rgb' => 'D1D5DB']]],
+            ]);
+        }
+        $sheet->getRowDimension(4)->setRowHeight(18);
+        $sheet->freezePane('A5');
+
+        // ── Baris 5+: Data ───────────────────────────────────────────
+        $colColors = [
+            'E' => 'EFF6FF',
+            'G' => 'F0FDF4',
+            'J' => 'FEFCE8',
+            'K' => 'FAF5FF',
+            'L' => 'FFF1F2',
+        ];
+
+        $row = 5;
+        $no = 1;
+        foreach ($zpk as $list) {
+            $tanggaltanam = Carbon::parse($list->batchdate);
+            $umur = $tanggaltanam->diffInMonths($now);
+            $bulantanam = $tanggaltanam->locale('id')->translatedFormat('F');
+
+            if ($list->lkhdate) {
+                $lkhdate = Carbon::parse($list->lkhdate);
+                $perkiraanPanen = $lkhdate->copy()->addDays(28)->format('d/m/Y')
+                    . ' – '
+                    . $lkhdate->copy()->addDays(35)->format('d/m/Y');
+            } else {
+                $perkiraanPanen = '-';
+            }
+
+            $rowData = [
+                'A' => $no++,
+                'B' => $list->companycode ?? '-',
+                'C' => $list->blok ?? '-',
+                'D' => $list->plot ?? '-',
+                'E' => ($list->batcharea ?? '-') . ' Ha',
+                'F' => $bulantanam,
+                'G' => round($umur) . ' Bulan',
+                'H' => $list->lifecyclestatus ?? '-',
+                'I' => $list->kodevarietas ?? '-',
+                'J' => $list->pkp ?? '-',
+                'K' => $list->lkhdate ?? '-',
+                'L' => $perkiraanPanen,
+            ];
+
+            foreach ($rowData as $col => $value) {
+                $cell = "{$col}{$row}";
+                $style = [
+                    'alignment' => ['horizontal' => $alignCenter, 'vertical' => $alignVCenter],
+                    'borders' => ['allBorders' => ['borderStyle' => $borderThin, 'color' => ['rgb' => 'E5E7EB']]],
+                ];
+                if (isset($colColors[$col])) {
+                    $style['fill'] = ['fillType' => $fillSolid, 'startColor' => ['rgb' => $colColors[$col]]];
+                }
+                $sheet->setCellValue($cell, $value);
+                $sheet->getStyle($cell)->applyFromArray($style);
+            }
+
+            $row++;
+        }
+
+        foreach (range('A', 'L') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        return $spreadsheet;
     }
 }
