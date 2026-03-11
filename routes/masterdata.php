@@ -64,12 +64,7 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
         Route::get('herbisida', [HerbisidaController::class, 'index'])->name('herbisida.index');
         Route::post('herbisida', [HerbisidaController::class, 'store'])->name('herbisida.store');
         Route::get('herbisida/group', [HerbisidaController::class, 'group'])->name('herbisida.group');
-        Route::get('herbisida/items', function (\Illuminate\Http\Request $request) {
-            return \App\Models\Masterdata\Herbisida::where('companycode', $request->companycode)
-                ->select('itemcode', 'itemname')
-                ->orderBy('itemcode')
-                ->get();
-        })->name('herbisida.items');
+        Route::get('herbisida/items', [HerbisidaController::class, 'items'])->name('herbisida.items');
     });
 
     Route::middleware('permission:masterdata.herbisida.edit')->group(function () {
@@ -99,11 +94,11 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
     });
 
     Route::middleware('permission:masterdata.herbisidadosage.edit')->group(function () {
-        Route::match(['put', 'patch'], 'herbisida-dosage/{companycode}/{activitycode}/{itemcode}', [HerbisidaDosageController::class, 'update'])->name('herbisida-dosage.update');
+        Route::match(['put', 'patch'], 'herbisida-dosage/{herbisidagroupid}/{itemcode}', [HerbisidaDosageController::class, 'update'])->name('herbisida-dosage.update');
     });
 
     Route::middleware('permission:masterdata.herbisidadosage.delete')->group(function () {
-        Route::delete('herbisida-dosage/{companycode}/{activitycode}/{itemcode}', [HerbisidaDosageController::class, 'destroy'])->name('herbisida-dosage.destroy');
+        Route::delete('herbisida-dosage/{herbisidagroupid}/{itemcode}', [HerbisidaDosageController::class, 'destroy'])->name('herbisida-dosage.destroy');
     });
 
     // ============================================================================
