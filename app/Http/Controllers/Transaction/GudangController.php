@@ -1163,6 +1163,8 @@ public function koreksi_submit(Request $request)
 
 public function submit(Request $request)
 {   
+    Log::info('SUBMIT_REQUEST_ROWS_FLATTENED', [
+        'rkhno' => $request]);
     //kunci proses di cache agar ga dobel submit 
     $lockKey = 'submit_lock_' . session('companycode') . '_' . $request->rkhno;
     if (Cache::has($lockKey)) {
@@ -1225,33 +1227,6 @@ public function submit(Request $request)
     if (!$rkhdate) {
         return $releaseLockAndBack('error', 'RKH Date tidak ditemukan.', 5);
     }    
-
-    //3.8
-    $debugRows = [];
-
-    if (is_array($request->itemcode ?? null)) {
-        foreach ($request->itemcode as $lkhno => $items) {
-            foreach ($items as $itemcode => $plots) {
-                foreach ($plots as $plot => $val) {
-                    $debugRows[] = [
-                        'lkhno' => $lkhno,
-                        'itemcode' => $itemcode,
-                        'plot' => $plot,
-                        'dosage' => $request->dosage[$lkhno][$itemcode][$plot] ?? null,
-                        'unit' => $request->unit[$lkhno][$itemcode][$plot] ?? null,
-                        'luas' => $request->luas[$lkhno][$itemcode][$plot] ?? null,
-                    ];
-                }
-            }
-        }
-    }
-
-    Log::info('SUBMIT_REQUEST_ROWS_FLATTENED', [
-        'rkhno' => $request->rkhno,
-        'rows_count' => count($debugRows),
-        'rows_sample' => array_slice($debugRows, 0, 20),
-    ]);
-    //3.8
 
     //tambahan cek standar
     $isApproval = false;
