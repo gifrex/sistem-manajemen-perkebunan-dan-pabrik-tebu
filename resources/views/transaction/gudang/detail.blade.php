@@ -330,7 +330,7 @@
                             } elseif ($qtyRawExp <= 0.05) {
                                 $exp = 0.05;
                             } else {
-                                $exp = ceil($qtyRawExp / 0.05) * 0.05;
+                                $exp = round($qtyRawExp / 0.05) * 0.05;
                             }
                         } else {
                             if ($qtyRawExp <= 0) {
@@ -338,7 +338,7 @@
                             } elseif ($qtyRawExp <= 0.01) {
                                 $exp = 0.01;
                             } else {
-                                $exp = ceil($qtyRawExp / 0.01) * 0.01;
+                                $exp = round($qtyRawExp / 0.01) * 0.01;
                             }
                         }
 
@@ -608,7 +608,7 @@
                 if (num <= 0) return 0;
                 if (num <= 0.05) return 0.05;
 
-                return Math.ceil(num / 0.05) * 0.05;
+                return Math.round(num / 0.05) * 0.05;
             };
 
             const roundto1 = (num) => {
@@ -617,7 +617,7 @@
                 if (num <= 0) return 0;
                 if (num <= 0.01) return 0.01;
 
-                return Math.ceil(num / 0.01) * 0.01;
+                return Math.round(num / 0.01) * 0.01;
             };
             
     
