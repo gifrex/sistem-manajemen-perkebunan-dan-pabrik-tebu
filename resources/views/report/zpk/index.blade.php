@@ -42,35 +42,22 @@
                 <!-- Action Button -->
                 <div>
                     @can('report.zpk.export')
-                        @if ($zpk->total() > 0)
-                            <button id="btn-export" data-base-url="{{ route('report.report-zpk.exportExcel') }}"
-                                class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
-                                onclick="startExport()">
-                                <svg id="icon-export" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                    <path fill-rule="evenodd"
-                                        d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Zm2 0V2h7a2 2 0 0 1 2 2v9.293l-2-2a1 1 0 0 0-1.414 1.414l.293.293h-6.586a1 1 0 1 0 0 2h6.586l-.293.293A1 1 0 0 0 18 16.707l2-2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9h5a2 2 0 0 0 2-2Z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                                <svg id="icon-spin" class="w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                        stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor"
-                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                </svg>
-                                <span id="label-export">Export Excel</span>
-                            </button>
-                        @else
-                            <button disabled
-                                class="bg-gray-300 text-gray-500 px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 cursor-not-allowed"
-                                title="Tidak ada data untuk diekspor">
-                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                    <path fill-rule="evenodd"
-                                        d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Zm2 0V2h7a2 2 0 0 1 2 2v9.293l-2-2a1 1 0 0 0-1.414 1.414l.293.293h-6.586a1 1 0 1 0 0 2h6.586l-.293.293A1 1 0 0 0 18 16.707l2-2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9h5a2 2 0 0 0 2-2Z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                                <span>Export Excel</span>
-                            </button>
-                        @endif
+                        <button id="btn-export" data-base-url="{{ route('report.report-zpk.exportExcel') }}"
+                            class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
+                            onclick="startExport()">
+                            <svg id="icon-export" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd"
+                                    d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Zm2 0V2h7a2 2 0 0 1 2 2v9.293l-2-2a1 1 0 0 0-1.414 1.414l.293.293h-6.586a1 1 0 1 0 0 2h6.586l-.293.293A1 1 0 0 0 18 16.707l2-2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9h5a2 2 0 0 0 2-2Z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            <svg id="icon-spin" class="w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            <span id="label-export">Export Excel</span>
+                        </button>
                     @endcan
                 </div>
             </div>
