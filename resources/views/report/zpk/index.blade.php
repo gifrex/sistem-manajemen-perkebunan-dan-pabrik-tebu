@@ -3,6 +3,26 @@
     <x-slot:navbar>{{ $navbar }}</x-slot:navbar>
     <x-slot:nav>{{ $nav }}</x-slot:nav>
 
+    @if (session('export_empty'))
+        <div id="notif-export-empty"
+            class="mb-4 flex items-center gap-3 px-4 py-3 bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-lg shadow-sm text-sm">
+            <svg class="w-5 h-5 flex-shrink-0 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd"
+                    d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                    clip-rule="evenodd" />
+            </svg>
+            <span>{{ session('export_empty') }}</span>
+            <button onclick="document.getElementById('notif-export-empty').remove()"
+                class="ml-auto text-yellow-500 hover:text-yellow-700">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clip-rule="evenodd" />
+                </svg>
+            </button>
+        </div>
+    @endif
+
     <div class="mx-auto py-6 bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg border border-gray-200">
         <!-- Header Section -->
         <div class="px-6 pb-4 border-b border-gray-200">
@@ -22,16 +42,35 @@
                 <!-- Action Button -->
                 <div>
                     @can('report.zpk.export')
-                        <button
-                            class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
-                            onclick="window.location.href='{{ route('report.report-zpk.exportExcel', ['start_date' => old('start_date', request()->start_date), 'end_date' => old('end_date', request()->end_date)]) }}'">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path fill-rule="evenodd"
-                                    d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Zm2 0V2h7a2 2 0 0 1 2 2v9.293l-2-2a1 1 0 0 0-1.414 1.414l.293.293h-6.586a1 1 0 1 0 0 2h6.586l-.293.293A1 1 0 0 0 18 16.707l2-2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9h5a2 2 0 0 0 2-2Z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                            <span>Export Excel</span>
-                        </button>
+                        @if ($zpk->total() > 0)
+                            <button id="btn-export" data-base-url="{{ route('report.report-zpk.exportExcel') }}"
+                                class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
+                                onclick="startExport()">
+                                <svg id="icon-export" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path fill-rule="evenodd"
+                                        d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Zm2 0V2h7a2 2 0 0 1 2 2v9.293l-2-2a1 1 0 0 0-1.414 1.414l.293.293h-6.586a1 1 0 1 0 0 2h6.586l-.293.293A1 1 0 0 0 18 16.707l2-2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9h5a2 2 0 0 0 2-2Z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                <svg id="icon-spin" class="w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                        stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                <span id="label-export">Export Excel</span>
+                            </button>
+                        @else
+                            <button disabled
+                                class="bg-gray-300 text-gray-500 px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 cursor-not-allowed"
+                                title="Tidak ada data untuk diekspor">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path fill-rule="evenodd"
+                                        d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Zm2 0V2h7a2 2 0 0 1 2 2v9.293l-2-2a1 1 0 0 0-1.414 1.414l.293.293h-6.586a1 1 0 1 0 0 2h6.586l-.293.293A1 1 0 0 0 18 16.707l2-2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9h5a2 2 0 0 0 2-2Z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                <span>Export Excel</span>
+                            </button>
+                        @endif
                     @endcan
                 </div>
             </div>
@@ -291,6 +330,39 @@
     </div>
 
     <script>
+        function startExport() {
+            const btn = document.getElementById('btn-export');
+            const iconExport = document.getElementById('icon-export');
+            const iconSpin = document.getElementById('icon-spin');
+            const label = document.getElementById('label-export');
+
+            // Baca tanggal dari input saat ini (bukan dari URL yang di-generate saat load)
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            const baseUrl = btn.getAttribute('data-base-url');
+            const params = new URLSearchParams();
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            const url = params.toString() ? baseUrl + '?' + params.toString() : baseUrl;
+
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+            iconExport.classList.add('hidden');
+            iconSpin.classList.remove('hidden');
+            label.textContent = 'Mengekspor...';
+
+            window.location.href = url;
+
+            // reset tombol setelah 5 detik (estimasi download selesai)
+            setTimeout(function() {
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                iconExport.classList.remove('hidden');
+                iconSpin.classList.add('hidden');
+                label.textContent = 'Export Excel';
+            }, 5000);
+        }
+
         function toggleDropdown() {
             const dropdown = document.getElementById('menu-dropdown');
             dropdown.classList.toggle('hidden');
