@@ -28,7 +28,7 @@
                             </div>
                             
                             <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
-                                Hello,
+                                Welcome Back,
                                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400">{{ $user }}</span>
                             </h1>
                             
