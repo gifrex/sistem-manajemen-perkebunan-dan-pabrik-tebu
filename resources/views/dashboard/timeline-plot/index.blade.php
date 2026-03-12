@@ -460,9 +460,9 @@ function getPlotColor(d) {
   const hasAnyActivity = Array.isArray(d.activities) && d.activities.length > 0;
   if (!hasAnyActivity) return '#fef3c7';
 
-  // cari ZPK (4.2.1) dan hitung hari sejak ZPK
+  // cari ZPK (4.2.2) dan hitung hari sejak ZPK
   let daysSinceZpk = null;
-  const zpkAct = d.activities.find(a => a.code === '4.2.1');
+  const zpkAct = d.activities.find(a => a.code === '4.2.2');
   if (zpkAct && zpkAct.tanggal) {
     const zpkDate = new Date(zpkAct.tanggal);
     const today   = new Date();
@@ -488,12 +488,12 @@ function getRingColor(d) {
   const umurHari  = d.umur_hari || 0;
   const umurBulan = (d.umur_bulan ?? 0);
 
-  // cari activity ZPK (4.2.1)
+  // cari activity ZPK (4.2.2)
   let hasZpk = false;
   let daysSinceZpk = null;
 
   if (Array.isArray(d.activities)) {
-    const zpkAct = d.activities.find(a => a.code === '4.2.1');
+    const zpkAct = d.activities.find(a => a.code === '4.2.2');
     if (zpkAct && zpkAct.tanggal) {
       hasZpk = true;
       const zpkDate = new Date(zpkAct.tanggal);
