@@ -218,7 +218,7 @@
                                 <td class="py-3 px-4 text-center text-gray-700 bg-purple-50">
                                     <span
                                         class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                                        {{ $item->lkhdate ?? '-' }}
+                                        {{ $item->tanggal_zpk ?? '-' }}
                                     </span>
                                 </td>
                                 <td class="py-3 px-4 text-center text-gray-700 bg-red-50">
