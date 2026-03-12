@@ -76,7 +76,7 @@ if ($cropType === 'rc') {
     ];
 } elseif ($cropType === 'p') {
     $activityMap = [
-        '4.2.1'  => 'ZPK',
+        '4.2.2'  => 'ZPK',
         '4.3.3'  => 'Pengangkutan (P.Manual)',
         '4.4.3'  => 'Pengangkutan (P.Semi)',
         '4.5.2'  => 'Pengangkutan (P.Mekanis)',
