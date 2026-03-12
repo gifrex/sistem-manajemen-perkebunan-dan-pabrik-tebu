@@ -413,7 +413,7 @@
                                         <p
                                             class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
                                             Mandor</p>
-                                        <p class="font-medium text-slate-800">{{ $absen->mandor_nama ?? '-' }}</p>
+                                        <p class="font-medium text-slate-800">{{ $absen->mandor_nama ?? '-' }} <span class="text-slate-400 font-normal">- {{ $absen->mandorid }}</span></p>
                                     </div>
                                     <div>
                                         <p
@@ -441,8 +441,12 @@
                                         <input type="hidden" name="absenno" value="{{ $absen->absenno }}">
                                         <input type="hidden" name="action" value="approve">
                                         <button type="submit"
+                                            @if (!$absen->lkh_uploaded) disabled @endif
                                             onclick="return confirm('Approve Absen {{ $absen->absenno }}?')"
-                                            class="w-full inline-flex items-center justify-center gap-1.5 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-emerald-200 active:scale-[0.98]">
+                                            class="w-full inline-flex items-center justify-center gap-1.5 py-2 px-4 text-sm font-medium rounded-lg transition-colors active:scale-[0.98]
+                                                {{ $absen->lkh_uploaded
+                                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200'
+                                                    : 'bg-slate-100 text-slate-400 cursor-not-allowed' }}">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                 stroke-width="2" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -450,6 +454,16 @@
                                             </svg>
                                             Approve
                                         </button>
+                                        @if (!$absen->lkh_uploaded)
+                                            <p class="text-[10px] text-amber-600 mt-1 text-center flex items-center justify-center gap-1">
+                                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd"
+                                                        d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                                                        clip-rule="evenodd" />
+                                                </svg>
+                                                LKH belum diupload untuk tanggal ini
+                                            </p>
+                                        @endif
                                     </form>
                                     <form action="{{ route('approval.absen.process') }}" method="POST"
                                         class="flex-1">

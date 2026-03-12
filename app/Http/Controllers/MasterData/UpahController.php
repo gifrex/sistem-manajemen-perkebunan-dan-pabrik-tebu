@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Masterdata;
+namespace App\Http\Controllers\MasterData;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
