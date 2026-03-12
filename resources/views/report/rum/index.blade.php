@@ -41,14 +41,21 @@
                         </svg>
                         <span>Print BP</span>
                     </button>
-                    <button type="button" onclick="exportToExcel()"
+                    <button type="button" id="exportBtn" onclick="exportToExcel()"
                         class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <svg id="exportIcon" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                             <path fill-rule="evenodd"
                                 d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Zm2 0V2h7a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9h5a2 2 0 0 0 2-2Zm2-2a1 1 0 1 0 0 2h3a1 1 0 1 0 0-2h-3Zm0 3a1 1 0 1 0 0 2h3a1 1 0 1 0 0-2h-3Zm-6 4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-6Zm8 1v1h-2v-1h2Zm0 3h-2v1h2v-1Zm-4-3v1H9v-1h2Zm0 3H9v1h2v-1Z"
                                 clip-rule="evenodd" />
                         </svg>
-                        <span>Export</span>
+                        <svg id="exportSpinner" class="w-5 h-5 hidden animate-spin" xmlns="http://www.w3.org/2000/svg"
+                            fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        <span id="exportText">Export</span>
                     </button>
                 </div>
             </div>
@@ -74,11 +81,11 @@
                                     {{ old('tenagakerjarum', session('tenagakerjarum')) == null ? 'selected' : '' }}>
                                     -- Pilih Tenaga Kerja --
                                 </option>
-                                <option value="Harian"
+                                <option value="Harian" class="text-gray-700"
                                     {{ old('tenagakerjarum', session('tenagakerjarum')) == 'Harian' ? 'selected' : '' }}>
                                     Harian
                                 </option>
-                                <option value="Borongan"
+                                <option value="Borongan" class="text-gray-700"
                                     {{ old('tenagakerjarum', session('tenagakerjarum')) == 'Borongan' ? 'selected' : '' }}>
                                     Borongan
                                 </option>
@@ -388,8 +395,25 @@
                                 clip-rule="evenodd" />
                         </svg>
                     </div>
-                    <h2 class="text-xl font-bold text-gray-900">Detail Daftar List</h2>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900">Detail Daftar List</h2>
+                        <p class="text-xs text-indigo-500 font-mono" id="modal-lkhno"></p>
+                    </div>
                 </div>
+
+                <!-- Loading badge: tampil saat loading -->
+                <div id="modal-loading-badge"
+                    class="hidden items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-full text-xs font-semibold text-indigo-600">
+                    <svg class="w-3.5 h-3.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                            stroke-width="4" />
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Memuat data...
+                </div>
+
                 <button onclick="closeModal()" class="p-2 hover:bg-gray-100 rounded-lg transition-all duration-200">
                     <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -403,19 +427,31 @@
                 @if (session('tenagakerjarum') == 'Harian')
                     <!-- Info Card above table (Harian only) -->
                     <div class="mb-4 grid grid-cols-3 gap-3" id="modal-info-cards">
-                        <div class="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
-                            <p class="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">Plot</p>
-                            <p class="text-sm font-medium text-gray-800" id="modal-plot">-</p>
+                        <!-- Skeleton cards (tampil saat loading) -->
+                        <div id="modal-info-skeleton" class="col-span-3 grid grid-cols-3 gap-3">
+                            @for ($i = 0; $i < 3; $i++)
+                                <div class="bg-gray-100 border border-gray-200 rounded-lg px-4 py-3 animate-pulse">
+                                    <div class="h-3 bg-gray-300 rounded w-16 mb-2"></div>
+                                    <div class="h-4 bg-gray-300 rounded w-24"></div>
+                                </div>
+                            @endfor
                         </div>
-                        <div class="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
-                            <p class="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">Status Tanam
-                            </p>
-                            <p class="text-sm font-medium text-gray-800" id="modal-status">-</p>
-                        </div>
-                        <div class="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
-                            <p class="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">Hasil (Ha)
-                            </p>
-                            <p class="text-sm font-medium text-gray-800" id="modal-hasil">-</p>
+                        <!-- Real cards (tampil setelah data load) -->
+                        <div id="modal-info-real" class="col-span-3 grid-cols-3 gap-3" style="display:none">
+                            <div class="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
+                                <p class="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">Plot</p>
+                                <p class="text-sm font-medium text-gray-800" id="modal-plot">-</p>
+                            </div>
+                            <div class="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
+                                <p class="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">Status
+                                    Tanam</p>
+                                <p class="text-sm font-medium text-gray-800" id="modal-status">-</p>
+                            </div>
+                            <div class="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
+                                <p class="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">Hasil
+                                    (Ha)</p>
+                                <p class="text-sm font-medium text-gray-800" id="modal-hasil">-</p>
+                            </div>
                         </div>
                     </div>
                 @endif
@@ -462,13 +498,6 @@
                             </tr>
                         </thead>
                         <tbody id="listTableBody" class="bg-white divide-y divide-gray-200">
-                            <tr>
-                                <td colspan="10" class="text-center py-8">
-                                    <div
-                                        class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-indigo-600">
-                                    </div>
-                                </td>
-                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -537,6 +566,29 @@
             to {
                 transform: rotate(360deg);
             }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -400px 0;
+            }
+
+            100% {
+                background-position: 400px 0;
+            }
+        }
+
+        .skeleton-row td {
+            padding: 12px 16px;
+        }
+
+        .skeleton-cell {
+            display: inline-block;
+            height: 14px;
+            border-radius: 6px;
+            background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+            background-size: 400px 100%;
+            animation: shimmer 1.4s infinite linear;
         }
     </style>
 
@@ -722,12 +774,64 @@
             perPageTimeout = setTimeout(() => document.getElementById('filterForm').submit(), 500);
         });
 
-        function showList(lkhno) {
-            const modal = document.getElementById('listModal');
-            const tableBody = document.getElementById('listTableBody');
+        const isHarian = {{ session('tenagakerjarum') == 'Harian' ? 'true' : 'false' }};
+        const colCount = isHarian ? 7 : 6;
 
-            tableBody.innerHTML =
-                '<tr><td colspan="10" class="text-center py-8"><div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-indigo-600"></div></td></tr>';
+        function buildSkeletonRows(n = 5) {
+            const widths = ['w-6', 'w-32', 'w-24', 'w-16', 'w-20', 'w-20', 'w-20'];
+            return Array.from({
+                    length: n
+                }, (_, r) =>
+                `<tr class="skeleton-row">` +
+                Array.from({
+                        length: colCount
+                    }, (__, c) =>
+                    `<td><span class="skeleton-cell ${widths[c] ?? 'w-20'}" style="animation-delay:${(r * colCount + c) * 40}ms"></span></td>`
+                ).join('') +
+                `</tr>`
+            ).join('');
+        }
+
+        function openModal(id) {
+            const m = document.getElementById(id);
+            m.classList.remove('invisible');
+            m.classList.add('visible');
+            setTimeout(() => {
+                m.style.opacity = '1';
+                const inner = m.querySelector('.bg-white');
+                if (inner) inner.style.transform = 'scale(1)';
+            }, 10);
+        }
+
+        function showList(lkhno) {
+            const tableBody = document.getElementById('listTableBody');
+            const badge = document.getElementById('modal-loading-badge');
+            const infoSkel = document.getElementById('modal-info-skeleton');
+            const infoReal = document.getElementById('modal-info-real');
+
+            const elLkhno = document.getElementById('modal-lkhno');
+            if (elLkhno) elLkhno.textContent = lkhno;
+
+            @if (session('tenagakerjarum') == 'Harian')
+                const _elPlot = document.getElementById('modal-plot');
+                const _elStatus = document.getElementById('modal-status');
+                const _elHasil = document.getElementById('modal-hasil');
+                if (_elPlot) _elPlot.textContent = '-';
+                if (_elStatus) _elStatus.textContent = '-';
+                if (_elHasil) _elHasil.textContent = '-';
+                if (infoSkel) {
+                    infoSkel.style.display = '';
+                    infoSkel.classList.remove('hidden');
+                }
+                if (infoReal) infoReal.style.display = 'none';
+            @endif
+
+            if (badge) {
+                badge.classList.remove('hidden');
+                badge.classList.add('flex');
+            }
+            tableBody.innerHTML = buildSkeletonRows(6);
+            openModal('listModal');
 
             const url = `{{ route('report.rekap-upah-mingguan.show', ['lkhno' => '__lkhno__']) }}`.replace('__lkhno__',
                 lkhno);
@@ -738,16 +842,21 @@
                     return r.json();
                 })
                 .then(response => {
+                    if (badge) {
+                        badge.classList.add('hidden');
+                        badge.classList.remove('flex');
+                    }
+
                     tableBody.innerHTML = '';
                     if (response.error) {
                         tableBody.innerHTML =
-                            `<tr><td colspan="10" class="text-center py-8 text-red-600">${response.error}</td></tr>`;
+                            `<tr><td colspan="${colCount}" class="text-center py-8 text-red-600">${response.error}</td></tr>`;
                         return;
                     }
                     const data = response.data || response;
                     if (!data || data.length === 0) {
                         tableBody.innerHTML =
-                            '<tr><td colspan="10" class="text-center py-8 text-gray-500">Tidak ada data</td></tr>';
+                            `<tr><td colspan="${colCount}" class="text-center py-8 text-gray-500">Tidak ada data</td></tr>`;
                         return;
                     }
 
@@ -765,6 +874,8 @@
                                 document.getElementById('modal-status').textContent =
                                     `${item.batchdate || ''}/${item.lifecyclestatus}`;
                                 document.getElementById('modal-hasil').textContent = item.luashasil || '-';
+                                if (infoSkel) infoSkel.style.display = 'none';
+                                if (infoReal) infoReal.style.display = 'grid';
                             }
                             tableBody.innerHTML += `
                                 <tr class="hover:bg-indigo-50 transition-colors duration-150">
@@ -801,17 +912,14 @@
                                 <td class="px-4 py-3 border-t-2 border-indigo-400 text-indigo-700">${totalFormatted}</td>
                             </tr>`;
                     @endif
-
-                    modal.classList.remove('invisible');
-                    modal.classList.add('visible');
-                    setTimeout(() => {
-                        modal.style.opacity = "1";
-                        modal.querySelector('.bg-white').style.transform = "scale(1)";
-                    }, 10);
                 })
                 .catch(err => {
+                    if (badge) {
+                        badge.classList.add('hidden');
+                        badge.classList.remove('flex');
+                    }
                     tableBody.innerHTML =
-                        `<tr><td colspan="10" class="text-center py-8 text-red-600">Gagal memuat data: ${err.message}</td></tr>`;
+                        `<tr><td colspan="${colCount}" class="text-center py-8 text-red-600">Gagal memuat data: ${err.message}</td></tr>`;
                 });
         }
 
@@ -851,17 +959,78 @@
                 '_blank');
         }
 
+        function showToast(type, msg) {
+            const colors = type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white';
+            const icon = type === 'success' ?
+                '<svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>' :
+                '<svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>';
+            const t = document.createElement('div');
+            t.className =
+                `fixed top-6 right-6 z-[9999] flex items-start gap-3 px-5 py-4 rounded-xl shadow-xl ${colors} max-w-sm transition-all duration-300 opacity-0 translate-y-2`;
+            t.innerHTML = `${icon}<span class="text-sm font-medium">${msg}</span>`;
+            document.body.appendChild(t);
+            setTimeout(() => {
+                t.style.opacity = '1';
+                t.style.transform = 'translateY(0)';
+            }, 10);
+            setTimeout(() => {
+                t.style.opacity = '0';
+                t.style.transform = 'translateY(-8px)';
+                setTimeout(() => t.remove(), 300);
+            }, 4000);
+        }
+
         function exportToExcel() {
             const startDate = document.getElementById('start_date').value;
             const endDate = document.getElementById('end_date').value;
-            if (!startDate || !endDate) return alert('Harap pilih range tanggal terlebih dahulu');
+            if (!startDate || !endDate) return showToast('error', 'Harap pilih range tanggal terlebih dahulu');
             const mandorIds = [...document.querySelectorAll('.mandor-cb:checked')].map(cb => cb.value);
             const params = new URLSearchParams({
                 start_date: startDate,
                 end_date: endDate
             });
             if (mandorIds.length) params.set('mandor_ids', mandorIds.join(','));
-            window.location.href = `{{ route('report.rekap-upah-mingguan.export-excel') }}?${params.toString()}`;
+
+            const url = `{{ route('report.rekap-upah-mingguan.export-excel') }}?${params.toString()}`;
+
+            const btn = document.getElementById('exportBtn');
+            const icon = document.getElementById('exportIcon');
+            const spinner = document.getElementById('exportSpinner');
+            const text = document.getElementById('exportText');
+
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+            icon.classList.add('hidden');
+            spinner.classList.remove('hidden');
+            text.textContent = 'Mengekspor...';
+
+            fetch(url)
+                .then(response => {
+                    const contentType = response.headers.get('Content-Type') || '';
+                    if (contentType.includes('application/json')) {
+                        return response.json().then(json => {
+                            showToast('error', json.error || 'Tidak ada data untuk diekspor.');
+                        });
+                    }
+                    return response.blob().then(blob => {
+                        const disposition = response.headers.get('Content-Disposition') || '';
+                        const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                        const filename = match ? match[1].replace(/['"]/g, '') : 'Rekap_Upah_Mingguan.xlsx';
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = filename;
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                    });
+                })
+                .catch(() => showToast('error', 'Gagal mengekspor data. Silakan coba lagi.'))
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                    icon.classList.remove('hidden');
+                    spinner.classList.add('hidden');
+                    text.textContent = 'Export';
+                });
         }
     </script>
 </x-layout>

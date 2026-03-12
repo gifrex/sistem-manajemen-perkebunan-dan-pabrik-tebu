@@ -17,6 +17,7 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PembayaranUpahMingguanController extends Controller
@@ -615,7 +616,7 @@ class PembayaranUpahMingguanController extends Controller
     // ─────────────────────────────────────────────────────────────────────────────
 // EXPORT EXCEL  (entry point)
 // ─────────────────────────────────────────────────────────────────────────────
-    public function exportExcel(Request $request): StreamedResponse
+    public function exportExcel(Request $request): StreamedResponse|JsonResponse
     {
         $companycode = session('companycode');
         $tenagakerjarum = session('tenagakerjarum');
@@ -657,7 +658,7 @@ class PembayaranUpahMingguanController extends Controller
             ->get();
 
         if ($headers->isEmpty()) {
-            abort(404, 'Tidak ada data untuk diekspor.');
+            return response()->json(['error' => 'Tidak ada data APPROVED untuk diekspor pada periode dan filter yang dipilih.'], 200);
         }
 
         $transNos = $headers->pluck('transno')->toArray();
@@ -715,11 +716,12 @@ class PembayaranUpahMingguanController extends Controller
     ): void {
         $isHarian = $tk === 1;
         $cols = $isHarian
-            ? ['No.', 'ID TKH', 'Nama TKH', 'Tanggal', 'Total (Rp)']
-            : ['No.', 'Plot', 'Tanggal', 'Total (Rp)'];
-        $lastCol = $isHarian ? 'E' : 'D';
-        $totalCol = $lastCol;              // kolom angka Total
-        $mergeEnd = $isHarian ? 'D' : 'C';// kolom sebelum Total (untuk merge label)
+            ? ['No.', 'ID TKH', 'Nama TKH', 'Tanggal', 'Total (Rp)', 'TTD']
+            : ['No.', 'Plot', 'Tanggal', 'Total (Rp)', 'TTD'];
+        $totalCol = $isHarian ? 'E' : 'D'; // kolom angka Total
+        $ttdCol = $isHarian ? 'F' : 'E'; // kolom tanda tangan
+        $lastCol = $ttdCol;
+        $mergeEnd = $isHarian ? 'D' : 'C'; // kolom sebelum Total (untuk merge label)
 
         // ── Styles (didefinisikan sekali) ────────────────────────────────────────
         $sTitle = [
@@ -831,6 +833,7 @@ class PembayaranUpahMingguanController extends Controller
                         $item->namaworker ?? '-',
                         Carbon::parse($item->tanggal)->format('d-m-Y'),
                         $total,
+                        '',
                     ];
                 }
             } else {
@@ -842,6 +845,7 @@ class PembayaranUpahMingguanController extends Controller
                         $item->plot,
                         Carbon::parse($item->tanggal)->format('d-m-Y'),
                         $total,
+                        '',
                     ];
                 }
             }
@@ -883,9 +887,10 @@ class PembayaranUpahMingguanController extends Controller
         $sheet->getRowDimension($row)->setRowHeight(22);
 
         // Auto width
-        foreach (range('A', $lastCol) as $col) {
+        foreach (range('A', $totalCol) as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
+        $sheet->getColumnDimension($ttdCol)->setWidth(22);
 
         (new Xlsx($spreadsheet))->save('php://output');
     }
