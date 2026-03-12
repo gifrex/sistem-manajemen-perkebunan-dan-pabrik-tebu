@@ -1392,25 +1392,24 @@ public function submit(Request $request)
                 //3.8
                 // ✅ ROUNDING HANYA SEKALI (sama seperti di view)
                 if ($rounddosage) {
-                    // Kelipatan 0.05
                     if ($qtyraw <= 0) {
                         $qty = 0;
                     } elseif ($qtyraw <= 0.05) {
                         $qty = 0.05;
                     } else {
-                        $truncated = floor($qtyraw * 100) / 100;
-                        $qty = ceil($truncated / 0.05) * 0.05;
+                        $qty = round($qtyraw / 0.05) * 0.05;
                     }
                 } else {
-                    // Kelipatan 0.01 (2 desimal biasa)
                     if ($qtyraw <= 0) {
                         $qty = 0;
                     } elseif ($qtyraw <= 0.01) {
                         $qty = 0.01;
                     } else {
-                        $qty = round($qtyraw, 2);
+                        $qty = round($qtyraw / 0.01) * 0.01;
                     }
                 }
+
+                $qty = round($qty, 2);
 
                 Log::info('ROUNDING_DEBUG',[
                     'itemcode'=>$itemcode,
