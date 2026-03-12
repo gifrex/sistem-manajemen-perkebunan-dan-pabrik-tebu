@@ -122,7 +122,7 @@ if ($cropType === 'rc') {
 
     // ✅ Activity yang perlu digabung (berlaku untuk semua crop type)
     $activityGrouping = [
-        '2.1.11' => ['2.1.11a', '2.1.11b'],
+        '2.1.11' => ['2.1.11a', '2.1.11b','2.1.12'],
         '2.2.7'  => ['2.2.7a', '2.2.7b'],
         '3.1.1'  => ['3.1.1a', '3.1.1b'],
         '3.1.2'  => ['3.1.2a', '3.1.2b'],

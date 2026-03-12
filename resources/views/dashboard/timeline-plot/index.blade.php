@@ -50,17 +50,17 @@
             <nav class="flex space-x-4">
                 <a href="?crop=pc&activity={{$activityFilter}}&tab={{ request('tab','table') }}" 
                 class="py-2 px-4 border-b-2 font-medium text-sm {{$cropType==='pc'?'border-blue-600 text-blue-600':'border-transparent text-gray-500 hover:text-gray-700'}}">
-                 📊 Data PC
+                 📊 PC
                 </a>
                 
                 <a href="?crop=rc&activity={{$activityFilter}}&tab={{ request('tab','table') }}" 
                 class="py-2 px-4 border-b-2 font-medium text-sm {{$cropType==='rc'?'border-blue-600 text-blue-600':'border-transparent text-gray-500 hover:text-gray-700'}}">
-                 📊 Data RC
+                 📊 RC
                 </a>
                 
                 <a href="?crop=p&activity={{$activityFilter}}&tab={{ request('tab','table') }}"
                 class="py-2 px-4 border-b-2 font-medium text-sm {{$cropType==='p'?'border-blue-600 text-blue-600':'border-transparent text-gray-500 hover:text-gray-700'}}">
-                 🌾 Data Panen
+                 🌾 Panen
                 </a>
                 
                 <button 
