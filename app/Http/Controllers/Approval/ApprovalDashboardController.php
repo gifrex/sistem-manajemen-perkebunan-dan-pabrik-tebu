@@ -254,13 +254,26 @@ class ApprovalDashboardController extends Controller
      * @param array $filters
      * @return \Illuminate\Support\Collection
      */
+    
     private function getPendingAbsenWithDetails($companycode, $currentUser, array $filters)
     {
-        return $this->absenRepository->getPendingApprovals(
+        $pendingAbsen = $this->absenRepository->getPendingApprovals(
             $companycode,
             $currentUser->idjabatan,
             $filters
         );
+
+        // Batch check LKH upload status
+        $lkhStatusMap = $this->absenRepository->checkLKHUploadedForAbsens(
+            $companycode,
+            $pendingAbsen
+        );
+
+        // Enrich setiap absen dengan flag lkh_uploaded
+        return $pendingAbsen->map(function ($absen) use ($lkhStatusMap) {
+            $absen->lkh_uploaded = $lkhStatusMap[$absen->absenno] ?? false;
+            return $absen;
+        });
     }
 
     private function getPendingUpahWithDetails(string $companycode, object $currentUser, array $filters)

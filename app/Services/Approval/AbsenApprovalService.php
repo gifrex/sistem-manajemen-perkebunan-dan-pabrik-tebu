@@ -67,6 +67,25 @@ class AbsenApprovalService
                 ];
             }
 
+            // Step 3.5: Guard — kalau approve, pastikan LKH sudah diupload
+            if ($action === 'approve') {
+                $date = \Carbon\Carbon::parse($absen->uploaddate)->toDateString();
+                $hasLKH = DB::table('lkhhdr')
+                    ->where('companycode', $companycode)
+                    ->where('mandorid', $absen->mandorid)
+                    ->where('lkhdate', $date)
+                    ->where('status', '<>', 'EMPTY')
+                    ->exists();
+
+                if (!$hasLKH) {
+                    DB::rollBack();
+                    return [
+                        'success' => false,
+                        'message' => 'Tidak bisa approve — LKH belum diupload oleh mandor untuk tanggal ini'
+                    ];
+                }
+            }
+
             // Step 4: Process approval
             $processed = $this->repository->processHeaderApproval(
                 $companycode,

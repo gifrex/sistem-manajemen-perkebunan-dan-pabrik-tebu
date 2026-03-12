@@ -262,4 +262,62 @@ class AbsenApprovalRepository
             ])
             ->get();
     }
+
+    
+    /**
+     * Batch check: apakah mandor sudah punya minimal 1 LKH bukan EMPTY
+     * untuk tanggal yang sama dengan absen.
+     *
+     * Join by: companycode + mandorid + date(uploaddate) = lkhdate
+     *
+     * @param string $companycode
+     * @param Collection $pendingAbsen — harus punya ->mandorid & ->uploaddate
+     * @return array<string, bool>  absenno => true/false
+     */
+    public function checkLKHUploadedForAbsens(string $companycode, Collection $pendingAbsen): array
+    {
+        if ($pendingAbsen->isEmpty()) {
+            return [];
+        }
+
+        // Kumpulkan unique (mandorid, date) pairs
+        $pairs = $pendingAbsen->map(function ($absen) {
+            return [
+                'mandorid' => $absen->mandorid,
+                'date'     => \Carbon\Carbon::parse($absen->uploaddate)->toDateString(),
+            ];
+        })->unique(fn($p) => $p['mandorid'] . '|' . $p['date'])->values();
+
+        // Batch query: cari semua (mandorid, lkhdate) yang status <> EMPTY
+        $uploadedLKH = DB::table('lkhhdr')
+            ->where('companycode', $companycode)
+            ->where('status', '<>', 'EMPTY')
+            ->where(function ($query) use ($pairs) {
+                foreach ($pairs as $pair) {
+                    $query->orWhere(function ($q) use ($pair) {
+                        $q->where('mandorid', $pair['mandorid'])
+                        ->where('lkhdate', $pair['date']);
+                    });
+                }
+            })
+            ->select('mandorid', 'lkhdate')
+            ->distinct()
+            ->get();
+
+        // Build lookup set: "mandorid|date" => true
+        $uploadedSet = [];
+        foreach ($uploadedLKH as $row) {
+            $uploadedSet[$row->mandorid . '|' . $row->lkhdate] = true;
+        }
+
+        // Map ke absenno
+        $result = [];
+        foreach ($pendingAbsen as $absen) {
+            $date = \Carbon\Carbon::parse($absen->uploaddate)->toDateString();
+            $key  = $absen->mandorid . '|' . $date;
+            $result[$absen->absenno] = isset($uploadedSet[$key]);
+        }
+
+        return $result;
+    }
 }
