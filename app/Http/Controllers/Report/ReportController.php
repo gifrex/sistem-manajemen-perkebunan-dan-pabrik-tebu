@@ -252,9 +252,11 @@ class ReportController extends Controller
             $item->bulantanam = $tanggaltanam->locale('id')->translatedFormat('F');
             if ($item->lkhdate) {
                 $lkhdate = Carbon::parse($item->lkhdate);
-                $item->perkiraan_panen_awal = $lkhdate->copy()->addDays(28)->format('d/m/Y');
-                $item->perkiraan_panen_akhir = $lkhdate->copy()->addDays(35)->format('d/m/Y');
+                $item->tanggal_zpk = $lkhdate->locale('id')->translatedFormat('d F Y');
+                $item->perkiraan_panen_awal = $lkhdate->copy()->addDays(28)->locale('id')->translatedFormat('d F Y');
+                $item->perkiraan_panen_akhir = $lkhdate->copy()->addDays(35)->locale('id')->translatedFormat('d F Y');
             } else {
+                $item->tanggal_zpk = null;
                 $item->perkiraan_panen_awal = null;
                 $item->perkiraan_panen_akhir = null;
             }
@@ -430,10 +432,12 @@ class ReportController extends Controller
 
             if ($list->lkhdate) {
                 $lkhdate = Carbon::parse($list->lkhdate);
-                $perkiraanPanen = $lkhdate->copy()->addDays(28)->format('d/m/Y')
+                $tanggalZpk = $lkhdate->locale('id')->translatedFormat('d F Y');
+                $perkiraanPanen = $lkhdate->copy()->addDays(28)->locale('id')->translatedFormat('d F Y')
                     . ' – '
-                    . $lkhdate->copy()->addDays(35)->format('d/m/Y');
+                    . $lkhdate->copy()->addDays(35)->locale('id')->translatedFormat('d F Y');
             } else {
+                $tanggalZpk = '-';
                 $perkiraanPanen = '-';
             }
 
@@ -448,7 +452,7 @@ class ReportController extends Controller
                 'H' => $list->lifecyclestatus ?? '-',
                 'I' => $list->kodevarietas ?? '-',
                 'J' => $list->pkp ?? '-',
-                'K' => $list->lkhdate ?? '-',
+                'K' => $tanggalZpk,
                 'L' => $perkiraanPanen,
             ];
 
