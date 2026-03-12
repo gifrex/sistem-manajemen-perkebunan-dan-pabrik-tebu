@@ -9,12 +9,12 @@ use Illuminate\Support\Number;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\View;
-use Box\Spout\Common\Entity\Style\Color;
-use Box\Spout\Common\Entity\Style\Border;
-use Box\Spout\Common\Entity\Style\CellAlignment;
-use Box\Spout\Writer\Common\Creator\Style\StyleBuilder;
-use Box\Spout\Writer\Common\Creator\Style\BorderBuilder;
-use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class RekapUpahMingguanController extends Controller
 {
@@ -320,19 +320,65 @@ class RekapUpahMingguanController extends Controller
             $filterMandors = array_filter(explode(',', $filterMandors));
         }
 
+        $plotDetailsByLkh = collect();
+        $materialDetails = collect();
+
         if ($tk == 1) {
-            // OPTIMIZED: Harian - Agregasi plot details per lkhno
-            $plotDetails = DB::table('lkhdetailplot')
+            // Harian - Plot rows individual per lkhno+plot dengan batch info
+            $plotDetailsByLkh = DB::table('lkhdetailplot as p')
+                ->leftJoin('batch as e', function ($join) {
+                    $join->on('p.companycode', '=', 'e.companycode')
+                        ->on('p.plot', '=', 'e.plot')
+                        ->where('e.isactive', '=', 1);
+                })
+                ->where('p.companycode', $companycode)
                 ->select(
-                    'lkhno',
-                    'companycode',
-                    DB::raw('GROUP_CONCAT(DISTINCT plot ORDER BY plot SEPARATOR ", ") as plots'),
-                    DB::raw('SUM(luasrkh) as total_luasrkh'),
-                    DB::raw('SUM(luashasil) as total_luashasil')
+                    'p.lkhno',
+                    'p.plot',
+                    'p.luasrkh',
+                    'p.luashasil',
+                    'e.lifecyclestatus',
+                    DB::raw("CONCAT(
+                    CASE MONTH(e.batchdate)
+                        WHEN 1 THEN 'JAN' WHEN 2 THEN 'FEB' WHEN 3 THEN 'MAR'
+                        WHEN 4 THEN 'APR' WHEN 5 THEN 'MEI' WHEN 6 THEN 'JUN'
+                        WHEN 7 THEN 'JUL' WHEN 8 THEN 'AGU' WHEN 9 THEN 'SEP'
+                        WHEN 10 THEN 'OKT' WHEN 11 THEN 'NOV' WHEN 12 THEN 'DES'
+                    END,
+                    \"'\",
+                    RIGHT(YEAR(e.batchdate), 2)
+                ) AS batchdate")
                 )
-                ->groupBy('lkhno', 'companycode')
+                ->orderBy('p.lkhno')
+                ->orderBy('p.plot')
                 ->get()
-                ->keyBy('lkhno');
+                ->groupBy('lkhno');
+
+            // Harian - Material per lkhno+plot, dicocokkan dengan lkhdetailplot
+            $materialDetails = DB::table('lkhdetailmaterial as m')
+                ->join('lkhhdr as h', function ($join) {
+                    $join->on('m.lkhno', '=', 'h.lkhno')
+                        ->on('m.companycode', '=', 'h.companycode')
+                        ->on('m.lkhhdrid', '=', 'h.id');
+                })
+                ->join('lkhdetailplot as p', function ($join) {
+                    $join->on('m.companycode', '=', 'p.companycode')
+                        ->on('m.lkhno', '=', 'p.lkhno')
+                        ->on('m.plot', '=', 'p.plot');
+                })
+                ->leftJoin('herbisida as herb', function ($join) {
+                    $join->on('m.itemcode', '=', 'herb.itemcode')
+                        ->on('m.companycode', '=', 'herb.companycode');
+                })
+                ->where('m.companycode', $companycode)
+                ->select(
+                    'm.lkhno',
+                    'm.plot',
+                    DB::raw("GROUP_CONCAT(CONCAT(COALESCE(herb.itemname, m.itemcode), ' = ', m.qtydigunakan, ' ', COALESCE(herb.measure, '')) ORDER BY m.itemcode SEPARATOR ', ') as materials")
+                )
+                ->groupBy('m.lkhno', 'm.plot', 'm.companycode')
+                ->get()
+                ->keyBy(fn($item) => $item->lkhno . '_' . $item->plot);
 
             $data = DB::table('lkhhdr as a')
                 ->join('lkhdetailworker as dw', function ($join) {
@@ -343,20 +389,6 @@ class RekapUpahMingguanController extends Controller
                 ->leftJoin('user as u', function ($join) {
                     $join->on('u.userid', '=', 'a.mandorid')
                         ->on('u.companycode', '=', 'a.companycode');
-                })
-                ->leftJoin(
-                    DB::raw('(SELECT lkhno, companycode, MIN(plot) as first_plot
-                    FROM lkhdetailplot
-                    GROUP BY lkhno, companycode) as b'),
-                    function ($join) {
-                        $join->on('a.lkhno', '=', 'b.lkhno')
-                            ->on('a.companycode', '=', 'b.companycode');
-                    }
-                )
-                ->leftJoin('batch as e', function ($join) {
-                    $join->on('a.companycode', '=', 'e.companycode')
-                        ->on('b.first_plot', '=', 'e.plot')
-                        ->where('e.isactive', '=', 1);
                 })
                 ->when($startDate, fn($q) => $q->whereDate('a.lkhdate', '>=', $startDate))
                 ->when($endDate, fn($q) => $q->whereDate('a.lkhdate', '<=', $endDate))
@@ -380,32 +412,34 @@ class RekapUpahMingguanController extends Controller
                     DB::raw("(SELECT nama FROM tenagakerja WHERE tenagakerjaid = dw.tenagakerjaid LIMIT 1) as namatenagakerja"),
                     'dw.upahharian as upah',
                     'dw.upahlembur',
-                    'dw.totalupah as total',
-                    'e.lifecyclestatus',
-                    DB::raw("CONCAT(
-                    CASE MONTH(e.batchdate)
-                        WHEN 1 THEN 'JAN' WHEN 2 THEN 'FEB' WHEN 3 THEN 'MAR'
-                        WHEN 4 THEN 'APR' WHEN 5 THEN 'MEI' WHEN 6 THEN 'JUN'
-                        WHEN 7 THEN 'JUL' WHEN 8 THEN 'AGU' WHEN 9 THEN 'SEP'
-                        WHEN 10 THEN 'OKT' WHEN 11 THEN 'NOV' WHEN 12 THEN 'DES'
-                    END,
-                    \"'\",
-                    RIGHT(YEAR(e.batchdate), 2)
-                ) AS batchdate")
+                    'dw.totalupah as total'
                 )
                 ->orderBy('a.lkhno', 'asc')
                 ->orderBy('dw.tenagakerjaid', 'asc')
                 ->get();
 
-            // Tambahkan plot details ke setiap item
-            foreach ($data as $item) {
-                $plotDetail = $plotDetails->get($item->lkhno);
-                $item->plot = $plotDetail->plots ?? '';
-                $item->luasan = $plotDetail->total_luasrkh ?? 0;
-                $item->hasil = $plotDetail->total_luashasil ?? 0;
-            }
-
         } elseif ($tk == 2) {
+            // Borongan - Material details per lkhno dan plot
+            $materialDetails = DB::table('lkhdetailmaterial as m')
+                ->join('lkhhdr as h', function ($join) {
+                    $join->on('m.lkhno', '=', 'h.lkhno')
+                        ->on('m.companycode', '=', 'h.companycode')
+                        ->on('m.lkhhdrid', '=', 'h.id');
+                })
+                ->leftJoin('herbisida as herb', function ($join) {
+                    $join->on('m.itemcode', '=', 'herb.itemcode')
+                        ->on('m.companycode', '=', 'herb.companycode');
+                })
+                ->where('m.companycode', $companycode)
+                ->select(
+                    'm.lkhno',
+                    'm.plot',
+                    DB::raw("GROUP_CONCAT(CONCAT('- ', COALESCE(herb.itemname, m.itemcode), ' = ', CAST(m.qtydigunakan AS CHAR), ' ', COALESCE(herb.measure, '')) ORDER BY m.itemcode SEPARATOR '\n') as materials")
+                )
+                ->groupBy('m.lkhno', 'm.plot', 'm.companycode')
+                ->get()
+                ->keyBy(fn($item) => $item->lkhno . '_' . $item->plot);
+
             // OPTIMIZED: Borongan - Agregasi per lkhno dan plot
             $data = DB::table('lkhhdr as a')
                 ->join('lkhdetailplot as b', function ($join) {
@@ -463,6 +497,12 @@ class RekapUpahMingguanController extends Controller
                 ->orderBy('a.lkhno', 'asc')
                 ->orderBy('b.plot', 'asc')
                 ->get();
+
+            // Tambahkan material details ke setiap item borongan
+            foreach ($data as $item) {
+                $key = $item->lkhno . '_' . $item->plot;
+                $item->materials = $materialDetails->get($key)?->materials ?? '';
+            }
         } else {
             $data = collect();
         }
@@ -483,7 +523,7 @@ class RekapUpahMingguanController extends Controller
             $item->totalupahall = Number::currency($item->totalupahall ?? 0, 'IDR', 'id');
         }
 
-        return view('report.rum.print', compact('title', 'startDate', 'endDate', 'data'));
+        return view('report.rum.print', compact('title', 'startDate', 'endDate', 'data', 'plotDetailsByLkh', 'materialDetails'));
     }
 
     public function printBp(Request $request)
@@ -523,42 +563,71 @@ class RekapUpahMingguanController extends Controller
         }
 
         if ($tk == 1) {
-            $plotDetails = DB::table('lkhdetailplot')
+            // Plot info per lkhno (individual rows per plot, same as previewReport)
+            $plotDetailsByLkh = DB::table('lkhdetailplot as p')
+                ->leftJoin('batch as e', function ($join) {
+                    $join->on('p.companycode', '=', 'e.companycode')
+                        ->on('p.plot', '=', 'e.plot')
+                        ->where('e.isactive', '=', 1);
+                })
+                ->where('p.companycode', $companycode)
                 ->select(
-                    'lkhno',
-                    'companycode',
-                    DB::raw('GROUP_CONCAT(DISTINCT plot ORDER BY plot SEPARATOR ", ") as plots'),
-                    DB::raw('SUM(luasrkh) as total_luasrkh'),
-                    DB::raw('SUM(luashasil) as total_luashasil')
+                    'p.lkhno',
+                    'p.plot',
+                    'p.luasrkh',
+                    'p.luashasil',
+                    'e.lifecyclestatus',
+                    DB::raw("CONCAT(
+                    CASE MONTH(e.batchdate)
+                        WHEN 1 THEN 'JAN' WHEN 2 THEN 'FEB' WHEN 3 THEN 'MAR'
+                        WHEN 4 THEN 'APR' WHEN 5 THEN 'MEI' WHEN 6 THEN 'JUN'
+                        WHEN 7 THEN 'JUL' WHEN 8 THEN 'AGU' WHEN 9 THEN 'SEP'
+                        WHEN 10 THEN 'OKT' WHEN 11 THEN 'NOV' WHEN 12 THEN 'DES'
+                    END,
+                    \"'\",
+                    RIGHT(YEAR(e.batchdate), 2)
+                ) AS batchdate")
                 )
-                ->groupBy('lkhno', 'companycode')
+                ->orderBy('p.lkhno')
+                ->orderBy('p.plot')
                 ->get()
-                ->keyBy('lkhno');
+                ->groupBy('lkhno');
+
+            // Material per lkhno+plot (same as previewReport)
+            $materialDetails = DB::table('lkhdetailmaterial as m')
+                ->join('lkhhdr as h', function ($join) {
+                    $join->on('m.lkhno', '=', 'h.lkhno')
+                        ->on('m.companycode', '=', 'h.companycode')
+                        ->on('m.lkhhdrid', '=', 'h.id');
+                })
+                ->join('lkhdetailplot as p', function ($join) {
+                    $join->on('m.companycode', '=', 'p.companycode')
+                        ->on('m.lkhno', '=', 'p.lkhno')
+                        ->on('m.plot', '=', 'p.plot');
+                })
+                ->leftJoin('herbisida as herb', function ($join) {
+                    $join->on('m.itemcode', '=', 'herb.itemcode')
+                        ->on('m.companycode', '=', 'herb.companycode');
+                })
+                ->where('m.companycode', $companycode)
+                ->select(
+                    'm.lkhno',
+                    'm.plot',
+                    DB::raw("GROUP_CONCAT(CONCAT(COALESCE(herb.itemname, m.itemcode), ' = ', m.qtydigunakan, ' ', COALESCE(herb.measure, '')) ORDER BY m.itemcode SEPARATOR ', ') as materials")
+                )
+                ->groupBy('m.lkhno', 'm.plot', 'm.companycode')
+                ->get()
+                ->keyBy(fn($item) => $item->lkhno . '_' . $item->plot);
 
             $data = DB::table('lkhhdr as a')
                 ->join('lkhdetailworker as dw', function ($join) {
                     $join->on('a.lkhno', '=', 'dw.lkhno')
                         ->on('a.companycode', '=', 'dw.companycode');
                 })
-                ->join('tenagakerja as tk', 'dw.tenagakerjaid', '=', 'tk.tenagakerjaid')
                 ->leftJoin('activity as c', 'a.activitycode', '=', 'c.activitycode')
                 ->leftJoin('user as u', function ($join) {
                     $join->on('u.userid', '=', 'a.mandorid')
                         ->on('u.companycode', '=', 'a.companycode');
-                })
-                ->leftJoin(
-                    DB::raw('(SELECT lkhno, companycode, MIN(plot) as first_plot
-                FROM lkhdetailplot
-                GROUP BY lkhno, companycode) as b'),
-                    function ($join) {
-                        $join->on('a.lkhno', '=', 'b.lkhno')
-                            ->on('a.companycode', '=', 'b.companycode');
-                    }
-                )
-                ->leftJoin('batch as e', function ($join) {
-                    $join->on('a.companycode', '=', 'e.companycode')
-                        ->on('b.first_plot', '=', 'e.plot')
-                        ->where('e.isactive', '=', 1);
                 })
                 ->when($startDate, fn($q) => $q->whereDate('a.lkhdate', '>=', $startDate))
                 ->when($endDate, fn($q) => $q->whereDate('a.lkhdate', '<=', $endDate))
@@ -579,33 +648,14 @@ class RekapUpahMingguanController extends Controller
                     'c.activityname',
                     'u.name as mandorname',
                     'dw.tenagakerjaid',
-                    'tk.nama as namatenagakerja',
+                    DB::raw("(SELECT nama FROM tenagakerja WHERE tenagakerjaid = dw.tenagakerjaid LIMIT 1) as namatenagakerja"),
                     'dw.upahharian as upah',
                     'dw.upahlembur',
-                    'dw.totalupah as total',
-                    'e.lifecyclestatus',
-                    DB::raw("CONCAT(
-                CASE MONTH(e.batchdate)
-                    WHEN 1 THEN 'JAN' WHEN 2 THEN 'FEB' WHEN 3 THEN 'MAR'
-                    WHEN 4 THEN 'APR' WHEN 5 THEN 'MEI' WHEN 6 THEN 'JUN'
-                    WHEN 7 THEN 'JUL' WHEN 8 THEN 'AGU' WHEN 9 THEN 'SEP'
-                    WHEN 10 THEN 'OKT' WHEN 11 THEN 'NOV' WHEN 12 THEN 'DES'
-                END,
-                \"'\",
-                RIGHT(YEAR(e.batchdate), 2)
-            ) AS batchdate")
+                    'dw.totalupah as total'
                 )
                 ->orderBy('a.lkhno', 'asc')
-                ->orderBy('tk.nama', 'asc')
+                ->orderBy('dw.tenagakerjaid', 'asc')
                 ->get();
-
-            foreach ($data as $item) {
-                $plotDetail = $plotDetails->get($item->lkhno);
-                $item->plot = $plotDetail->plots ?? '';
-                $item->luasan = $plotDetail->total_luasrkh ?? 0;
-                $item->hasil = $plotDetail->total_luashasil ?? 0;
-                $item->statustanam = $item->batchdate . "/" . $item->lifecyclestatus;
-            }
 
         } elseif ($tk == 2) {
             $data = DB::table('lkhhdr as a')
@@ -665,255 +715,265 @@ class RekapUpahMingguanController extends Controller
                 ->orderBy('b.plot', 'asc')
                 ->get();
 
+            $exportMaterialDetails = DB::table('lkhdetailmaterial as m')
+                ->join('lkhhdr as h', function ($join) {
+                    $join->on('m.lkhno', '=', 'h.lkhno')
+                        ->on('m.companycode', '=', 'h.companycode')
+                        ->on('m.lkhhdrid', '=', 'h.id');
+                })
+                ->leftJoin('herbisida as herb', function ($join) {
+                    $join->on('m.itemcode', '=', 'herb.itemcode')
+                        ->on('m.companycode', '=', 'herb.companycode');
+                })
+                ->where('m.companycode', $companycode)
+                ->select(
+                    'm.lkhno',
+                    'm.plot',
+                    DB::raw("GROUP_CONCAT(CONCAT('- ', COALESCE(herb.itemname, m.itemcode), ' = ', CAST(m.qtydigunakan AS CHAR), ' ', COALESCE(herb.measure, '')) ORDER BY m.itemcode SEPARATOR '\n') as materials")
+                )
+                ->groupBy('m.lkhno', 'm.plot', 'm.companycode')
+                ->get()
+                ->keyBy(fn($m) => $m->lkhno . '_' . $m->plot);
+
             foreach ($data as $item) {
                 $item->statustanam = $item->batchdate . "/" . $item->lifecyclestatus;
+                $key = $item->lkhno . '_' . $item->plot;
+                $item->materials = $exportMaterialDetails->get($key)?->materials ?? '';
             }
         } else {
             $data = collect();
         }
 
-        return $this->writeExcelFile($data, $tenagakerjarum, $companycode, $startDate, $endDate);
+        if ($data->isEmpty()) {
+            return response()->json(['error' => 'Tidak ada data untuk diekspor pada periode yang dipilih.'], 404);
+        }
+
+        return $this->writeExcelFile($data, $tenagakerjarum, $companycode, $startDate, $endDate, $plotDetailsByLkh ?? collect(), $materialDetails ?? collect());
     }
 
-    private function writeExcelFile($data, $tenagakerjarum, $companycode, $startDate, $endDate)
+    private function writeExcelFile($data, $tenagakerjarum, $companycode, $startDate, $endDate, $plotDetailsByLkh = null, $materialDetails = null)
     {
-        // Group data by activityname, then by lkhno
+        $isHarian = $tenagakerjarum == 'Harian';
+        $colCount = $isHarian ? 6 : 8;
+        $lastCol = Coordinate::stringFromColumnIndex($colCount);
+        $prevCol = Coordinate::stringFromColumnIndex($colCount - 1);
+
+        // Group data
         $groupedByActivity = [];
         foreach ($data as $item) {
-            $activityName = $item->activityname;
-            $lkhno = $item->lkhno;
-
-            if (!isset($groupedByActivity[$activityName])) {
-                $groupedByActivity[$activityName] = [];
-            }
-            if (!isset($groupedByActivity[$activityName][$lkhno])) {
-                $groupedByActivity[$activityName][$lkhno] = [];
-            }
-            $groupedByActivity[$activityName][$lkhno][] = $item;
+            $groupedByActivity[$item->activityname][$item->lkhno][] = $item;
         }
 
-        // Create temp directories
-        $tempDir = storage_path('app/temp');
-        $spoutTempDir = storage_path('app/spout-temp');
-
-        if (!file_exists($tempDir)) {
-            mkdir($tempDir, 0755, true);
-        }
-        if (!file_exists($spoutTempDir)) {
-            mkdir($spoutTempDir, 0755, true);
-        }
-
-        putenv('SPOUT_TEMP_FOLDER=' . $spoutTempDir);
-
-        $filename = 'Rekap_Upah_Mingguan_' . date('Y-m-d_His') . '.xlsx';
-        $filePath = $tempDir . '/' . $filename;
-
-        $writer = WriterEntityFactory::createXLSXWriter();
-        $writer->setTempFolder($spoutTempDir);
-        $writer->openToFile($filePath);
-
-        // Styles
-        $borderBuilder = new BorderBuilder();
-        $border = $borderBuilder
-            ->setBorderBottom(Color::BLACK, Border::WIDTH_THIN)
-            ->setBorderTop(Color::BLACK, Border::WIDTH_THIN)
-            ->setBorderLeft(Color::BLACK, Border::WIDTH_THIN)
-            ->setBorderRight(Color::BLACK, Border::WIDTH_THIN)
-            ->build();
-
-        $headerStyle = (new StyleBuilder())
-            ->setFontBold()
-            ->setFontSize(14)
-            ->setCellAlignment(CellAlignment::CENTER)
-            ->build();
-
-        $subHeaderStyle = (new StyleBuilder())
-            ->setFontBold()
-            ->setFontSize(12)
-            ->setCellAlignment(CellAlignment::CENTER)
-            ->build();
-
-        $tableHeaderStyle = (new StyleBuilder())
-            ->setFontBold()
-            ->setBackgroundColor(Color::rgb(240, 240, 240))
-            ->setCellAlignment(CellAlignment::CENTER)
-            ->setBorder($border)
-            ->build();
-
-        $normalStyle = (new StyleBuilder())
-            ->setBorder($border)
-            ->build();
-
-        $centerStyle = (new StyleBuilder())
-            ->setBorder($border)
-            ->setCellAlignment(CellAlignment::CENTER)
-            ->build();
-
-        $rightStyle = (new StyleBuilder())
-            ->setBorder($border)
-            ->setCellAlignment(CellAlignment::RIGHT)
-            ->build();
-
-        $activityHeaderStyle = (new StyleBuilder())
-            ->setBorder($border)
-            ->setFontBold()
-            ->setBackgroundColor(Color::rgb(239, 246, 255))
-            ->build();
-
-        $subtotalStyle = (new StyleBuilder())
-            ->setFontBold()
-            ->setBackgroundColor(Color::rgb(254, 252, 232))
-            ->setBorder($border)
-            ->setCellAlignment(CellAlignment::RIGHT)
-            ->build();
-
-        $totalStyle = (new StyleBuilder())
-            ->setFontBold()
-            ->setBackgroundColor(Color::rgb(220, 252, 231))
-            ->setBorder($border)
-            ->setCellAlignment(CellAlignment::RIGHT)
-            ->setFontSize(12)
-            ->build();
-
-        $lkhSubHeaderStyle = (new StyleBuilder())
-            ->setFontBold()
-            ->setBackgroundColor(Color::rgb(238, 242, 255))
-            ->setBorder($border)
-            ->build();
-
-        // Parse dates for header
+        // Parse dates
+        \Carbon\Carbon::setLocale('id');
         $start = \Carbon\Carbon::parse($startDate);
         $end = \Carbon\Carbon::parse($endDate);
-        \Carbon\Carbon::setLocale('id');
-
         $periode = $start->format('m Y') === $end->format('m Y')
             ? $start->translatedFormat('d') . ' s.d ' . $end->translatedFormat('d F Y')
             : $start->translatedFormat('d F Y') . ' s.d ' . $end->translatedFormat('d F Y');
 
-        $jenistk = $tenagakerjarum == 'Harian' ? 'Harian' : 'Borongan';
-        $isHarian = $tenagakerjarum == 'Harian';
+        // Spreadsheet
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Rekap Upah');
 
-        // Header rows
-        $writer->addRow(WriterEntityFactory::createRowFromArray(['', '', '', '', 'Rekap Upah Mingguan'], $headerStyle));
-        $writer->addRow(WriterEntityFactory::createRowFromArray(['', '', '', '', 'Tenaga Kerja ' . $jenistk], $subHeaderStyle));
-        $writer->addRow(WriterEntityFactory::createRowFromArray(['', '', '', '', 'Divisi ' . $companycode], $subHeaderStyle));
-        $writer->addRow(WriterEntityFactory::createRowFromArray(['', '', '', '', 'Periode: ' . $periode], $subHeaderStyle));
-        $writer->addRow(WriterEntityFactory::createRowFromArray(['']));
-        $writer->addRow(WriterEntityFactory::createRowFromArray(['No. Voucher:']));
-        $writer->addRow(WriterEntityFactory::createRowFromArray(['']));
+        // Column widths
+        $colWidths = $isHarian
+            ? ['A' => 5, 'B' => 30, 'C' => 15, 'D' => 20, 'E' => 20, 'F' => 20]
+            : ['A' => 5, 'B' => 12, 'C' => 35, 'D' => 12, 'E' => 15, 'F' => 12, 'G' => 15, 'H' => 20];
+        foreach ($colWidths as $col => $width) {
+            $sheet->getColumnDimension($col)->setWidth($width);
+        }
 
-        // Table header
-        $headerRow = $isHarian
-            ? ['No.', 'Tenaga Kerja', 'Plot', 'Luas (Ha)', 'Status Tanam', 'Hasil (Ha)', 'Tanggal Kegiatan', 'Cost/Unit', 'Upah Lembur', 'Biaya (Rp)']
-            : ['No.', 'Plot', 'Luas (Ha)', 'Status Tanam', 'Hasil (Ha)', 'Tanggal Kegiatan', 'Biaya (Rp)'];
-        $writer->addRow(WriterEntityFactory::createRowFromArray($headerRow, $tableHeaderStyle));
+        // Border style array (reused)
+        $thin = [
+            'borders' => [
+                'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF000000']],
+            ],
+        ];
 
-        $colCount = $isHarian ? 10 : 7;
+        $row = 1;
+
+        // === DOCUMENT HEADER ===
+        $jenistk = $isHarian ? 'Harian' : 'Borongan';
+        foreach ([
+            ['Rekap Upah Mingguan', 14, true],
+            ["Tenaga Kerja {$jenistk}", 12, true],
+            ["Divisi {$companycode}", 12, false],
+            ["Periode: {$periode}", 12, false],
+        ] as [$text, $size, $bold]) {
+            $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
+            $sheet->setCellValue("A{$row}", $text);
+            $sheet->getStyle("A{$row}")->applyFromArray([
+                'font' => ['bold' => $bold, 'size' => $size],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+            $row++;
+        }
+        $row++; // empty
+        $sheet->setCellValue("A{$row}", 'No. Voucher: ___________________________');
+        $row += 2; // + empty row
+
+        // === TABLE HEADER ===
+        $headers = $isHarian
+            ? ['No.', 'Nama Tenaga Kerja', 'Tgl Kegiatan', 'Upah Pokok (Rp)', 'Upah Lembur (Rp)', 'Total Upah (Rp)']
+            : ['No.', 'Plot', 'Material', 'Luas (Ha)', 'Status Tanam', 'Hasil (Ha)', 'Tgl Kegiatan', 'Biaya (Rp)'];
+        foreach ($headers as $ci => $h) {
+            $sheet->setCellValue(Coordinate::stringFromColumnIndex($ci + 1) . $row, $h);
+        }
+        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray(array_merge($thin, [
+            'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1E3A5F']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ]));
+        $sheet->getRowDimension($row)->setRowHeight(18);
+        $row++;
+
+        // === DATA ROWS ===
         $rowNumber = 1;
         $totalKeseluruhan = 0;
 
         foreach ($groupedByActivity as $activityName => $lkhGroups) {
             $activitySubtotal = 0;
 
-            // Activity header row
-            $cells = [];
-            foreach (array_fill(0, $colCount, '') as $i => $v) {
-                $cells[] = WriterEntityFactory::createCell($i === 0 ? "Kegiatan: {$activityName}" : '', $activityHeaderStyle);
-            }
-            $writer->addRow(WriterEntityFactory::createRow($cells));
+            // Activity header (full-width merge, dark bg)
+            $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
+            $sheet->setCellValue("A{$row}", "▶  {$activityName}");
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray(array_merge($thin, [
+                'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1E3A5F']],
+            ]));
+            $row++;
 
             foreach ($lkhGroups as $lkhno => $items) {
                 $subtotal = 0;
                 $mandorname = $items[0]->mandorname ?? '-';
 
-                // Sub-header per LKH
-                $subHeaderCells = [];
-                foreach (array_fill(0, $colCount, '') as $i => $v) {
-                    $subHeaderCells[] = WriterEntityFactory::createCell(
-                        $i === 0 ? "No. LKH: {$lkhno}  |  Mandor: {$mandorname}" : '',
-                        $lkhSubHeaderStyle
-                    );
-                }
-                $writer->addRow(WriterEntityFactory::createRow($subHeaderCells));
+                // LKH sub-header (merged, blue tint)
+                $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
+                $sheet->setCellValue("A{$row}", "No. LKH: {$lkhno}  |  Mandor: {$mandorname}");
+                $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray(array_merge($thin, [
+                    'font' => ['bold' => true, 'color' => ['argb' => 'FF1D4ED8']],
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFDBEAFE']],
+                ]));
+                $row++;
 
+                // Plot info rows — Harian only (merged, green tint)
+                if ($isHarian && $plotDetailsByLkh !== null) {
+                    foreach ($plotDetailsByLkh->get($lkhno, collect()) as $plotRow) {
+                        $matKey = $lkhno . '_' . $plotRow->plot;
+                        $plotMaterial = $materialDetails ? ($materialDetails->get($matKey)?->materials ?? '') : '';
+                        $txt = "Plot: {$plotRow->plot}  |  Luas: " . number_format($plotRow->luasrkh, 2, ',', '.') . " Ha  |  Status Tanam: {$plotRow->batchdate}/{$plotRow->lifecyclestatus}  |  Hasil: " . number_format($plotRow->luashasil, 2, ',', '.') . " Ha";
+                        if ($plotMaterial) {
+                            $txt .= "  |  Material: {$plotMaterial}";
+                        }
+                        $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
+                        $sheet->setCellValue("A{$row}", $txt);
+                        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray(array_merge($thin, [
+                            'font' => ['color' => ['argb' => 'FF166534']],
+                            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF0FDF4']],
+                        ]));
+                        $row++;
+                    }
+                }
+
+                // Data rows
                 foreach ($items as $index => $item) {
+                    $bgArgb = $index % 2 === 0 ? 'FFFFFFFF' : 'FFF9FAFB';
+
                     if ($isHarian) {
-                        $rowData = [
-                            WriterEntityFactory::createCell($rowNumber, $centerStyle),
-                            WriterEntityFactory::createCell($item->namatenagakerja ?? '', $normalStyle),
-                            WriterEntityFactory::createCell($item->plot, $normalStyle),
-                            WriterEntityFactory::createCell(number_format($item->luasan, 2, ',', '.'), $rightStyle),
-                            WriterEntityFactory::createCell($item->statustanam ?? '', $normalStyle),
-                            WriterEntityFactory::createCell(number_format($item->hasil, 2, ',', '.'), $rightStyle),
-                            WriterEntityFactory::createCell(\Carbon\Carbon::parse($item->lkhdate)->format('Y-m-d'), $centerStyle),
-                            WriterEntityFactory::createCell(number_format($item->upah ?? 0, 2, ',', '.'), $rightStyle),
-                            WriterEntityFactory::createCell(number_format($item->upahlembur ?? 0, 2, ',', '.'), $rightStyle),
-                            WriterEntityFactory::createCell(number_format($item->total ?? 0, 2, ',', '.'), $rightStyle),
-                        ];
-                        $totalValue = floatval($item->total ?? 0);
+                        $sheet->setCellValue("A{$row}", $rowNumber);
+                        $sheet->setCellValue("B{$row}", $item->namatenagakerja ?? '');
+                        $sheet->setCellValue("C{$row}", \Carbon\Carbon::parse($item->lkhdate)->format('Y-m-d'));
+                        $sheet->setCellValue("D{$row}", number_format($item->upah ?? 0, 2, ',', '.'));
+                        $sheet->setCellValue("E{$row}", number_format($item->upahlembur ?? 0, 2, ',', '.'));
+                        $sheet->setCellValue("F{$row}", number_format($item->total ?? 0, 2, ',', '.'));
+                        $sheet->getStyle("C{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                        $sheet->getStyle("D{$row}:F{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                        $subtotal += floatval($item->total ?? 0);
                     } else {
-                        // Borongan - tanggal & biaya hanya di baris pertama per LKH
+                        $sheet->setCellValue("A{$row}", $rowNumber);
+                        $sheet->setCellValue("B{$row}", $item->plot);
+                        $sheet->setCellValue("C{$row}", $item->materials ?? '');
+                        $sheet->setCellValue("D{$row}", number_format($item->luasan, 2, ',', '.'));
+                        $sheet->setCellValue("E{$row}", $item->statustanam);
+                        $sheet->setCellValue("F{$row}", number_format($item->hasil, 2, ',', '.'));
+                        $sheet->getStyle("C{$row}")->getAlignment()->setWrapText(true);
+                        $sheet->getStyle("D{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                        $sheet->getStyle("F{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+
+                        // Tgl Kegiatan & Biaya: merge vertically for all rows in LKH (rowspan)
                         if ($index === 0) {
-                            $rowData = [
-                                WriterEntityFactory::createCell($rowNumber, $centerStyle),
-                                WriterEntityFactory::createCell($item->plot, $normalStyle),
-                                WriterEntityFactory::createCell(number_format($item->luasan, 2, ',', '.'), $rightStyle),
-                                WriterEntityFactory::createCell($item->statustanam, $normalStyle),
-                                WriterEntityFactory::createCell(number_format($item->hasil, 2, ',', '.'), $rightStyle),
-                                WriterEntityFactory::createCell(\Carbon\Carbon::parse($item->lkhdate)->format('Y-m-d'), $centerStyle),
-                                WriterEntityFactory::createCell(number_format($item->totalupahall ?? 0, 2, ',', '.'), $rightStyle),
-                            ];
-                            $totalValue = floatval($item->totalupahall ?? 0);
-                        } else {
-                            $rowData = [
-                                WriterEntityFactory::createCell($rowNumber, $centerStyle),
-                                WriterEntityFactory::createCell($item->plot, $normalStyle),
-                                WriterEntityFactory::createCell(number_format($item->luasan, 2, ',', '.'), $rightStyle),
-                                WriterEntityFactory::createCell($item->statustanam, $normalStyle),
-                                WriterEntityFactory::createCell(number_format($item->hasil, 2, ',', '.'), $rightStyle),
-                                WriterEntityFactory::createCell('', $centerStyle),
-                                WriterEntityFactory::createCell('', $rightStyle),
-                            ];
-                            $totalValue = 0;
+                            $itemCount = count($items);
+                            $endRow = $row + $itemCount - 1;
+                            $sheet->setCellValue("G{$row}", \Carbon\Carbon::parse($item->lkhdate)->format('Y-m-d'));
+                            $sheet->setCellValue("H{$row}", number_format($item->totalupahall ?? 0, 2, ',', '.'));
+                            if ($itemCount > 1) {
+                                $sheet->mergeCells("G{$row}:G{$endRow}");
+                                $sheet->mergeCells("H{$row}:H{$endRow}");
+                            }
+                            $sheet->getStyle("G{$row}")->getAlignment()
+                                ->setHorizontal(Alignment::HORIZONTAL_CENTER)
+                                ->setVertical(Alignment::VERTICAL_CENTER);
+                            $sheet->getStyle("H{$row}")->getAlignment()
+                                ->setHorizontal(Alignment::HORIZONTAL_RIGHT)
+                                ->setVertical(Alignment::VERTICAL_CENTER);
+                            $subtotal += floatval($item->totalupahall ?? 0);
                         }
                     }
 
-                    $writer->addRow(WriterEntityFactory::createRow($rowData));
-                    $subtotal += $totalValue;
+                    $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray(array_merge($thin, [
+                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $bgArgb]],
+                    ]));
+                    $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
                     $rowNumber++;
+                    $row++;
                 }
 
                 $activitySubtotal += $subtotal;
             }
 
-            // Subtotal row
-            $subtotalCells = array_fill(0, $colCount - 2, WriterEntityFactory::createCell('', $subtotalStyle));
-            $subtotalCells[] = WriterEntityFactory::createCell("Subtotal {$activityName}", $subtotalStyle);
-            $subtotalCells[] = WriterEntityFactory::createCell('Rp ' . number_format($activitySubtotal, 2, ',', '.'), $subtotalStyle);
-            $writer->addRow(WriterEntityFactory::createRow($subtotalCells));
-
+            // Subtotal per kegiatan
+            $sheet->mergeCells("A{$row}:{$prevCol}{$row}");
+            $sheet->setCellValue("A{$row}", "Subtotal \u{2014} {$activityName}");
+            $sheet->setCellValue("{$lastCol}{$row}", 'Rp ' . number_format($activitySubtotal, 2, ',', '.'));
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray(array_merge($thin, [
+                'font' => ['bold' => true, 'color' => ['argb' => 'FF713F12']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFFEF9C3']],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT],
+            ]));
+            $row++;
             $totalKeseluruhan += $activitySubtotal;
         }
 
-        // Total keseluruhan row
-        $totalCells = array_fill(0, $colCount - 2, WriterEntityFactory::createCell('', $totalStyle));
-        $totalCells[] = WriterEntityFactory::createCell('TOTAL KESELURUHAN', $totalStyle);
-        $totalCells[] = WriterEntityFactory::createCell('Rp ' . number_format($totalKeseluruhan, 2, ',', '.'), $totalStyle);
-        $writer->addRow(WriterEntityFactory::createRow($totalCells));
+        // Grand total
+        $sheet->mergeCells("A{$row}:{$prevCol}{$row}");
+        $sheet->setCellValue("A{$row}", 'TOTAL KESELURUHAN');
+        $sheet->setCellValue("{$lastCol}{$row}", 'Rp ' . number_format($totalKeseluruhan, 2, ',', '.'));
+        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray(array_merge($thin, [
+            'font' => ['bold' => true, 'size' => 12, 'color' => ['argb' => 'FF14532D']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFDCFCE7']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT],
+        ]));
+        $row += 2;
 
         // Footer
-        $writer->addRow(WriterEntityFactory::createRowFromArray(['']));
-        $writer->addRow(WriterEntityFactory::createRowFromArray(['', '', '', '', '', 'Dicetak pada: ' . Carbon::now()->format('d/m/Y H:i')]));
+        $sheet->setCellValue("A{$row}", 'Dicetak pada: ' . Carbon::now()->format('d/m/Y H:i'));
 
-        $writer->close();
-
-        // Cleanup temp files
-        $tempFiles = glob($spoutTempDir . '/*');
-        foreach ($tempFiles as $tempFile) {
-            if (is_file($tempFile)) {
-                @unlink($tempFile);
-            }
+        // Save & stream
+        $tempDir = storage_path('app/temp');
+        if (!file_exists($tempDir)) {
+            mkdir($tempDir, 0755, true);
         }
+        $filename = 'Rekap_Upah_Mingguan_' . date('Y-m-d_His') . '.xlsx';
+        $filePath = $tempDir . '/' . $filename;
+
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($filePath);
+
+        $spreadsheet->disconnectWorksheets();
+        unset($spreadsheet);
 
         return response()->download($filePath)->deleteFileAfterSend(true);
     }

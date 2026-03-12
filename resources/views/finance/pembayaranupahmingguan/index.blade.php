@@ -36,14 +36,21 @@
                         </button>
                     @endif
 
-                    <button type="button" onclick="exportToExcel()"
+                    <button type="button" id="exportBtn" onclick="exportToExcel()"
                         class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <svg id="exportIcon" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                             <path fill-rule="evenodd"
                                 d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Zm2 0V2h7a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9h5a2 2 0 0 0 2-2Zm2-2a1 1 0 1 0 0 2h3a1 1 0 1 0 0-2h-3Zm0 3a1 1 0 1 0 0 2h3a1 1 0 1 0 0-2h-3Zm-6 4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-6Zm8 1v1h-2v-1h2Zm0 3h-2v1h2v-1Zm-4-3v1H9v-1h2Zm0 3H9v1h2v-1Z"
                                 clip-rule="evenodd" />
                         </svg>
-                        Export
+                        <svg id="exportSpinner" class="w-5 h-5 hidden animate-spin" xmlns="http://www.w3.org/2000/svg"
+                            fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        <span id="exportText">Export</span>
                     </button>
                 </div>
             </div>
@@ -908,8 +915,48 @@
             const sd = document.getElementById('start_date').value;
             const ed = document.getElementById('end_date').value;
             if (!sd || !ed) return alert('Harap pilih range tanggal terlebih dahulu');
-            window.location.href =
-                `{{ route('finance.pembayaran-upah-mingguan.export-excel') }}?start_date=${sd}&end_date=${ed}`;
+
+            const url = `{{ route('finance.pembayaran-upah-mingguan.export-excel') }}?start_date=${sd}&end_date=${ed}`;
+
+            const btn = document.getElementById('exportBtn');
+            const icon = document.getElementById('exportIcon');
+            const spinner = document.getElementById('exportSpinner');
+            const text = document.getElementById('exportText');
+
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+            icon.classList.add('hidden');
+            spinner.classList.remove('hidden');
+            text.textContent = 'Mengekspor...';
+
+            fetch(url)
+                .then(response => {
+                    const contentType = response.headers.get('Content-Type') || '';
+                    if (contentType.includes('application/json')) {
+                        return response.json().then(json => {
+                            showToast('error', json.error || 'Tidak ada data untuk diekspor.');
+                        });
+                    }
+                    return response.blob().then(blob => {
+                        const disposition = response.headers.get('Content-Disposition') || '';
+                        const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                        const filename = match ? match[1].replace(/['"]/g, '') :
+                        'Pembayaran_Upah_Mingguan.xlsx';
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = filename;
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                    });
+                })
+                .catch(() => showToast('error', 'Gagal mengekspor data. Silakan coba lagi.'))
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                    icon.classList.remove('hidden');
+                    spinner.classList.add('hidden');
+                    text.textContent = 'Export';
+                });
         }
     </script>
 </x-layout>
