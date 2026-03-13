@@ -110,15 +110,8 @@
 
             {{-- Tab Navigation --}}
             <div class="flex items-center gap-2 mb-5 bg-white rounded-xl border border-slate-200 p-1.5">
-                
-                @foreach ([
-                    ['tab' => 'rkh', 'label' => 'RKH', 'count' => $pendingRKH->count()],
-                    ['tab' => 'lkh', 'label' => 'LKH', 'count' => $pendingLKH->count()],
-                    ['tab' => 'absen', 'label' => 'Absen', 'count' => $pendingAbsen->count()],
-                    ['tab' => 'upah', 'label' => 'Upah Mingguan', 'count' => $pendingUpah->count()],
-                    ['tab' => 'bbm', 'label' => 'BBM', 'count' => $pendingBBM->count()],
-                    ['tab' => 'other', 'label' => 'Lainnya', 'count' => $pendingOther->count()],
-                ] as $item)
+
+                @foreach ([['tab' => 'rkh', 'label' => 'RKH', 'count' => $pendingRKH->count()], ['tab' => 'lkh', 'label' => 'LKH', 'count' => $pendingLKH->count()], ['tab' => 'absen', 'label' => 'Absen', 'count' => $pendingAbsen->count()], ['tab' => 'upah', 'label' => 'Upah Mingguan', 'count' => $pendingUpah->count()], ['tab' => 'bbm', 'label' => 'BBM', 'count' => $pendingBBM->count()], ['tab' => 'other', 'label' => 'Lainnya', 'count' => $pendingOther->count()]] as $item)
                     <button @click="activeTab = '{{ $item['tab'] }}'"
                         :class="activeTab === '{{ $item['tab'] }}'
                             ?
@@ -492,6 +485,11 @@
                 @else
                     <div class="space-y-3">
                         @foreach ($pendingUpah as $upah)
+                            @php
+                                $transnoListStr = implode(',', $upah->transno_list);
+                                $mandorLabel = $upah->mandorname ?? '-';
+                                $isMulti = $upah->transno_count > 1;
+                            @endphp
                             <div
                                 class="bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-slate-300 hover:shadow-sm transition-all duration-200">
 
@@ -507,11 +505,24 @@
                                             </svg>
                                         </div>
                                         <div>
-                                            <button type="button" @click="openUpahDetail('{{ $upah->transno }}')"
-                                                class="font-semibold text-slate-900 hover:text-blue-600 text-sm transition-colors text-left">{{ $upah->transno }}</button>
+                                            <button type="button"
+                                                @click="openUpahDetailGroup('{{ $transnoListStr }}')"
+                                                class="font-semibold text-slate-900 hover:text-blue-600 text-sm transition-colors text-left">
+                                                {{ $mandorLabel }}
+                                            </button>
                                             <div class="flex items-center gap-2 mt-0.5">
-                                                <span class="text-xs text-slate-400">Generate:
-                                                    {{ \Carbon\Carbon::parse($upah->generatedate)->format('d M Y') }}</span>
+                                                @if ($isMulti)
+                                                    <span
+                                                        class="text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+                                                        {{ $upah->transno_count }} transaksi
+                                                    </span>
+                                                    <span class="text-slate-200">&middot;</span>
+                                                @endif
+                                                <span class="text-xs text-slate-400">
+                                                    Periode:
+                                                    {{ \Carbon\Carbon::parse($upah->startdate)->format('d M Y') }}
+                                                    s/d {{ \Carbon\Carbon::parse($upah->enddate)->format('d M Y') }}
+                                                </span>
                                                 <span class="text-slate-200">&middot;</span>
                                                 <span
                                                     class="text-[10px] font-semibold px-1.5 py-0.5 rounded
@@ -529,48 +540,73 @@
                                     </span>
                                 </div>
 
-                                {{-- Body --}}
-                                <div class="px-5 py-3 border-t border-slate-100 grid grid-cols-4 gap-5 text-sm">
-                                    <div>
+                                {{-- Daftar Transaksi --}}
+                                @if ($isMulti)
+                                    <div class="px-5 py-2.5 border-t border-slate-100 bg-indigo-50/30">
                                         <p
-                                            class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                            Mandor</p>
-                                        <p class="font-medium text-slate-800">{{ $upah->mandorname ?? '-' }}</p>
-                                    </div>
-                                    <div>
-                                        <p
-                                            class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                            class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-2">
                                             Aktivitas</p>
-                                        <p class="font-medium text-slate-800">{{ $upah->activityname ?? '-' }}</p>
+                                        <div class="space-y-1">
+                                            @foreach ($upah->transactions as $trx)
+                                                <div class="flex items-center justify-between gap-2 text-xs">
+                                                    <span
+                                                        class="font-mono text-slate-500 shrink-0">{{ $trx->transno }}</span>
+                                                    <span
+                                                        class="text-slate-700 font-medium flex-1 truncate px-2">{{ $trx->activityname ?? '-' }}</span>
+                                                    <span class="text-slate-400 shrink-0">
+                                                        {{ \Carbon\Carbon::parse($trx->startdate)->format('d M') }}
+                                                        –
+                                                        {{ \Carbon\Carbon::parse($trx->enddate)->format('d M Y') }}
+                                                    </span>
+                                                </div>
+                                            @endforeach
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p
-                                            class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                            Periode LKH</p>
-                                        <p class="font-medium text-slate-800 text-xs">
-                                            {{ \Carbon\Carbon::parse($upah->startdate)->format('d M Y') }}
-                                            <span class="text-slate-400">s/d</span>
-                                            {{ \Carbon\Carbon::parse($upah->enddate)->format('d M Y') }}
-                                        </p>
+                                @else
+                                    {{-- Body single transaksi --}}
+                                    <div class="px-5 py-3 border-t border-slate-100 grid grid-cols-3 gap-5 text-sm">
+                                        <div>
+                                            <p
+                                                class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                                Aktivitas</p>
+                                            <p class="font-medium text-slate-800">
+                                                {{ $upah->transactions->first()->activityname ?? '-' }}</p>
+                                        </div>
+                                        <div>
+                                            <p
+                                                class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                                Periode LKH</p>
+                                            <p class="font-medium text-slate-800 text-xs">
+                                                {{ \Carbon\Carbon::parse($upah->startdate)->format('d M Y') }}
+                                                <span class="text-slate-400">s/d</span>
+                                                {{ \Carbon\Carbon::parse($upah->enddate)->format('d M Y') }}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p
+                                                class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                                {{ $upah->jenistenagakerja == 1 ? 'Jml. TKH' : 'Jml. Plot' }}
+                                            </p>
+                                            <p class="font-medium text-slate-800">
+                                                {{ $upah->totalworkers }}
+                                                <span
+                                                    class="text-slate-400 text-xs">{{ $upah->jenistenagakerja == 1 ? 'org' : 'plot' }}</span>
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p
-                                            class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                            {{ $upah->jenistenagakerja == 1 ? 'Jml. TKH' : 'Jml. Plot' }}
-                                        </p>
-                                        <p class="font-medium text-slate-800">
-                                            {{ $upah->totalworkers }}
-                                            <span
-                                                class="text-slate-400 text-xs">{{ $upah->jenistenagakerja == 1 ? 'org' : 'plot' }}</span>
-                                        </p>
-                                    </div>
-                                </div>
+                                @endif
 
                                 {{-- Grand Total strip --}}
                                 <div
                                     class="px-5 py-2.5 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between">
                                     <p class="text-[11px] text-slate-400 font-medium uppercase tracking-wider">Grand
-                                        Total</p>
+                                        Total
+                                        @if ($isMulti)
+                                            <span
+                                                class="text-indigo-400 normal-case font-normal">({{ $upah->transno_count }}
+                                                transaksi)</span>
+                                        @endif
+                                    </p>
                                     <p class="text-sm font-bold text-emerald-700">
                                         {{ \Illuminate\Support\Number::currency($upah->grandtotal, 'IDR', 'id') }}
                                     </p>
@@ -578,31 +614,35 @@
 
                                 {{-- Actions --}}
                                 <div class="px-5 py-3 bg-slate-50/70 border-t border-slate-100 flex gap-2">
-                                    <form action="{{ route('approval.upah-mingguan.process') }}" method="POST"
+                                    <form action="{{ route('approval.upah-mingguan.process-group') }}" method="POST"
                                         class="flex-1">
                                         @csrf
-                                        <input type="hidden" name="transno" value="{{ $upah->transno }}">
+                                        @foreach ($upah->transno_list as $tn)
+                                            <input type="hidden" name="transno_list[]" value="{{ $tn }}">
+                                        @endforeach
                                         <input type="hidden" name="action" value="approve">
                                         <input type="hidden" name="level" value="{{ $upah->approval_level }}">
                                         <button type="submit"
-                                            onclick="return confirm('Approve Upah Mingguan {{ $upah->transno }}?')"
+                                            onclick="return confirm('Approve {{ $isMulti ? $upah->transno_count . ' transaksi' : 'transaksi' }} upah mingguan mandor {{ $mandorLabel }}?')"
                                             class="w-full inline-flex items-center justify-center gap-1.5 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-emerald-200 active:scale-[0.98]">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                 stroke-width="2" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round"
                                                     d="M4.5 12.75l6 6 9-13.5" />
                                             </svg>
-                                            Approve
+                                            Approve{{ $isMulti ? ' (' . $upah->transno_count . ')' : '' }}
                                         </button>
                                     </form>
-                                    <form action="{{ route('approval.upah-mingguan.process') }}" method="POST"
+                                    <form action="{{ route('approval.upah-mingguan.process-group') }}" method="POST"
                                         class="flex-1">
                                         @csrf
-                                        <input type="hidden" name="transno" value="{{ $upah->transno }}">
+                                        @foreach ($upah->transno_list as $tn)
+                                            <input type="hidden" name="transno_list[]" value="{{ $tn }}">
+                                        @endforeach
                                         <input type="hidden" name="action" value="decline">
                                         <input type="hidden" name="level" value="{{ $upah->approval_level }}">
                                         <button type="submit"
-                                            onclick="return confirm('Decline Upah Mingguan {{ $upah->transno }}?')"
+                                            onclick="return confirm('Decline {{ $isMulti ? $upah->transno_count . ' transaksi' : 'transaksi' }} upah mingguan mandor {{ $mandorLabel }}?')"
                                             class="w-full inline-flex items-center justify-center gap-1.5 py-2 px-4 bg-white hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg border border-slate-200 transition-colors active:scale-[0.98]">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                                 stroke-width="2" viewBox="0 0 24 24">
@@ -612,7 +652,7 @@
                                             Decline
                                         </button>
                                     </form>
-                                    <button type="button" @click="openUpahDetail('{{ $upah->transno }}')"
+                                    <button type="button" @click="openUpahDetailGroup('{{ $transnoListStr }}')"
                                         class="inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700 text-sm font-medium rounded-lg border border-slate-200 transition-colors active:scale-[0.98]"
                                         title="Lihat Detail">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
@@ -649,159 +689,199 @@
                 @else
                     {{-- Sub-tab filter --}}
                     @php
-                        $bbmPermintaan  = $pendingBBM->where('approval_type', 'PERMINTAAN');
+                        $bbmPermintaan = $pendingBBM->where('approval_type', 'PERMINTAAN');
                         $bbmPengeluaran = $pendingBBM->where('approval_type', 'PENGELUARAN');
                     @endphp
                     <div class="flex items-center gap-2 mb-4" x-data="{ bbmSub: 'all' }">
                         <button @click="bbmSub = 'all'"
-                                :class="bbmSub === 'all' ? 'bg-slate-700 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'"
-                                class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors">
+                            :class="bbmSub === 'all' ? 'bg-slate-700 text-white' :
+                                'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'"
+                            class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors">
                             Semua <span class="ml-1 opacity-70">({{ $pendingBBM->count() }})</span>
                         </button>
-                        @if($bbmPermintaan->isNotEmpty())
-                        <button @click="bbmSub = 'permintaan'"
-                                :class="bbmSub === 'permintaan' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'"
+                        @if ($bbmPermintaan->isNotEmpty())
+                            <button @click="bbmSub = 'permintaan'"
+                                :class="bbmSub === 'permintaan' ? 'bg-blue-600 text-white' :
+                                    'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'"
                                 class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors">
-                            Permintaan BBM <span class="ml-1 opacity-70">({{ $bbmPermintaan->count() }})</span>
-                        </button>
+                                Permintaan BBM <span class="ml-1 opacity-70">({{ $bbmPermintaan->count() }})</span>
+                            </button>
                         @endif
-                        @if($bbmPengeluaran->isNotEmpty())
-                        <button @click="bbmSub = 'pengeluaran'"
-                                :class="bbmSub === 'pengeluaran' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'"
+                        @if ($bbmPengeluaran->isNotEmpty())
+                            <button @click="bbmSub = 'pengeluaran'"
+                                :class="bbmSub === 'pengeluaran' ? 'bg-emerald-600 text-white' :
+                                    'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'"
                                 class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors">
-                            Pengeluaran BBM <span class="ml-1 opacity-70">({{ $bbmPengeluaran->count() }})</span>
-                        </button>
+                                Pengeluaran BBM <span class="ml-1 opacity-70">({{ $bbmPengeluaran->count() }})</span>
+                            </button>
                         @endif
 
-                    <div class="space-y-3 mt-1 w-full">
-                        @foreach ($pendingBBM as $bbm)
-                            @php
-                                $isPermintaan = ($bbm->approval_type ?? 'PERMINTAAN') === 'PERMINTAAN';
-                            @endphp
-                            <div x-show="bbmSub === 'all' || bbmSub === '{{ $isPermintaan ? 'permintaan' : 'pengeluaran' }}'"
-                                 class="bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-slate-300 hover:shadow-sm transition-all duration-200">
+                        <div class="space-y-3 mt-1 w-full">
+                            @foreach ($pendingBBM as $bbm)
+                                @php
+                                    $isPermintaan = ($bbm->approval_type ?? 'PERMINTAAN') === 'PERMINTAAN';
+                                @endphp
+                                <div x-show="bbmSub === 'all' || bbmSub === '{{ $isPermintaan ? 'permintaan' : 'pengeluaran' }}'"
+                                    class="bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-slate-300 hover:shadow-sm transition-all duration-200">
 
-                                {{-- Header --}}
-                                <div class="px-5 py-3.5 flex items-center justify-between gap-3">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
+                                    {{-- Header --}}
+                                    <div class="px-5 py-3.5 flex items-center justify-between gap-3">
+                                        <div class="flex items-center gap-2.5">
+                                            <div
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
                                             {{ $isPermintaan ? 'bg-blue-50' : 'bg-emerald-50' }}">
-                                            @if($isPermintaan)
-                                            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                            </svg>
-                                            @else
-                                            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                                            </svg>
-                                            @endif
-                                        </div>
-                                        <div>
-                                            <div class="flex items-center gap-2">
-                                                <a href="{{ route('transaction.order-bbm.show', $bbm->orderno) }}"
-                                                    class="font-semibold text-slate-900 hover:text-blue-600 text-sm transition-colors">
-                                                    Order #{{ $bbm->orderno }}
-                                                </a>
-                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border
+                                                @if ($isPermintaan)
+                                                    <svg class="w-4 h-4 text-blue-500" fill="none"
+                                                        stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                @else
+                                                    <svg class="w-4 h-4 text-emerald-500" fill="none"
+                                                        stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                                    </svg>
+                                                @endif
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center gap-2">
+                                                    <a href="{{ route('transaction.order-bbm.show', $bbm->orderno) }}"
+                                                        class="font-semibold text-slate-900 hover:text-blue-600 text-sm transition-colors">
+                                                        Order #{{ $bbm->orderno }}
+                                                    </a>
+                                                    <span
+                                                        class="text-[10px] font-bold px-2 py-0.5 rounded-full border
                                                     {{ $isPermintaan
                                                         ? 'bg-blue-50 text-blue-600 border-blue-200'
                                                         : 'bg-emerald-50 text-emerald-600 border-emerald-200' }}">
-                                                    {{ $isPermintaan ? 'PERMINTAAN' : 'PENGELUARAN' }}
-                                                </span>
-                                            </div>
-                                            <div class="flex items-center gap-2 mt-0.5">
-                                                <span class="text-xs text-slate-400">{{ \Carbon\Carbon::parse($bbm->orderdate)->format('d M Y') }}</span>
-                                                <span class="text-slate-200">&middot;</span>
-                                                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded
+                                                        {{ $isPermintaan ? 'PERMINTAAN' : 'PENGELUARAN' }}
+                                                    </span>
+                                                </div>
+                                                <div class="flex items-center gap-2 mt-0.5">
+                                                    <span
+                                                        class="text-xs text-slate-400">{{ \Carbon\Carbon::parse($bbm->orderdate)->format('d M Y') }}</span>
+                                                    <span class="text-slate-200">&middot;</span>
+                                                    <span
+                                                        class="text-[10px] font-semibold px-1.5 py-0.5 rounded
                                                     {{ $bbm->sourcetype === 'LKH' ? 'bg-purple-50 text-purple-600 border border-purple-200' : 'bg-teal-50 text-teal-600 border border-teal-200' }}">
-                                                    {{ $bbm->sourcetype }}
-                                                </span>
-                                                <span class="text-xs text-slate-400 font-mono">{{ $bbm->sourceno }}</span>
+                                                        {{ $bbm->sourcetype }}
+                                                    </span>
+                                                    <span
+                                                        class="text-xs text-slate-400 font-mono">{{ $bbm->sourceno }}</span>
+                                                </div>
                                             </div>
                                         </div>
+                                        <span
+                                            class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200 whitespace-nowrap tracking-wide">
+                                            LEVEL {{ $bbm->approval_level ?? 1 }}
+                                        </span>
                                     </div>
-                                    <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200 whitespace-nowrap tracking-wide">
-                                        LEVEL {{ $bbm->approval_level ?? 1 }}
-                                    </span>
-                                </div>
 
-                                {{-- Body --}}
-                                <div class="px-5 py-3 border-t border-slate-100 grid {{ $isPermintaan ? 'grid-cols-3' : 'grid-cols-4' }} gap-5 text-sm">
-                                    <div>
-                                        <p class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">Kendaraan</p>
-                                        <p class="font-medium text-slate-800">{{ $bbm->jumlahkendaraan }} <span class="text-slate-400 text-xs">unit</span></p>
-                                        @if($bbm->daftarkendaraan)
-                                            <p class="text-xs text-slate-400 mt-0.5 truncate" title="{{ $bbm->daftarkendaraan }}">{{ $bbm->daftarkendaraan }}</p>
-                                        @endif
-                                    </div>
-                                    <div>
-                                        <p class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">Solar Diminta</p>
-                                        <p class="font-medium text-slate-800">{{ number_format($bbm->totalsolarrequested, 2) }} <span class="text-slate-400 text-xs">L</span></p>
-                                    </div>
-                                    @if(!$isPermintaan)
-                                    <div>
-                                        <p class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">Solar Real</p>
-                                        <p class="font-bold text-emerald-700">{{ number_format($bbm->totalsolarreal ?? 0, 2) }} <span class="text-emerald-500 text-xs font-medium">L</span></p>
-                                        @if($bbm->totalsolarreal && $bbm->totalsolarrequested > 0)
-                                            @php $diff = $bbm->totalsolarrequested - $bbm->totalsolarreal; @endphp
-                                            @if($diff > 0)
-                                                <p class="text-[10px] text-slate-400 mt-0.5">Selisih: -{{ number_format($diff, 2) }} L</p>
+                                    {{-- Body --}}
+                                    <div
+                                        class="px-5 py-3 border-t border-slate-100 grid {{ $isPermintaan ? 'grid-cols-3' : 'grid-cols-4' }} gap-5 text-sm">
+                                        <div>
+                                            <p
+                                                class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                                Kendaraan</p>
+                                            <p class="font-medium text-slate-800">{{ $bbm->jumlahkendaraan }} <span
+                                                    class="text-slate-400 text-xs">unit</span></p>
+                                            @if ($bbm->daftarkendaraan)
+                                                <p class="text-xs text-slate-400 mt-0.5 truncate"
+                                                    title="{{ $bbm->daftarkendaraan }}">{{ $bbm->daftarkendaraan }}
+                                                </p>
                                             @endif
+                                        </div>
+                                        <div>
+                                            <p
+                                                class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                                Solar Diminta</p>
+                                            <p class="font-medium text-slate-800">
+                                                {{ number_format($bbm->totalsolarrequested, 2) }} <span
+                                                    class="text-slate-400 text-xs">L</span></p>
+                                        </div>
+                                        @if (!$isPermintaan)
+                                            <div>
+                                                <p
+                                                    class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                                    Solar Real</p>
+                                                <p class="font-bold text-emerald-700">
+                                                    {{ number_format($bbm->totalsolarreal ?? 0, 2) }} <span
+                                                        class="text-emerald-500 text-xs font-medium">L</span></p>
+                                                @if ($bbm->totalsolarreal && $bbm->totalsolarrequested > 0)
+                                                    @php $diff = $bbm->totalsolarrequested - $bbm->totalsolarreal; @endphp
+                                                    @if ($diff > 0)
+                                                        <p class="text-[10px] text-slate-400 mt-0.5">Selisih:
+                                                            -{{ number_format($diff, 2) }} L</p>
+                                                    @endif
+                                                @endif
+                                            </div>
                                         @endif
+                                        <div>
+                                            <p
+                                                class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
+                                                {{ $isPermintaan ? 'Dibuat Oleh' : 'Dikonfirmasi Oleh' }}
+                                            </p>
+                                            <p class="font-medium text-slate-800">
+                                                {{ $isPermintaan ? $bbm->inputby ?? '-' : $bbm->gudangconfirmedby ?? '-' }}
+                                            </p>
+                                        </div>
                                     </div>
-                                    @endif
-                                    <div>
-                                        <p class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">
-                                            {{ $isPermintaan ? 'Dibuat Oleh' : 'Dikonfirmasi Oleh' }}
-                                        </p>
-                                        <p class="font-medium text-slate-800">{{ $isPermintaan ? ($bbm->inputby ?? '-') : ($bbm->gudangconfirmedby ?? '-') }}</p>
-                                    </div>
-                                </div>
 
-                                {{-- Actions --}}
-                                <div class="px-5 py-3 bg-slate-50/70 border-t border-slate-100 flex gap-2">
-                                    <form action="{{ route('approval.order-bbm.process') }}" method="POST" class="flex-1">
-                                        @csrf
-                                        <input type="hidden" name="orderno" value="{{ $bbm->orderno }}">
-                                        <input type="hidden" name="approval_type" value="{{ $bbm->approval_type ?? 'PERMINTAAN' }}">
-                                        <input type="hidden" name="action" value="approve">
-                                        <button type="submit"
-                                            onclick="return confirm('Approve {{ $isPermintaan ? 'Permintaan' : 'Pengeluaran' }} BBM #{{ $bbm->orderno }}?')"
-                                            class="w-full inline-flex items-center justify-center gap-1.5 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-emerald-200 active:scale-[0.98]">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                    {{-- Actions --}}
+                                    <div class="px-5 py-3 bg-slate-50/70 border-t border-slate-100 flex gap-2">
+                                        <form action="{{ route('approval.order-bbm.process') }}" method="POST"
+                                            class="flex-1">
+                                            @csrf
+                                            <input type="hidden" name="orderno" value="{{ $bbm->orderno }}">
+                                            <input type="hidden" name="approval_type"
+                                                value="{{ $bbm->approval_type ?? 'PERMINTAAN' }}">
+                                            <input type="hidden" name="action" value="approve">
+                                            <button type="submit"
+                                                onclick="return confirm('Approve {{ $isPermintaan ? 'Permintaan' : 'Pengeluaran' }} BBM #{{ $bbm->orderno }}?')"
+                                                class="w-full inline-flex items-center justify-center gap-1.5 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-emerald-200 active:scale-[0.98]">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    stroke-width="2" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M4.5 12.75l6 6 9-13.5" />
+                                                </svg>
+                                                Approve
+                                            </button>
+                                        </form>
+                                        <form action="{{ route('approval.order-bbm.process') }}" method="POST"
+                                            class="flex-1">
+                                            @csrf
+                                            <input type="hidden" name="orderno" value="{{ $bbm->orderno }}">
+                                            <input type="hidden" name="approval_type"
+                                                value="{{ $bbm->approval_type ?? 'PERMINTAAN' }}">
+                                            <input type="hidden" name="action" value="decline">
+                                            <button type="submit"
+                                                onclick="return confirm('Decline {{ $isPermintaan ? 'Permintaan' : 'Pengeluaran' }} BBM #{{ $bbm->orderno }}?')"
+                                                class="w-full inline-flex items-center justify-center gap-1.5 py-2 px-4 bg-white hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg border border-slate-200 transition-colors active:scale-[0.98]">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    stroke-width="2" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                                Decline
+                                            </button>
+                                        </form>
+                                        <a href="{{ route('transaction.order-bbm.show', $bbm->orderno) }}"
+                                            class="inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700 text-sm font-medium rounded-lg border border-slate-200 transition-colors active:scale-[0.98]"
+                                            title="Lihat Detail">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             </svg>
-                                            Approve
-                                        </button>
-                                    </form>
-                                    <form action="{{ route('approval.order-bbm.process') }}" method="POST" class="flex-1">
-                                        @csrf
-                                        <input type="hidden" name="orderno" value="{{ $bbm->orderno }}">
-                                        <input type="hidden" name="approval_type" value="{{ $bbm->approval_type ?? 'PERMINTAAN' }}">
-                                        <input type="hidden" name="action" value="decline">
-                                        <button type="submit"
-                                            onclick="return confirm('Decline {{ $isPermintaan ? 'Permintaan' : 'Pengeluaran' }} BBM #{{ $bbm->orderno }}?')"
-                                            class="w-full inline-flex items-center justify-center gap-1.5 py-2 px-4 bg-white hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg border border-slate-200 transition-colors active:scale-[0.98]">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                            Decline
-                                        </button>
-                                    </form>
-                                    <a href="{{ route('transaction.order-bbm.show', $bbm->orderno) }}"
-                                        class="inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700 text-sm font-medium rounded-lg border border-slate-200 transition-colors active:scale-[0.98]"
-                                        title="Lihat Detail">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                    </a>
+                                        </a>
+                                    </div>
                                 </div>
-                            </div>
-                        @endforeach
-                    </div>
+                            @endforeach
+                        </div>
                     </div>
                 @endif
             </div>
@@ -1043,7 +1123,7 @@
     </div>
 
     <script>
-        const upahDetailRouteTemplate = '{{ route('approval.upah-mingguan.detail', ['transno' => '__TRANSNO__']) }}';
+        const upahDetailGroupUrl = '{{ route('approval.upah-mingguan.detail-group') }}';
 
         function approvalData() {
             return {
@@ -1060,18 +1140,18 @@
                     open: false,
                     loading: false,
                     error: null,
-                    transno: null,
+                    transno_list: null,
                     data: null,
                 },
 
-                openUpahDetail(transno) {
+                openUpahDetailGroup(transnoListStr) {
                     this.upahModal.open = true;
                     this.upahModal.loading = true;
                     this.upahModal.error = null;
                     this.upahModal.data = null;
-                    this.upahModal.transno = transno;
+                    this.upahModal.transno_list = transnoListStr;
 
-                    const url = upahDetailRouteTemplate.replace('__TRANSNO__', encodeURIComponent(transno));
+                    const url = upahDetailGroupUrl + '?transno_list=' + encodeURIComponent(transnoListStr);
 
                     fetch(url, {
                             headers: {

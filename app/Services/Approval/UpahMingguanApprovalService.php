@@ -110,6 +110,130 @@ class UpahMingguanApprovalService
         }
     }
 
+    // ── Batch approve / decline (multiple transno, same mandor) ─────────────
+    public function processApprovalBatch(
+        array $transnoList,
+        string $companycode,
+        int $level,
+        string $action,
+        array $userData
+    ): array {
+        DB::beginTransaction();
+        try {
+            foreach ($transnoList as $transno) {
+                $trx = $this->repository->findByTransno($companycode, $transno);
+                if (!$trx) {
+                    DB::rollBack();
+                    return ['success' => false, 'message' => "Data approval tidak ditemukan: {$transno}"];
+                }
+
+                $validation = $this->repository->validateApprovalAuthority($trx, $userData['idjabatan'], $level);
+                if (!$validation['success']) {
+                    DB::rollBack();
+                    return $validation;
+                }
+
+                $ok = $this->repository->processApproval($companycode, $transno, $level, $action, $userData);
+                if (!$ok) {
+                    throw new \Exception("Gagal update approval {$transno}");
+                }
+
+                if ($action === 'approve') {
+                    $updatedTrx = $this->repository->findByTransno($companycode, $transno);
+                    if ($this->repository->isFullyApproved($updatedTrx)) {
+                        $this->repository->markFullyApproved($companycode, $transno, $userData['userid']);
+                        $this->repository->updateHeaderStatus($companycode, $transno, 'APPROVED');
+                    }
+                } else {
+                    $this->repository->updateHeaderStatus($companycode, $transno, 'DECLINED');
+                }
+            }
+
+            DB::commit();
+            $label = $action === 'approve' ? 'disetujui' : 'ditolak';
+            $count = count($transnoList);
+            return ['success' => true, 'message' => "{$count} transaksi berhasil {$label}"];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Upah approval batch failed", ['error' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Gagal memproses approval: ' . $e->getMessage()];
+        }
+    }
+
+    // ── Get grouped approval detail (multiple transno per mandor) ────────────
+    public function getApprovalDetailGroup(array $transnoList, string $companycode): array
+    {
+        $transactions = [];
+        $history = null;
+        $firstHeader = null;
+        $firstTrx = null;
+
+        foreach ($transnoList as $transno) {
+            $trx = $this->repository->findByTransno($companycode, $transno);
+            if (!$trx)
+                continue;
+
+            $hdr = $this->repository->findHeaderWithActivity($companycode, $transno);
+            $workers = $this->repository->getWorkers($companycode, $transno);
+
+            if (!$history) {
+                $history = $this->repository->getApprovalHistory($companycode, $transno);
+                $firstTrx = $trx;
+                $firstHeader = $hdr;
+            }
+
+            $transactions[] = [
+                'transno' => $transno,
+                'activityname' => $hdr->activityname ?? '-',
+                'startdate' => $hdr->startdate ?? null,
+                'enddate' => $hdr->enddate ?? null,
+                'generatedate' => $hdr->generatedate ?? null,
+                'grandtotal' => $hdr->grandtotal ?? 0,
+                'jenistenagakerja' => $hdr->jenistenagakerja ?? null,
+                'workers' => $workers->map(fn($w) => [
+                    'tenagakerjaid' => $w->tenagakerjaid,
+                    'worker_name' => $w->worker_name ?? '-',
+                    'totalupah' => $w->totalupah ?? 0,
+                    'totalupah_fmt' => \Illuminate\Support\Number::currency($w->totalupah ?? 0, 'IDR', 'id'),
+                ])->values()->toArray(),
+            ];
+        }
+
+        if (!$firstTrx) {
+            return ['success' => false, 'message' => 'Data approval tidak ditemukan'];
+        }
+
+        $status = $this->buildApprovalStatus($firstTrx);
+
+        // Format history
+        $historyData = null;
+        if ($history) {
+            $levels = [];
+            for ($i = 1; $i <= ($history->jumlahapproval ?? 0); $i++) {
+                $levels[] = [
+                    'level' => $i,
+                    'jabatan' => $history->{"jabatan{$i}_name"} ?? '-',
+                    'user' => $history->{"approval{$i}_user_name"} ?? null,
+                    'flag' => $history->{"approval{$i}flag"} ?? null,
+                    'date' => $history->{"approval{$i}date"} ?? null,
+                ];
+            }
+            $historyData = [
+                'jumlahapproval' => $history->jumlahapproval,
+                'levels' => $levels,
+            ];
+        }
+
+        return [
+            'success' => true,
+            'header' => $firstHeader,
+            'history' => $historyData,
+            'transactions' => $transactions,
+            'status' => $status,
+        ];
+    }
+
     // ── Get approval detail for a transno ────────────────────────────────────
     public function getApprovalDetail(string $transno, string $companycode): array
     {

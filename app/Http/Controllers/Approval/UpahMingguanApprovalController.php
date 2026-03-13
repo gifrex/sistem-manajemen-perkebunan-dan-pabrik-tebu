@@ -62,6 +62,61 @@ class UpahMingguanApprovalController extends Controller
     }
 
     /**
+     * Process batch approve / decline (multiple transno, same mandor)
+     * POST /approval/upah-mingguan/process-group
+     */
+    public function processGroup(Request $request)
+    {
+        $request->validate([
+            'transno_list' => 'required|array|min:1',
+            'transno_list.*' => 'required|string',
+            'action' => 'required|in:approve,decline',
+            'level' => 'required|integer|between:1,5',
+        ]);
+
+        $companycode = Session::get('companycode');
+        $currentUser = Auth::user();
+
+        $result = $this->service->processApprovalBatch(
+            $request->transno_list,
+            $companycode,
+            (int) $request->level,
+            $request->action,
+            [
+                'userid' => $currentUser->userid,
+                'idjabatan' => $currentUser->idjabatan,
+            ]
+        );
+
+        if ($result['success']) {
+            return back()->with('success', $result['message']);
+        } else {
+            return back()->with('error', $result['message']);
+        }
+    }
+
+    /**
+     * Get grouped approval detail (multiple transno per mandor)
+     * GET /approval/upah-mingguan/detail-group?transno_list=TRX1,TRX2
+     * Returns JSON for modal
+     */
+    public function detailGroup(Request $request)
+    {
+        $request->validate(['transno_list' => 'required|string']);
+
+        $companycode = Session::get('companycode');
+        $transnoList = array_filter(explode(',', $request->transno_list));
+
+        $result = $this->service->getApprovalDetailGroup(array_values($transnoList), $companycode);
+
+        if (!$result['success']) {
+            return response()->json(['success' => false, 'message' => $result['message']], 404);
+        }
+
+        return response()->json($result);
+    }
+
+    /**
      * Get approval detail
      * GET /approval/upah-mingguan/{transno}/detail
      * Supports JSON (for modal) when Accept: application/json
