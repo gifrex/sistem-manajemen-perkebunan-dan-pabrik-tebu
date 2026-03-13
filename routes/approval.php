@@ -67,6 +67,8 @@ Route::middleware('auth')->prefix('approval')->name('approval.')->group(function
     // ============================================================================
     Route::prefix('upah-mingguan')->name('upah-mingguan.')->group(function () {
         Route::post('/process', [UpahMingguanApprovalController::class, 'process'])->name('process');
+        Route::post('/process-group', [UpahMingguanApprovalController::class, 'processGroup'])->name('process-group');
+        Route::get('/detail-group', [UpahMingguanApprovalController::class, 'detailGroup'])->name('detail-group');
         Route::get('/{transno}/detail', [UpahMingguanApprovalController::class, 'detail'])->name('detail');
         Route::get('/{transno}/history', [UpahMingguanApprovalController::class, 'history'])->name('history');
     });
@@ -77,7 +79,7 @@ Route::middleware('auth')->prefix('approval')->name('approval.')->group(function
     // Route::get('/history', [ApprovalHistoryController::class, 'index'])->name('history.index');
     // Route::get('/audit', [ApprovalAuditController::class, 'index'])->name('audit.index');
 
-     // Order BBM Approval
+    // Order BBM Approval
     Route::post('/order-bbm/process', [OrderBbmApprovalController::class, 'process'])->name('order-bbm.process');
     Route::get('/order-bbm/{orderno}/detail', [OrderBbmApprovalController::class, 'detail'])->name('order-bbm.detail');
 });
