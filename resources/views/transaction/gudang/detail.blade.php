@@ -323,8 +323,9 @@
                             <td class="py-0.5 px-2 text-center text-right">
                     @php
                         $qtyRawExp = (float)($stdDosage[$d->itemcode.'|'.$activitycode] ?? 0) * (float)($d->luasrkh ?? 0);
-
-                        if ($rounddosage ?? 0) {
+                        $rowRounddosage = (int)($d->rounddosage ?? 0);
+                        
+                        if ($rowRounddosage) {
                             if ($qtyRawExp <= 0) {
                                 $exp = 0;
                             } elseif ($qtyRawExp <= 0.05) {
