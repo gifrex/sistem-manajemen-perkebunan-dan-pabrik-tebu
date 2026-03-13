@@ -1378,9 +1378,20 @@ public function submit(Request $request)
                 // ambil group & flag rounding
                 $groupId     = $detail->herbisidagroupid ?? null;
                // $rounddosage = $groupId !== null ? ($roundingByGroup[$groupId] ?? 1) : 1; // default: masih rounded seperti lama
-               $itemMeta = $herbisidaItems[$itemcode] ?? null;
-               $rounddosage = $itemMeta->rounddosage ?? 0; 
-               //3.8
+                //    $itemMeta = $herbisidaItems[$itemcode] ?? null;
+                //    $rounddosage = $itemMeta->rounddosage ?? 0; 
+                $groupId = $detail->herbisidagroupid ?? null;
+                $rounddosage = $groupId !== null ? (int)($roundingByGroup[$groupId] ?? 0) : 0;
+               Log::info('ROUNDING_CHECK', [
+                    'rkhno' => $request->rkhno,
+                    'lkhno' => $lkhno,
+                    'plot' => $key,
+                    'itemcode' => $itemcode,
+                    'herbisidagroupid' => $groupId,
+                    'rounddosage' => $rounddosage,
+                    'qtyraw' => $qtyraw,
+                ]);
+                //3.8
                 $rowCostcenter = $groupId !== null ? ($costcenterByGroup[$groupId] ?? null) : null;
                 if (!$rowCostcenter) {
                     return $releaseLockAndBack(
