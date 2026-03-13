@@ -231,20 +231,22 @@
                                 Pokok (Rp)</th>
                             <th class="border border-gray-400 px-2 py-2 text-white text-right" style="width:14%;">Upah
                                 Lembur (Rp)</th>
-                            <th class="border border-gray-400 px-2 py-2 text-white text-right" style="width:14%;">Total
+                            <th class="border border-gray-400 px-2 py-2 text-white text-right" style="width:12%;">Total
                                 Upah (Rp)</th>
+                            <th class="border border-gray-400 px-2 py-2 text-white text-left" style="width:18%;">
+                                Keterangan</th>
                         @else
-                            <th class="border border-gray-400 px-2 py-2 text-white text-center" style="width:9%;">Plot
+                            <th class="border border-gray-400 px-2 py-2 text-white text-center" style="width:8%;">Plot
                             </th>
-                            <th class="border border-gray-400 px-2 py-2 text-white text-left" style="width:21%;">
+                            <th class="border border-gray-400 px-2 py-2 text-white text-left" style="width:18%;">
                                 Material</th>
-                            <th class="border border-gray-400 px-2 py-2 text-white text-right" style="width:8%;">Luas
+                            <th class="border border-gray-400 px-2 py-2 text-white text-right" style="width:7%;">Luas
                                 (Ha)</th>
-                            <th class="border border-gray-400 px-2 py-2 text-white text-center" style="width:10%;">
+                            <th class="border border-gray-400 px-2 py-2 text-white text-center" style="width:9%;">
                                 Status Tanam</th>
-                            <th class="border border-gray-400 px-2 py-2 text-white text-right" style="width:8%;">Hasil
+                            <th class="border border-gray-400 px-2 py-2 text-white text-right" style="width:7%;">Hasil
                                 (Ha)</th>
-                            <th class="border border-gray-400 px-2 py-2 text-white text-center" style="width:9%;">Tgl
+                            <th class="border border-gray-400 px-2 py-2 text-white text-center" style="width:8%;">Tgl
                                 Kegiatan</th>
                             <th class="border border-gray-400 px-2 py-2 text-white text-right" style="width:13%;">Biaya
                                 (Rp)</th>
@@ -272,8 +274,8 @@
 
                         $rowNumber = 1;
                         $isHarian = session('tenagakerjarum') == 'Harian';
-                        $colspanFull = $isHarian ? 6 : 8;
-                        $colspanLabel = $isHarian ? 5 : 7;
+                        $colspanFull = $isHarian ? 7 : 8;
+                        $colspanLabel = $isHarian ? 6 : 7;
                     @endphp
 
                     @if (count($groupedByActivity) > 0)
@@ -308,34 +310,69 @@
                                         </td>
                                     </tr>
 
-                                    {{-- === PLOT DETAIL ROWS (Harian) === --}}
-                                    @foreach ($plotDetailsByLkh->get($lkhno, collect()) as $plotRow)
-                                        @php
+                                    {{-- === WORKER ROWS (Harian) === --}}
+                                    @php
+                                        $keteranganHtml =
+                                            '<table style="width:100%;border-collapse:collapse;font-size:inherit;">';
+                                        $keteranganHtml .=
+                                            '<thead><tr style="background:#fef3c7;border-bottom:1.5px solid #9ca3af;">' .
+                                            '<th style="text-align:left;padding:3px 4px;font-weight:700;color:#374151;white-space:nowrap;">Plot</th>' .
+                                            '<th style="text-align:right;padding:3px 4px;font-weight:700;color:#374151;white-space:nowrap;">Luas (Ha)</th>' .
+                                            '<th style="text-align:center;padding:3px 4px;font-weight:700;color:#374151;white-space:nowrap;">Status Tanam</th>' .
+                                            '<th style="text-align:right;padding:3px 4px;font-weight:700;color:#374151;white-space:nowrap;">Hasil (Ha)</th>' .
+                                            '</tr></thead><tbody>';
+                                        $plotRows = $plotDetailsByLkh->get($lkhno, collect());
+                                        foreach ($plotRows as $pi => $plotRow) {
                                             $matKey = $lkhno . '_' . $plotRow->plot;
                                             $plotMaterial = $materialDetails->get($matKey)?->materials ?? '';
-                                        @endphp
-                                        <tr class="row-plot-info" style="background:#f0fdf4;">
-                                            <td colspan="{{ $colspanFull }}" class="px-3 py-1 text-xs"
-                                                style="border: 1px solid #86efac; color:#166534;">
-                                                <span class="font-semibold">Plot:</span> {{ $plotRow->plot }}
-                                                &ensp;&bull;&ensp;
-                                                <span class="font-semibold">Luas:</span>
-                                                {{ number_format($plotRow->luasrkh, 2, ',', '.') }} Ha
-                                                &ensp;&bull;&ensp;
-                                                <span class="font-semibold">Status Tanam:</span>
-                                                {{ $plotRow->batchdate }} / {{ $plotRow->lifecyclestatus }}
-                                                &ensp;&bull;&ensp;
-                                                <span class="font-semibold">Hasil:</span>
-                                                {{ number_format($plotRow->luashasil, 2, ',', '.') }} Ha
-                                                @if (!empty($plotMaterial))
-                                                    &ensp;&bull;&ensp;
-                                                    <span class="font-semibold">Material:</span> {{ $plotMaterial }}
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-
-                                    {{-- === WORKER ROWS (Harian) === --}}
+                                            $isLast = $pi === count($plotRows) - 1;
+                                            $rowBorder = $isLast ? '' : 'border-bottom:1.5px solid #d1d5db;';
+                                            $keteranganHtml .=
+                                                '<tr>' .
+                                                '<td style="padding:4px 4px 2px;font-weight:600;color:#1e3a5f;">' .
+                                                e($plotRow->plot) .
+                                                '</td>' .
+                                                '<td style="text-align:right;padding:4px 4px 2px;">' .
+                                                number_format($plotRow->luasrkh, 2, ',', '.') .
+                                                '</td>' .
+                                                '<td style="text-align:center;padding:4px 4px 2px;">' .
+                                                e($plotRow->batchdate) .
+                                                '/' .
+                                                e($plotRow->lifecyclestatus) .
+                                                '</td>' .
+                                                '<td style="text-align:right;padding:4px 4px 2px;">' .
+                                                number_format($plotRow->luashasil, 2, ',', '.') .
+                                                '</td>' .
+                                                '</tr>';
+                                            if (!empty($plotMaterial)) {
+                                                $matItems = array_filter(
+                                                    array_map('trim', explode(',', $plotMaterial)),
+                                                );
+                                                $matHtml =
+                                                    '<div style="font-weight:600;color:#374151;padding:1px 0 2px;">Material:</div>';
+                                                foreach ($matItems as $matItem) {
+                                                    $matHtml .=
+                                                        '<div style="padding-left:6px;color:#4b5563;">- ' .
+                                                        e($matItem) .
+                                                        '</div>';
+                                                }
+                                                $keteranganHtml .=
+                                                    '<tr' .
+                                                    ($isLast ? '' : '') .
+                                                    '><td colspan="4" style="padding:0 4px 6px;' .
+                                                    $rowBorder .
+                                                    '">' .
+                                                    $matHtml .
+                                                    '</td></tr>';
+                                            } elseif (!$isLast) {
+                                                $keteranganHtml .=
+                                                    '<tr><td colspan="4" style="' .
+                                                    $rowBorder .
+                                                    'padding:0 4px 4px;"></td></tr>';
+                                            }
+                                        }
+                                        $keteranganHtml .= '</tbody></table>';
+                                    @endphp
                                     @foreach ($items as $i => $item)
                                         @php
                                             $cleanTotal = preg_replace('/[^\d,.]/', '', $item->total);
@@ -366,16 +403,23 @@
                                             </td>
                                             <td
                                                 class="border border-gray-300 px-2 py-1.5 text-right text-xs text-gray-700">
-                                                {{ $item->upah }}
+                                                {{ trim(str_replace('Rp', '', $item->upah)) }}
                                             </td>
                                             <td
                                                 class="border border-gray-300 px-2 py-1.5 text-right text-xs text-gray-700">
-                                                {{ $item->upahlembur }}
+                                                {{ trim(str_replace('Rp', '', $item->upahlembur)) }}
                                             </td>
                                             <td
                                                 class="border border-gray-300 px-2 py-1.5 text-right text-sm font-semibold text-gray-900">
-                                                {{ $item->total }}
+                                                {{ trim(str_replace('Rp', '', $item->total)) }}
                                             </td>
+                                            @if ($i === 0)
+                                                <td class="border border-gray-300 px-1 py-1 text-xs text-gray-700"
+                                                    rowspan="{{ count($items) }}"
+                                                    style="vertical-align: top; background:#fffbeb;">
+                                                    {!! $keteranganHtml !!}
+                                                </td>
+                                            @endif
                                         </tr>
                                     @endforeach
                                 @else
@@ -487,14 +531,21 @@
 
                             {{-- ===== SUBTOTAL PER KEGIATAN ===== --}}
                             <tr class="row-subtotal">
-                                <td class="px-3 py-2 text-right font-bold text-sm" colspan="{{ $colspanLabel }}"
+                                <td class="px-3 py-2 text-right font-bold text-sm"
+                                    colspan="{{ $isHarian ? 5 : $colspanLabel }}"
                                     style="background:#fef9c3; border: 1px solid #fde047; color:#713f12;">
                                     Subtotal &mdash; {{ $activityName }}
                                 </td>
-                                <td class="px-3 py-2 text-right font-bold text-sm"
+                                <td class="px-2 py-2 font-bold text-sm"
                                     style="background:#fef9c3; border: 1px solid #fde047; color:#713f12;">
-                                    Rp {{ number_format($activitySubtotal, 2, ',', '.') }}
+                                    <div style="display:flex; justify-content:space-between; gap:4px;">
+                                        <span>Rp</span>
+                                        <span>{{ number_format($activitySubtotal, 2, ',', '.') }}</span>
+                                    </div>
                                 </td>
+                                @if ($isHarian)
+                                    <td style="background:#fef9c3; border: 1px solid #fde047;"></td>
+                                @endif
                             </tr>
 
                             @php $totalKeseluruhan += $activitySubtotal; @endphp
@@ -503,14 +554,20 @@
                         {{-- ===== GRAND TOTAL ===== --}}
                         <tr class="row-grand-total">
                             <td class="px-3 py-2.5 text-right font-extrabold text-sm uppercase tracking-wide"
-                                colspan="{{ $colspanLabel }}"
+                                colspan="{{ $isHarian ? 5 : $colspanLabel }}"
                                 style="background:#dcfce7; border: 1.5px solid #4ade80; color:#14532d;">
                                 Total Keseluruhan
                             </td>
-                            <td class="px-3 py-2.5 text-right font-extrabold text-sm"
+                            <td class="px-2 py-2.5 font-extrabold text-sm"
                                 style="background:#dcfce7; border: 1.5px solid #4ade80; color:#14532d;">
-                                Rp {{ number_format($totalKeseluruhan, 2, ',', '.') }}
+                                <div style="display:flex; justify-content:space-between; gap:4px;">
+                                    <span>Rp</span>
+                                    <span>{{ number_format($totalKeseluruhan, 2, ',', '.') }}</span>
+                                </div>
                             </td>
+                            @if ($isHarian)
+                                <td style="background:#dcfce7; border: 1.5px solid #4ade80;"></td>
+                            @endif
                         </tr>
                     @else
                         <tr>

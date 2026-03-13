@@ -248,6 +248,9 @@ class PembayaranUpahMingguanController extends Controller
         $tenagakerjarum = $request->tenagakerjarum;
         $tk = $tenagakerjarum === 'Harian' ? 1 : 2;
         $companycode = session('companycode');
+
+        // Sinkronkan session agar AJAX refresh setelah generate menampilkan jenis yang benar
+        session(['tenagakerjarum' => $tenagakerjarum]);
         $userid = Auth::user()->userid;
 
         $existing = DB::table('pembayaranupahhdr')
@@ -529,6 +532,7 @@ class PembayaranUpahMingguanController extends Controller
                     'pl.tenagakerjaid',
                     'tk.nama as namatenagakerja',
                     DB::raw('MAX(dw.upahharian) as upah'),
+                    DB::raw('MAX(dw.upahlembur) as upahlembur'),
                     'pl.tanggal',
                     'pl.total'
                 )
@@ -607,6 +611,7 @@ class PembayaranUpahMingguanController extends Controller
             }
 
             $item->upah = Number::currency($upahVal, 'IDR', 'id');
+            $item->upahlembur = Number::currency(\floatval($item->upahlembur ?? 0), 'IDR', 'id');
             $item->total = Number::currency($totalVal, 'IDR', 'id');
         }
 
@@ -614,8 +619,8 @@ class PembayaranUpahMingguanController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-// EXPORT EXCEL  (entry point)
-// ─────────────────────────────────────────────────────────────────────────────
+    // EXPORT EXCEL  (entry point)
+    // ─────────────────────────────────────────────────────────────────────────────
     public function exportExcel(Request $request): StreamedResponse|JsonResponse
     {
         $companycode = session('companycode');
@@ -629,7 +634,7 @@ class PembayaranUpahMingguanController extends Controller
             $filterMandors = array_filter(explode(',', $filterMandors));
         }
 
-        // ── 1. Headers — hanya yang sudah APPROVED ──────────────────────────────
+        // ── 1. Headers — hanya yang sudah APPROVED, urutkan per mandor ──────────
         $headers = DB::table('pembayaranupahhdr as p')
             ->leftJoin('user as u', fn($j) => $j->on('u.userid', '=', 'p.mandoruserid')
                 ->on('u.companycode', '=', 'p.companycode'))
@@ -653,8 +658,9 @@ class PembayaranUpahMingguanController extends Controller
                 'u.name as mandorname'
             )
             ->distinct()
+            ->orderBy('p.mandoruserid')
+            ->orderBy('p.activitycode')
             ->orderByDesc('p.startdate')
-            ->orderByDesc('p.transno')
             ->get();
 
         if ($headers->isEmpty()) {
@@ -662,29 +668,121 @@ class PembayaranUpahMingguanController extends Controller
         }
 
         $transNos = $headers->pluck('transno')->toArray();
+        $mandorGroups = $headers->groupBy('mandoruserid');
 
-        // ── 2. Detail — satu query untuk semua transno ──────────────────────────
+        // ── 2. Detail & plot info ────────────────────────────────────────────────
+        $plotInfoByMandor = collect();
+
         if ($tk === 1) {
-            // Harian: join tenagakerja, kelompokkan di PHP
-            $detailMap = DB::table('pembayaranupahlst as pl')
+            // Harian: satu baris per TKH, dirangkum dari semua aktivitas.
+            // tanggal_awal/akhir = rentang kerja, jumlah_hari = distinct hari kerja,
+            // upahharian = MAX dari lkhdetailworker, total = SUM semua daily payment.
+            $detailByMandor = DB::table('pembayaranupahlst as pl')
+                ->join('pembayaranupahhdr as ph', fn($j) =>
+                    $j->on('ph.transno', '=', 'pl.transno')
+                        ->on('ph.companycode', '=', 'pl.companycode'))
                 ->leftJoin('tenagakerja as tkj', fn($j) =>
                     $j->on('tkj.tenagakerjaid', '=', 'pl.tenagakerjaid')
                         ->on('tkj.companycode', '=', 'pl.companycode'))
+                ->leftJoin('lkhhdr as lh', fn($j) =>
+                    $j->on('lh.companycode', '=', 'ph.companycode')
+                        ->on('lh.mandorid', '=', 'ph.mandoruserid')
+                        ->on('lh.activitycode', '=', 'ph.activitycode')
+                        ->whereColumn('lh.lkhdate', '=', 'pl.tanggal')
+                        ->where('lh.status', 'APPROVED'))
+                ->leftJoin('lkhdetailworker as dw', fn($j) =>
+                    $j->on('dw.tenagakerjaid', '=', 'pl.tenagakerjaid')
+                        ->on('dw.companycode', '=', 'pl.companycode')
+                        ->on('dw.lkhno', '=', 'lh.lkhno'))
                 ->whereIn('pl.transno', $transNos)
                 ->where('pl.companycode', $companycode)
-                ->select('pl.transno', 'pl.tenagakerjaid', 'tkj.nama as namaworker', 'pl.tanggal', 'pl.total')
-                ->orderBy('pl.transno')->orderBy('pl.tanggal')->orderBy('tkj.nama')
+                ->groupBy('ph.mandoruserid', 'pl.tenagakerjaid', 'tkj.nama')
+                ->select(
+                    'ph.mandoruserid',
+                    'pl.tenagakerjaid',
+                    'tkj.nama as namaworker',
+                    DB::raw('MIN(pl.tanggal) as tanggal_awal'),
+                    DB::raw('MAX(pl.tanggal) as tanggal_akhir'),
+                    DB::raw('COUNT(DISTINCT pl.tanggal) as jumlah_hari'),
+                    DB::raw('MAX(dw.upahharian) as upahharian'),
+                    DB::raw('MAX(dw.upahlembur) as upahlembur'),
+                    DB::raw('SUM(pl.total) as total')
+                )
+                ->orderBy('ph.mandoruserid')
+                ->orderBy('tkj.nama')
                 ->get()
-                ->groupBy('transno');
+                ->groupBy('mandoruserid');
+
+            // Plot per aktivitas per mandor — ditampilkan di atas tabel
+            $plotInfoByMandor = DB::table('pembayaranupahhdr as ph')
+                ->join('lkhhdr as lh', fn($j) =>
+                    $j->on('lh.companycode', '=', 'ph.companycode')
+                        ->on('lh.mandorid', '=', 'ph.mandoruserid')
+                        ->on('lh.activitycode', '=', 'ph.activitycode')
+                        ->whereColumn('lh.lkhdate', '>=', 'ph.startdate')
+                        ->whereColumn('lh.lkhdate', '<=', 'ph.enddate')
+                        ->where('lh.status', 'APPROVED'))
+                ->join('lkhdetailplot as ldp', fn($j) =>
+                    $j->on('ldp.lkhno', '=', 'lh.lkhno')
+                        ->on('ldp.companycode', '=', 'lh.companycode'))
+                ->leftJoin('activity as ac', 'ac.activitycode', '=', 'ph.activitycode')
+                ->whereIn('ph.transno', $transNos)
+                ->where('ph.companycode', $companycode)
+                ->groupBy('ph.mandoruserid', 'ph.activitycode', 'ac.activityname')
+                ->select(
+                    'ph.mandoruserid',
+                    'ph.activitycode',
+                    'ac.activityname',
+                    DB::raw("GROUP_CONCAT(DISTINCT ldp.plot ORDER BY ldp.plot SEPARATOR ', ') as plots")
+                )
+                ->orderBy('ph.mandoruserid')
+                ->orderBy('ph.activitycode')
+                ->get()
+                ->groupBy('mandoruserid');
         } else {
-            // Borongan: tanpa join extra
-            $detailMap = DB::table('pembayaranupahlst as pl')
+            // Borongan: satu baris per (plot, aktivitas, tanggal)
+            $detailByMandor = DB::table('pembayaranupahlst as pl')
+                ->join('pembayaranupahhdr as ph', fn($j) =>
+                    $j->on('ph.transno', '=', 'pl.transno')
+                        ->on('ph.companycode', '=', 'pl.companycode'))
+                ->leftJoin('activity as ac', 'ac.activitycode', '=', 'ph.activitycode')
+                ->leftJoin('lkhhdr as lh', fn($j) =>
+                    $j->on('lh.companycode', '=', 'ph.companycode')
+                        ->on('lh.mandorid', '=', 'ph.mandoruserid')
+                        ->on('lh.activitycode', '=', 'ph.activitycode')
+                        ->whereColumn('lh.lkhdate', '=', 'pl.tanggal')
+                        ->where('lh.status', 'APPROVED'))
+                ->leftJoin('lkhdetailplot as ldp', fn($j) =>
+                    $j->on('ldp.lkhno', '=', 'lh.lkhno')
+                        ->on('ldp.companycode', '=', 'lh.companycode')
+                        ->on('ldp.plot', '=', 'pl.tenagakerjaid'))
                 ->whereIn('pl.transno', $transNos)
                 ->where('pl.companycode', $companycode)
-                ->select('pl.transno', 'pl.tenagakerjaid as plot', 'pl.tanggal', 'pl.total')
-                ->orderBy('pl.transno')->orderBy('pl.tenagakerjaid')
+                ->groupBy(
+                    'ph.mandoruserid',
+                    'pl.transno',
+                    'ph.activitycode',
+                    'ac.activityname',
+                    'pl.tenagakerjaid',
+                    'pl.tanggal',
+                    'pl.total'
+                )
+                ->select(
+                    'ph.mandoruserid',
+                    'pl.transno',
+                    'ph.activitycode',
+                    'ac.activityname',
+                    'pl.tenagakerjaid as plot',
+                    'pl.tanggal',
+                    'pl.total',
+                    DB::raw("COALESCE(SUM(ldp.luashasil), 0) as luashasil")
+                )
+                ->orderBy('ph.mandoruserid')
+                ->orderBy('ph.activitycode')
+                ->orderBy('pl.tenagakerjaid')
+                ->orderBy('pl.tanggal')
                 ->get()
-                ->groupBy('transno');
+                ->groupBy('mandoruserid');
         }
 
         // ── 3. Build & stream spreadsheet ───────────────────────────────────────
@@ -693,7 +791,15 @@ class PembayaranUpahMingguanController extends Controller
             . '_sd_' . ($endDate ?? date('Ymd')) . '.xlsx';
 
         return response()->streamDownload(
-            fn() => $this->buildSpreadsheet($headers, $detailMap, $tk, $tenagakerjarum, $startDate, $endDate),
+            fn() => $this->buildSpreadsheet(
+                $mandorGroups,
+                $detailByMandor,
+                $plotInfoByMandor,
+                $tk,
+                $tenagakerjarum,
+                $startDate,
+                $endDate
+            ),
             $filename,
             [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -704,26 +810,38 @@ class PembayaranUpahMingguanController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-// BUILD SPREADSHEET  (writer — hanya urusan presentasi)
-// ─────────────────────────────────────────────────────────────────────────────
+    // BUILD SPREADSHEET  (writer — hanya urusan presentasi)
+    // Harian : 1 baris per TKH (dirangkum), plot & aktivitas di atas tabel, TTD 1x.
+    // Borongan: 1 baris per (plot, aktivitas, tanggal).
+    // ─────────────────────────────────────────────────────────────────────────────
     private function buildSpreadsheet(
-        $headers,
-        $detailMap,
+        $mandorGroups,
+        $detailByMandor,
+        $plotInfoByMandor,
         int $tk,
         string $tenagakerjarum,
         ?string $startDate,
         ?string $endDate
     ): void {
         $isHarian = $tk === 1;
-        $cols = $isHarian
-            ? ['No.', 'ID TKH', 'Nama TKH', 'Tanggal', 'Total (Rp)', 'TTD']
-            : ['No.', 'Plot', 'Tanggal', 'Total (Rp)', 'TTD'];
-        $totalCol = $isHarian ? 'E' : 'D'; // kolom angka Total
-        $ttdCol = $isHarian ? 'F' : 'E'; // kolom tanda tangan
-        $lastCol = $ttdCol;
-        $mergeEnd = $isHarian ? 'D' : 'C'; // kolom sebelum Total (untuk merge label)
 
-        // ── Styles (didefinisikan sekali) ────────────────────────────────────────
+        // ── Konfigurasi kolom ────────────────────────────────────────────────────
+        if ($isHarian) {
+            // A: No | B: ID TKH | C: Nama TKH | D: Periode Kerja | E: Jml.Hari | F: Upah Harian | G: Upah Lembur | H: Total | I: TTD
+            $cols = ['No.', 'ID TKH', 'Nama TKH', 'Periode Kerja', 'Jml. Hari', 'Upah Harian (Rp)', 'Upah Lembur (Rp)', 'Total (Rp)', 'TTD'];
+            $lastCol = 'I';
+            $totalCol = 'H';
+            $mergeEnd = 'G';
+        } else {
+            // A: No | B: Plot | C: Aktivitas | D: Luas Hasil (Ha) | E: Tanggal | F: Total | G: TTD
+            $cols = ['No.', 'Plot', 'Aktivitas', 'Luas Hasil (Ha)', 'Tanggal', 'Total (Rp)', 'TTD'];
+            $lastCol = 'G';
+            $totalCol = 'F';
+            $mergeEnd = 'E';
+            $dateCol = 'E';
+        }
+
+        // ── Styles ───────────────────────────────────────────────────────────────
         $sTitle = [
             'font' => ['bold' => true, 'size' => 14],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
@@ -734,11 +852,16 @@ class PembayaranUpahMingguanController extends Controller
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'FFFFFF']]],
         ];
-        $sSection = [
-            'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => '1E1B4B']],
+        $sMandorHdr = [
+            'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => '1E1B4B']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'C7D2FE']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '6366F1']]],
+        ];
+        $sPlotInfo = [
+            'font' => ['bold' => true, 'color' => ['rgb' => '1E3A5F']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DBEAFE']],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_HAIR, 'color' => ['rgb' => '93C5FD']]],
         ];
         $sSubtotal = [
             'font' => ['bold' => true],
@@ -753,16 +876,16 @@ class PembayaranUpahMingguanController extends Controller
         ];
         $sBorderHair = ['borders' => ['allBorders' => ['borderStyle' => Border::BORDER_HAIR, 'color' => ['rgb' => 'D1D5DB']]]];
         $sBorderThin = ['borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'D1D5DB']]]];
-        $sStripe = ['fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EEF2FF']]];
+        $sStripeA = ['fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFFFF']]];
+        $sStripeB = ['fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EEF2FF']]];
         $numFmt = '#,##0.00';
 
-        // ── Init sheet ───────────────────────────────────────────────────────────
+        // ── Init spreadsheet ─────────────────────────────────────────────────────
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet()->setTitle('Upah Mingguan');
-
         $row = 1;
 
-        // Judul
+        // Judul & periode
         $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
         $sheet->setCellValue("A{$row}", 'LAPORAN PEMBAYARAN UPAH MINGGUAN - ' . strtoupper($tenagakerjarum));
         $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($sTitle);
@@ -776,100 +899,132 @@ class PembayaranUpahMingguanController extends Controller
 
         $grandSumAll = 0;
 
-        // ── Loop transaksi ───────────────────────────────────────────────────────
-        foreach ($headers as $hdr) {
-            $transno = $hdr->transno;
-            $activity = $hdr->activityname ?? $hdr->activitycode;
-            $mandor = $hdr->mandorname ?? $hdr->mandoruserid;
-            $start = Carbon::parse($hdr->startdate)->format('d-m-Y');
-            $end = Carbon::parse($hdr->enddate)->format('d-m-Y');
-            $genDate = $hdr->generatedate ? Carbon::parse($hdr->generatedate)->format('d-m-Y') : '-';
+        // ── Loop per mandor ───────────────────────────────────────────────────────
+        foreach ($mandorGroups as $mandorid => $mandorHdrs) {
+            $mandorName = $mandorHdrs->first()->mandorname ?? $mandorid;
+            $mandorDetail = $detailByMandor[$mandorid] ?? collect();
 
-            // Section title
+            $actList = $mandorHdrs->map(fn($h) => $h->activityname ?? $h->activitycode)->unique()->values()->implode(' | ');
+            $transnoStr = $mandorHdrs->pluck('transno')->implode(', ');
+            $periodeStr = Carbon::parse($mandorHdrs->min('startdate'))->format('d-m-Y')
+                . ' s/d '
+                . Carbon::parse($mandorHdrs->max('enddate'))->format('d-m-Y');
+
+            // ── Mandor section header ─────────────────────────────────────────────
             $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
-            $sheet->setCellValue("A{$row}", "No. Transaksi : {$transno}");
-            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($sSection);
+            $sheet->setCellValue("A{$row}", "MANDOR : {$mandorName}");
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($sMandorHdr);
             $sheet->getRowDimension($row)->setRowHeight(18);
             $row++;
 
-            // Info rows
+            // Info: No. Transaksi, Aktivitas, Periode
             foreach ([
-                'Aktivitas' => $activity,
-                'Mandor' => $mandor,
-                'Periode LKH' => "{$start} s/d {$end}",
-                'Tgl. Generate' => $genDate,
+                'No. Transaksi' => $transnoStr,
+                'Aktivitas' => $actList,
+                'Periode LKH' => $periodeStr,
             ] as $label => $value) {
+                $sheet->mergeCells("A{$row}:B{$row}");
                 $sheet->setCellValue("A{$row}", $label);
-                $sheet->setCellValue("B{$row}", $value);
-                if (strlen($lastCol) === 1 && $lastCol > 'B') {
-                    $sheet->mergeCells("B{$row}:{$lastCol}{$row}");
-                }
+                $sheet->setCellValue("C{$row}", $value);
+                $sheet->mergeCells("C{$row}:{$lastCol}{$row}");
                 $sheet->getStyle("A{$row}")->getFont()->setBold(true);
                 $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($sBorderHair);
                 $row++;
             }
-            $row++;
 
-            // Table header
+            // ── Plot per aktivitas (Harian only) — di atas tabel ─────────────────
+            if ($isHarian) {
+                $mandorPlots = $plotInfoByMandor[$mandorid] ?? collect();
+                if ($mandorPlots->isNotEmpty()) {
+                    foreach ($mandorPlots as $plotRow) {
+                        $label = 'Plot ' . ($plotRow->activityname ?? $plotRow->activitycode ?? '-');
+                        $sheet->mergeCells("A{$row}:B{$row}");
+                        $sheet->setCellValue("A{$row}", $label);
+                        $sheet->setCellValue("C{$row}", $plotRow->plots ?? '-');
+                        $sheet->mergeCells("C{$row}:{$lastCol}{$row}");
+                        $sheet->getStyle("A{$row}")->getFont()->setBold(true);
+                        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($sPlotInfo);
+                        $row++;
+                    }
+                }
+            }
+            $row++; // baris kosong sebelum tabel
+
+            // ── Table header ──────────────────────────────────────────────────────
             $sheet->fromArray($cols, null, "A{$row}");
             $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($sTblHdr);
             $sheet->getRowDimension($row)->setRowHeight(20);
             $row++;
 
-            // ── Detail rows ──────────────────────────────────────────────────────
             $subtotal = 0;
             $no = 1;
-            $items = $detailMap[$transno] ?? collect();
-            $dataStartRow = $row;
-            $rowData = [];
 
             if ($isHarian) {
-                foreach ($items as $item) {
-                    $total = floatval($item->total ?? 0);
+                // ── Harian: 1 baris per TKH ──────────────────────────────────────
+                foreach ($mandorDetail as $wr) {
+                    $total = \floatval($wr->total ?? 0);
+                    $upah = \floatval($wr->upahharian ?? 0);
                     $subtotal += $total;
-                    $rowData[] = [
-                        $no++,
-                        $item->tenagakerjaid,
-                        $item->namaworker ?? '-',
-                        Carbon::parse($item->tanggal)->format('d-m-Y'),
-                        $total,
-                        '',
-                    ];
+
+                    $periodeKerja = Carbon::parse($wr->tanggal_awal)->format('d-m-Y')
+                        . ' s/d '
+                        . Carbon::parse($wr->tanggal_akhir)->format('d-m-Y');
+
+                    $lembur = \floatval($wr->upahlembur ?? 0);
+
+                    $sheet->setCellValue("A{$row}", $no);
+                    $sheet->setCellValue("B{$row}", $wr->tenagakerjaid);
+                    $sheet->setCellValue("C{$row}", $wr->namaworker ?? '-');
+                    $sheet->setCellValue("D{$row}", $periodeKerja);
+                    $sheet->setCellValue("E{$row}", \intval($wr->jumlah_hari ?? 0));
+                    $sheet->setCellValue("F{$row}", $upah);
+                    $sheet->setCellValue("G{$row}", $lembur);
+                    $sheet->setCellValue("H{$row}", $total);
+                    // I = TTD (kosong, tanda tangan sekali di sini)
+
+                    $stripe = ($no % 2 === 1) ? $sStripeB : $sStripeA;
+                    $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($stripe);
+                    $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($sBorderThin);
+                    $sheet->getStyle("F{$row}")->getNumberFormat()->setFormatCode($numFmt);
+                    $sheet->getStyle("G{$row}")->getNumberFormat()->setFormatCode($numFmt);
+                    $sheet->getStyle("H{$row}")->getNumberFormat()->setFormatCode($numFmt);
+                    $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle("E{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+                    $no++;
+                    $row++;
                 }
             } else {
-                foreach ($items as $item) {
-                    $total = floatval($item->total ?? 0);
+                // ── Borongan: baris per (plot, aktivitas, tanggal) ───────────────
+                foreach ($mandorDetail as $item) {
+                    $total = \floatval($item->total ?? 0);
+                    $luas = \floatval($item->luashasil ?? 0);
                     $subtotal += $total;
-                    $rowData[] = [
-                        $no++,
-                        $item->plot,
-                        Carbon::parse($item->tanggal)->format('d-m-Y'),
-                        $total,
-                        '',
-                    ];
+
+                    $sheet->setCellValue("A{$row}", $no);
+                    $sheet->setCellValue("B{$row}", $item->plot);
+                    $sheet->setCellValue("C{$row}", $item->activityname ?? $item->activitycode ?? '-');
+                    $sheet->setCellValue("D{$row}", $luas > 0 ? $luas : '-');
+                    $sheet->setCellValue("E{$row}", Carbon::parse($item->tanggal)->format('d-m-Y'));
+                    $sheet->setCellValue("F{$row}", $total);
+                    // G = TTD (kosong)
+
+                    $stripe = ($no % 2 === 1) ? $sStripeB : $sStripeA;
+                    $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($stripe);
+                    $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($sBorderThin);
+                    $sheet->getStyle("{$totalCol}{$row}")->getNumberFormat()->setFormatCode($numFmt);
+                    $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle("{$dateCol}{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+                    $no++;
+                    $row++;
                 }
             }
 
-            if ($rowData) {
-                $sheet->fromArray($rowData, null, "A{$row}");
-                $dataEndRow = $row + count($rowData) - 1;
-                // Apply styles ke seluruh range sekaligus (jauh lebih cepat dari per-baris)
-                $sheet->getStyle("A{$row}:{$lastCol}{$dataEndRow}")->applyFromArray($sBorderThin);
-                $sheet->getStyle("{$totalCol}{$row}:{$totalCol}{$dataEndRow}")->getNumberFormat()->setFormatCode($numFmt);
-                $sheet->getStyle("A{$row}:A{$dataEndRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                $dateCol = $isHarian ? 'D' : 'C';
-                $sheet->getStyle("{$dateCol}{$row}:{$dateCol}{$dataEndRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                // Stripe setiap baris genap
-                for ($r = $dataStartRow + 1; $r <= $dataEndRow; $r += 2) {
-                    $sheet->getStyle("A{$r}:{$lastCol}{$r}")->applyFromArray($sStripe);
-                }
-                $row = $dataEndRow + 1;
-            }
-
-            // Subtotal
+            // ── Subtotal per mandor ───────────────────────────────────────────────
             $grandSumAll += $subtotal;
             $sheet->mergeCells("A{$row}:{$mergeEnd}{$row}");
-            $sheet->setCellValue("A{$row}", 'Subtotal ' . $transno);
+            $sheet->setCellValue("A{$row}", "Subtotal Mandor : {$mandorName}");
             $sheet->setCellValue("{$totalCol}{$row}", $subtotal);
             $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($sSubtotal);
             $sheet->getStyle("A{$row}:{$mergeEnd}{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
@@ -877,7 +1032,7 @@ class PembayaranUpahMingguanController extends Controller
             $row += 2;
         }
 
-        // Grand Total
+        // ── Grand Total ───────────────────────────────────────────────────────────
         $sheet->mergeCells("A{$row}:{$mergeEnd}{$row}");
         $sheet->setCellValue("A{$row}", 'GRAND TOTAL');
         $sheet->setCellValue("{$totalCol}{$row}", $grandSumAll);
@@ -886,11 +1041,28 @@ class PembayaranUpahMingguanController extends Controller
         $sheet->getStyle("{$totalCol}{$row}")->getNumberFormat()->setFormatCode($numFmt);
         $sheet->getRowDimension($row)->setRowHeight(22);
 
-        // Auto width
-        foreach (range('A', $totalCol) as $col) {
-            $sheet->getColumnDimension($col)->setAutoSize(true);
+        // ── Lebar kolom ──────────────────────────────────────────────────────────
+        // Kolom A dibuat sempit untuk "No." di tabel; label info-rows (No. Transaksi
+        // dll.) ditulis di sel A:B yang di-merge sehingga cukup lebar.
+        if ($isHarian) {
+            $sheet->getColumnDimension('A')->setWidth(8);  // No.
+            $sheet->getColumnDimension('B')->setWidth(14); // ID TKH (+ bagian merge label)
+            $sheet->getColumnDimension('C')->setWidth(22); // Nama TKH
+            $sheet->getColumnDimension('D')->setWidth(26); // Periode Kerja
+            $sheet->getColumnDimension('E')->setWidth(10); // Jml. Hari
+            $sheet->getColumnDimension('F')->setWidth(18); // Upah Harian
+            $sheet->getColumnDimension('G')->setWidth(18); // Upah Lembur
+            $sheet->getColumnDimension('H')->setWidth(18); // Total
+            $sheet->getColumnDimension('I')->setWidth(26); // TTD
+        } else {
+            $sheet->getColumnDimension('A')->setWidth(8);  // No.
+            $sheet->getColumnDimension('B')->setWidth(14); // Plot (+ bagian merge label)
+            $sheet->getColumnDimension('C')->setWidth(22); // Aktivitas
+            $sheet->getColumnDimension('D')->setWidth(16); // Luas Hasil
+            $sheet->getColumnDimension('E')->setWidth(13); // Tanggal
+            $sheet->getColumnDimension('F')->setWidth(18); // Total
+            $sheet->getColumnDimension('G')->setWidth(26); // TTD
         }
-        $sheet->getColumnDimension($ttdCol)->setWidth(22);
 
         (new Xlsx($spreadsheet))->save('php://output');
     }

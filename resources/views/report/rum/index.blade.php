@@ -71,7 +71,7 @@
                         <!-- Jenis Tenaga Kerja -->
                         <div>
                             <label for="tenagakerjarum" class="block text-sm font-semibold text-gray-700 mb-2">
-                                Jenis Tenaga Kerja: <span class="text-red-500">*</span>
+                                Tenaga Kerja <span class="text-red-500">*</span>
                             </label>
                             <select name="tenagakerjarum" id="tenagakerjarum"
                                 onchange="Alpine.store('loading').start(); this.form.submit()"
@@ -79,7 +79,7 @@
                                 required>
                                 <option value="" disabled
                                     {{ old('tenagakerjarum', session('tenagakerjarum')) == null ? 'selected' : '' }}>
-                                    -- Pilih Tenaga Kerja --
+                                    -- Pilih --
                                 </option>
                                 <option value="Harian" class="text-gray-700"
                                     {{ old('tenagakerjarum', session('tenagakerjarum')) == 'Harian' ? 'selected' : '' }}>
@@ -164,7 +164,7 @@
                         <!-- Date Filter -->
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                Range Tanggal:
+                                Range Tanggal
                             </label>
                             <div class="relative">
                                 <button type="button"
