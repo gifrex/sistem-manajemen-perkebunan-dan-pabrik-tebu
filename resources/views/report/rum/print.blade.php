@@ -276,11 +276,24 @@
                         $isHarian = session('tenagakerjarum') == 'Harian';
                         $colspanFull = $isHarian ? 7 : 8;
                         $colspanLabel = $isHarian ? 6 : 7;
+                        $firstActivity = true;
                     @endphp
 
                     @if (count($groupedByActivity) > 0)
                         @foreach ($groupedByActivity as $activityName => $lkhGroups)
-                            @php $activitySubtotal = 0; @endphp
+                            @php
+                                $activitySubtotal = 0;
+                                $rowNumber = 1;
+                            @endphp
+
+                            {{-- ===== SPACER ROW (between activities) ===== --}}
+                            @if (!$firstActivity)
+                                <tr>
+                                    <td colspan="{{ $colspanFull }}"
+                                        style="padding: 6px 0; background: #e5e7eb; border: none;"></td>
+                                </tr>
+                            @endif
+                            @php $firstActivity = false; @endphp
 
                             {{-- ===== ACTIVITY HEADER ROW ===== --}}
                             <tr class="row-activity-header">

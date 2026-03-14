@@ -598,7 +598,7 @@ class PembayaranUpahMingguanController extends Controller
         }
 
         if ($datas->isEmpty()) {
-            return response()->json(['error' => 'Tidak ada data detail untuk transaksi ini'], 404);
+            return response()->json(['data' => [], 'header' => $header]);
         }
 
         foreach ($datas as $idx => $item) {

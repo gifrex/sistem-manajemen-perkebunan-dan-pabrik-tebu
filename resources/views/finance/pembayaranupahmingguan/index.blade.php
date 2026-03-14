@@ -25,7 +25,7 @@
                 </div>
 
                 <div class="flex gap-2 flex-wrap">
-                    @if (session('tenagakerjarum') != null)
+                    @if (session('tenagakerjarum') != null && Auth::user()->idjabatan == 21)
                         <button type="button" onclick="confirmGenerate()"
                             class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -730,7 +730,7 @@
         }
 
         const isHarian = {{ session('tenagakerjarum') == 'Harian' ? 'true' : 'false' }};
-        const colCount = isHarian ? 5 : 7;
+        const colCount = isHarian ? 6 : 7;
 
         function buildSkeletonRows(n = 5) {
             const widths = ['w-6', 'w-28', 'w-36', 'w-24', 'w-20', 'w-24', 'w-20'];
@@ -811,8 +811,16 @@
                     }
                     const data = res.data || [];
                     if (!data.length) {
-                        tbody.innerHTML =
-                            `<tr><td colspan="${colCount}" class="text-center py-8 text-gray-500">Tidak ada data</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="${colCount}" class="py-14 text-center">
+                            <div class="flex flex-col items-center gap-3">
+                                <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                </svg>
+                                <p class="text-sm font-semibold text-gray-500">Data tidak ditemukan</p>
+                                <p class="text-xs text-gray-400">Tidak ada detail pembayaran untuk transaksi ini.</p>
+                            </div>
+                        </td></tr>`;
                         return;
                     }
 
@@ -832,12 +840,14 @@
                         const gMap = new Map();
                         data.forEach(item => {
                             const k = item.tenagakerjaid || '',
-                                tot = parseIDR(item.total);
+                                tot = parseIDR(item.total),
+                                lembur = parseIDR(item.upahlembur);
                             if (!gMap.has(k)) gMap.set(k, {
                                 namatenagakerja: item.namatenagakerja || '-',
                                 tanggal_min: item.tanggal || '',
                                 tanggal_max: item.tanggal || '',
                                 biaya_per_hari: parseIDR(item.upah),
+                                upahlembur: lembur,
                                 total: tot
                             });
                             else {
@@ -848,6 +858,7 @@
                                     if (!g.tanggal_max || item.tanggal > g.tanggal_max) g.tanggal_max = item
                                         .tanggal;
                                 }
+                                g.upahlembur += lembur;
                                 g.total += tot;
                             }
                         });
@@ -865,11 +876,12 @@
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-700">${g.namatenagakerja}</td>
                                 <td class="px-4 py-3 text-sm text-right text-gray-700">${fmtIDR(g.biaya_per_hari)}</td>
+                                <td class="px-4 py-3 text-sm text-right text-gray-700">${fmtIDR(g.upahlembur)}</td>
                                 <td class="px-4 py-3 text-sm text-right font-semibold text-indigo-700">${fmtIDR(g.total)}</td>
                             </tr>`;
                         });
                         tbody.innerHTML += `<tr class="font-bold bg-indigo-50">
-                            <td colspan="4" class="px-4 py-3 text-right border-t-2 border-indigo-400 text-gray-900">Grand Total:</td>
+                            <td colspan="5" class="px-4 py-3 text-right border-t-2 border-indigo-400 text-gray-900">Grand Total:</td>
                             <td class="px-4 py-3 border-t-2 border-indigo-400 text-right text-indigo-700">${fmtIDR(gt)}</td>
                         </tr>`;
                     @else
@@ -941,7 +953,7 @@
                         const disposition = response.headers.get('Content-Disposition') || '';
                         const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
                         const filename = match ? match[1].replace(/['"]/g, '') :
-                        'Pembayaran_Upah_Mingguan.xlsx';
+                            'Pembayaran_Upah_Mingguan.xlsx';
                         const a = document.createElement('a');
                         a.href = URL.createObjectURL(blob);
                         a.download = filename;
