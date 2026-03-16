@@ -328,18 +328,17 @@
                         if ($rowRounddosage) {
                             if ($qtyRawExp <= 0) {
                                 $exp = 0;
-                            } elseif ($qtyRawExp <= 0.05) {
-                                $exp = 0.05;
                             } else {
+                                $qtyRawExp = floor($qtyRawExp * 100) / 100;
                                 $exp = round($qtyRawExp / 0.05) * 0.05;
+                                if ($exp == 0) $exp = 0.05;
                             }
                         } else {
                             if ($qtyRawExp <= 0) {
                                 $exp = 0;
-                            } elseif ($qtyRawExp <= 0.01) {
-                                $exp = 0.01;
                             } else {
-                                $exp = round($qtyRawExp / 0.01) * 0.01;
+                                $exp = round($qtyRawExp, 2);
+                                if ($exp == 0) $exp = 0.01;
                             }
                         }
 
@@ -616,9 +615,11 @@
                 num = parseFloat(num) || 0;
 
                 if (num <= 0) return 0;
-                if (num <= 0.01) return 0.01;
 
-                return Math.round(num / 0.01) * 0.01;
+                let qty = Math.round(num * 100) / 100;
+                if (qty === 0) return 0.01;
+
+                return qty;
             };
             
     
@@ -722,12 +723,13 @@
             function recalcRowQty(row){
                 const dosage = parseFloat(String(row.find('.selected-dosage').val()).replace(/,/g,'')) || 0;
                 const luas   = parseFloat(row.find('.selected-luas').val()) || 0;
-                const qtyRaw = dosage * luas;
+                let qtyRaw = dosage * luas;
                 const opt = row.find('.item-select option:selected');
                 const rounddosage = parseInt(opt.data('rounddosage')) || 0;
 
                 let qty;
                 if (rounddosage) {
+                    qtyRaw = Math.floor(qtyRaw * 100) / 100;
                     qty = roundto5(qtyRaw);
                 } else {
                     qty = roundto1(qtyRaw);
