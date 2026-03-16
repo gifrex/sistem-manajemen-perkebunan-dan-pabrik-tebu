@@ -286,7 +286,7 @@
                                         data-dosage="{{$item->dosageperha}}" 
                                         data-measure="{{ $item->measure }}" 
                                         data-itemname="{{ $item->itemname }}"
-                                        data-rounddosage="{{ $item->rounddosage ?? 1 }}">
+                                        data-rounddosage="{{ $item->rounddosage ?? 0 }}">
                                         {{$item->activitycode}} • {{ $item->itemcode }} • {{ $item->itemname }} • {{$item->dosageperha}} ({{$item->measure}})
                                     </option>
                                     @endforeach
