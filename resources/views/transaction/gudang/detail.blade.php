@@ -722,6 +722,9 @@
             }
             
             function recalcRowQty(row){
+                if (`{{ !empty($details[0]->nouse) ? 1 : 0 }}` == 1) {
+                    return;
+                }
                 const dosage = parseFloat(String(row.find('.selected-dosage').val()).replace(/,/g,'')) || 0;
                 const luas   = parseFloat(row.find('.selected-luas').val()) || 0;
                 let qtyRaw = dosage * luas;
