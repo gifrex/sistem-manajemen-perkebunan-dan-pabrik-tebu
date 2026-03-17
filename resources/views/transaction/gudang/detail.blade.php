@@ -613,10 +613,11 @@
 
             const roundto1 = (num) => {
                 num = parseFloat(num) || 0;
-
+                console.log('roundto1 input', num, 'x100=', num * 100);
                 if (num <= 0) return 0;
 
                 let qty = Math.round(num * 100) / 100;
+                console.log('roundto1 output', qty);
                 if (qty === 0) return 0.01;
 
                 return qty;
@@ -728,11 +729,25 @@
                 const rounddosage = parseInt(opt.data('rounddosage')) || 0;
 
                 let qty;
+                console.log('DEBUG QTY', {
+                    dosage: dosage,
+                    luas: luas,
+                    qtyRaw: qtyRaw,
+                    rounddosage: rounddosage
+                });
                 if (rounddosage) {
                     qtyRaw = Math.floor(qtyRaw * 100) / 100;
                     qty = roundto5(qtyRaw);
+                    console.log('DEBUG ROUND 0.05', {
+                        qtyRawAfterTruncate: qtyRaw,
+                        finalQty: qty
+                    });
                 } else {
                     qty = roundto1(qtyRaw);
+                    console.log('DEBUG ROUND 0.01', {
+                        qtyRawBeforeRound: qtyRaw,
+                        finalQty: qty
+                    });
                 }
 
                 row.find('.labelqty').text(qty.toFixed(2));
