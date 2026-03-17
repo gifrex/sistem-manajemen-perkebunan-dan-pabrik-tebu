@@ -17,16 +17,13 @@ class LkhValidationService
 
     public function validateLkhUpdateRequest($request)
     {
-        $request->validate([
+        $isBlokActivity = (bool) $request->input('is_blok_activity', false);
+
+        // Base rules
+        $rules = [
             'keterangan' => 'nullable|string|max:500',
-            
-            'plots' => 'nullable|array',
-            'plots.*.blok' => 'required_with:plots|string',
-            'plots.*.plot' => 'required_with:plots|string',
-            'plots.*.luasrkh' => 'required_with:plots|numeric|min:0',
-            'plots.*.luashasil' => 'required_with:plots|numeric|min:0',
-            'plots.*.luassisa' => 'required_with:plots|numeric|min:0',
-            
+            'is_blok_activity' => 'nullable|boolean',
+
             'workers' => 'nullable|array',
             'workers.*.tenagakerjaid' => 'required_with:workers|string',
             'workers.*.jammasuk' => 'nullable|date_format:H:i:s',
@@ -37,22 +34,46 @@ class LkhValidationService
             'workers.*.upahharian' => 'nullable|numeric|min:0',
             'workers.*.upahborongan' => 'nullable|numeric|min:0',
             'workers.*.totalupah' => 'nullable|numeric|min:0',
-            
-            // ✅ NEW: Material validation
+
             'materials' => 'nullable|array',
             'materials.*.id' => 'required_with:materials|integer',
             'materials.*.plot' => 'required_with:materials|string',
             'materials.*.itemcode' => 'required_with:materials|string',
             'materials.*.qtyditerima' => 'required_with:materials|numeric|min:0',
             'materials.*.qtydigunakan' => 'required_with:materials|numeric|min:0',
-        ]);
-        
-        // ✅ Custom validation: qtydigunakan cannot exceed qtyditerima
+        ];
+
+        if ($isBlokActivity) {
+            // Blok activity: plot is null, luas fields are null — only blok is required
+            $rules = array_merge($rules, [
+                'plots' => 'nullable|array|min:1',
+                'plots.*.blok' => 'required_with:plots|string',
+                'plots.*.plot' => 'nullable|string',
+                'plots.*.luasrkh' => 'nullable|numeric|min:0',
+                'plots.*.luashasil' => 'nullable|numeric|min:0',
+                'plots.*.luassisa' => 'nullable|numeric|min:0',
+                'plots.*.keterangan' => 'nullable|string|max:500',
+            ]);
+        } else {
+            // Normal activity: plot and luas fields are required
+            $rules = array_merge($rules, [
+                'plots' => 'nullable|array',
+                'plots.*.blok' => 'required_with:plots|string',
+                'plots.*.plot' => 'required_with:plots|string',
+                'plots.*.luasrkh' => 'required_with:plots|numeric|min:0',
+                'plots.*.luashasil' => 'required_with:plots|numeric|min:0',
+                'plots.*.luassisa' => 'required_with:plots|numeric|min:0',
+            ]);
+        }
+
+        $request->validate($rules);
+
+        // Custom validation: qtydigunakan cannot exceed qtyditerima
         if ($request->has('materials')) {
             foreach ($request->materials as $index => $material) {
                 $qtydigunakan = (float)($material['qtydigunakan'] ?? 0);
                 $qtyditerima = (float)($material['qtyditerima'] ?? 0);
-                
+
                 if ($qtydigunakan > $qtyditerima) {
                     throw ValidationException::withMessages([
                         "materials.{$index}.qtydigunakan" => "Qty Used ({$qtydigunakan}) cannot exceed Qty Received ({$qtyditerima}) for item {$material['itemcode']}"

@@ -37,27 +37,19 @@ class LkhService
 
     /**
      * Get LKH list for specific RKH
-     * 
-     * @param string $rkhno
-     * @param string $companycode
-     * @return array
      */
     public function getLkhListForRkh($rkhno, $companycode)
     {
-        // Get LKH list
         $lkhList = $this->lkhRepo->listByRkhNo($companycode, $rkhno);
 
-        // Batch-load related data (avoid N+1)
         $lkhNos = $lkhList->pluck('lkhno')->toArray();
         
         $plotsByLkh = $this->lkhRepo->getPlotsByLkhNos($companycode, $lkhNos);
         $workersByLkh = $this->lkhRepo->getWorkersCountByLkhNos($companycode, $lkhNos);
         $materialsByLkh = $this->lkhRepo->getMaterialsCountByLkhNos($companycode, $lkhNos);
 
-        // Format data
         $formattedData = $this->formatLkhData($lkhList, $plotsByLkh, $workersByLkh, $materialsByLkh);
 
-        // Get generate info
         $generateInfo = $this->getLkhGenerateInfo($companycode, $rkhno, $lkhList);
 
         return [
@@ -70,7 +62,6 @@ class LkhService
         ];
     }
 
-    
     /**
      * Get show LKH page data (detects activity type)
      */
@@ -82,7 +73,6 @@ class LkhService
             return null;
         }
 
-        // Authorization check
         $this->authorizeActivityGroup($lkhno, $companycode);
 
         $panenActivities = ['4.3.3', '4.4.3', '4.5.2'];
@@ -136,18 +126,20 @@ class LkhService
             return null;
         }
 
-        // Authorization check
         $this->authorizeActivityGroup($lkhno, $companycode);
 
         if ($lkhData->issubmit) {
             throw new \Exception('LKH sudah disubmit dan tidak dapat diedit');
         }
 
-        $lkhPlotDetails    = $this->lkhRepo->getPlotDetailsForEdit($companycode, $lkhno);
-        $lkhWorkerDetails  = $this->lkhRepo->getWorkerDetailsForEdit($companycode, $lkhno);
-        $lkhMaterialDetails= $this->lkhRepo->getMaterialDetailsForEdit($companycode, $lkhno);
+        $lkhPlotDetails     = $this->lkhRepo->getPlotDetailsForEdit($companycode, $lkhno);
+        $lkhWorkerDetails   = $this->lkhRepo->getWorkerDetailsForEdit($companycode, $lkhno);
+        $lkhMaterialDetails = $this->lkhRepo->getMaterialDetailsForEdit($companycode, $lkhno);
 
-        $formData = $this->loadLkhEditFormData($companycode);
+        // Detect blok activity
+        $isBlokActivity = $this->isBlokActivity($lkhData->activitycode);
+
+        $formData = $this->loadLkhEditFormData($companycode, $lkhData->mandorid);
 
         $boronganRate = 0;
         if ($lkhData->jenistenagakerja == 2) {
@@ -164,24 +156,18 @@ class LkhService
             'lkhWorkerDetails'   => $lkhWorkerDetails,
             'lkhMaterialDetails' => $lkhMaterialDetails,
             'boronganRate'       => $boronganRate,
+            'isBlokActivity'     => $isBlokActivity,
         ], $formData);
     }
 
     /**
      * Update LKH with transaction
-     * 
-     * @param string $lkhno
-     * @param array $dto
-     * @param string $companycode
-     * @return void
-     * @throws \Exception
      */
     public function updateLkh($lkhno, array $dto, $companycode)
     {
         DB::transaction(function () use ($lkhno, $dto, $companycode) {
             $currentUser = Auth::user();
             
-            // Security check
             $lkhData = $this->lkhRepo->getForValidation($companycode, $lkhno);
             
             if (!$lkhData) {
@@ -192,24 +178,29 @@ class LkhService
                 throw new \Exception('LKH sudah disubmit dan tidak dapat diedit');
             }
 
-            // Get RKH number for usemateriallst update
             $rkhno = DB::table('lkhhdr')
                 ->where('companycode', $companycode)
                 ->where('lkhno', $lkhno)
                 ->value('rkhno');
 
-            // Prepend "Alasan Edit: " to keterangan
             $keterangan = $dto['keterangan'] ?? null;
             if ($keterangan) {
                 $keterangan = "Alasan Edit: " . trim($keterangan);
             }
 
-            // Calculate totals
+            $isBlokActivity = !empty($dto['is_blok_activity']);
+
+            // Calculate totals — blok activity has no luas
             $totalWorkers = count($dto['workers'] ?? []);
-            $totalHasil = collect($dto['plots'] ?? [])->sum('luashasil');
-            $totalSisa = collect($dto['plots'] ?? [])->sum('luassisa');
+
+            if ($isBlokActivity) {
+                $totalHasil = 0;
+                $totalSisa  = 0;
+            } else {
+                $totalHasil = collect($dto['plots'] ?? [])->sum('luashasil');
+                $totalSisa  = collect($dto['plots'] ?? [])->sum('luassisa');
+            }
             
-            // Get full LKH data for wage calculation
             $fullLkhData = $this->lkhRepo->getHeaderForEdit($companycode, $lkhno);
             
             if ($fullLkhData->jenistenagakerja == 2) {
@@ -223,26 +214,29 @@ class LkhService
                 $totalUpah = $this->calculateTotalUpah($dto['workers'] ?? [], $fullLkhData);
             }
 
-            // Update header with edit tracking
             $headerData = [
-                'totalworkers' => $totalWorkers,
-                'totalhasil' => $totalHasil,
-                'totalsisa' => $totalSisa,
-                'totalupahall' => $totalUpah,
-                'keterangan' => $keterangan,
-                'isedit' => 1,
-                'editedby' => $currentUser->userid,
-                'editedat' => now(),
-                'updateby' => $currentUser->userid,
-                'updatedat' => now()
+                'totalworkers'  => $totalWorkers,
+                'totalhasil'    => $totalHasil,
+                'totalsisa'     => $totalSisa,
+                'totalupahall'  => $totalUpah,
+                'keterangan'    => $keterangan,
+                'isedit'        => 1,
+                'editedby'      => $currentUser->userid,
+                'editedat'      => now(),
+                'updateby'      => $currentUser->userid,
+                'updatedat'     => now()
             ];
             
             $this->lkhRepo->updateHeader($companycode, $lkhno, $headerData);
 
             // Update plot details
             if (!empty($dto['plots'])) {
-                $plotDetails = $this->buildLkhPlotDetails($dto['plots'], $lkhno, $companycode);
-                $this->lkhRepo->replacePlotDetails($companycode, $lkhno, $plotDetails);
+                if ($isBlokActivity) {
+                    $this->syncBlokActivityPlotDetails($dto['plots'], $lkhno, $companycode);
+                } else {
+                    $plotDetails = $this->buildLkhPlotDetails($dto['plots'], $lkhno, $companycode);
+                    $this->lkhRepo->replacePlotDetails($companycode, $lkhno, $plotDetails);
+                }
             }
 
             // Update worker details
@@ -251,7 +245,7 @@ class LkhService
                 $this->lkhRepo->replaceWorkerDetails($companycode, $lkhno, $workerDetails);
             }
 
-            // ✅ NEW: Update material details (SYNC 2 TABLES)
+            // Update material details (SYNC 2 TABLES)
             if (!empty($dto['materials'])) {
                 $this->updateMaterialUsage($dto['materials'], $lkhno, $rkhno, $companycode, $currentUser->userid);
             }
@@ -260,37 +254,20 @@ class LkhService
 
     private function updateMaterialUsage($materials, $lkhno, $rkhno, $companycode, $userid)
     {
-        \Log::info("🔵 updateMaterialUsage STARTED", [
-            'lkhno' => $lkhno,
-            'rkhno' => $rkhno,
-            'companycode' => $companycode,
-            'total_materials' => count($materials)
-        ]);
-
         foreach ($materials as $index => $material) {
             $plot = $material['plot'];
             $itemcode = $material['itemcode'];
             $qtydigunakan = (float)($material['qtydigunakan'] ?? 0);
             $qtyditerima = (float)($material['qtyditerima'] ?? 0);
             
-            \Log::info("🔹 Processing material #{$index}", [
-                'id' => $material['id'] ?? 'N/A',
-                'plot' => $plot,
-                'itemcode' => $itemcode,
-                'qtydigunakan' => $qtydigunakan,
-                'qtyditerima' => $qtyditerima
-            ]);
-            
-            // Validation
             if ($qtydigunakan > $qtyditerima) {
                 throw new \Exception("Qty Used ({$qtydigunakan}) cannot exceed Qty Received ({$qtyditerima}) for item {$itemcode} on plot {$plot}");
             }
             
-            // Calculate qtysisa (remaining = return)
             $qtysisa = $qtyditerima - $qtydigunakan;
             
-            // 1️⃣ Update lkhdetailmaterial (LKH detail)
-            $affectedRows1 = DB::table('lkhdetailmaterial')
+            // 1. Update lkhdetailmaterial
+            DB::table('lkhdetailmaterial')
                 ->where('id', $material['id'])
                 ->where('companycode', $companycode)
                 ->where('lkhno', $lkhno)
@@ -299,14 +276,8 @@ class LkhService
                     'qtysisa' => $qtysisa,
                     'updatedat' => now()
                 ]);
-
-            \Log::info("✅ lkhdetailmaterial updated", [
-                'affected_rows' => $affectedRows1,
-                'qtydigunakan' => $qtydigunakan,
-                'qtysisa' => $qtysisa
-            ]);
             
-            // 2️⃣ Sync to usemateriallst (Material tracking)
+            // 2. Sync to usemateriallst
             $existingRecord = DB::table('usemateriallst')
                 ->where('companycode', $companycode)
                 ->where('rkhno', $rkhno)
@@ -316,7 +287,7 @@ class LkhService
                 ->first();
 
             if (!$existingRecord) {
-                \Log::error("❌ Record NOT FOUND in usemateriallst", [
+                \Log::error("usemateriallst record NOT FOUND", [
                     'companycode' => $companycode,
                     'rkhno' => $rkhno,
                     'lkhno' => $lkhno,
@@ -326,7 +297,7 @@ class LkhService
                 continue;
             }
 
-            $affectedRows2 = DB::table('usemateriallst')
+            DB::table('usemateriallst')
                 ->where('companycode', $companycode)
                 ->where('rkhno', $rkhno)
                 ->where('lkhno', $lkhno)
@@ -336,31 +307,17 @@ class LkhService
                     'qtydigunakan' => $qtydigunakan,
                     'qtyretur' => $qtysisa,
                 ]);
-            
-            \Log::info("✅ usemateriallst updated", [
-                'affected_rows' => $affectedRows2,
-                'qtydigunakan' => $qtydigunakan,
-                'qtyretur' => $qtysisa // ✅ same as qtysisa
-            ]);
         }
-
-        \Log::info("🟢 updateMaterialUsage COMPLETED");
     }
 
     /**
      * Submit LKH for approval
-     * 
-     * @param string $lkhno
-     * @param string $companycode
-     * @return array
-     * @throws \Exception
      */
     public function submitLkh($lkhno, $companycode)
     {
         return DB::transaction(function () use ($lkhno, $companycode) {
             $currentUser = Auth::user();
             
-            // Get LKH with activity group
             $lkh = DB::table('lkhhdr as h')
                 ->leftJoin('activity as a', 'h.activitycode', '=', 'a.activitycode')
                 ->where('h.companycode', $companycode)
@@ -380,13 +337,11 @@ class LkhService
                 return ['success' => false, 'message' => 'LKH harus berstatus DRAFT untuk bisa disubmit'];
             }
 
-            // Get approval setting
             $approvalSetting = null;
             if ($lkh->activitygroup) {
                 $approvalSetting = $this->masterDataRepo->getApprovalSettingByActivityGroup($companycode, $lkh->activitygroup);
             }
 
-            // Build update data
             $updateData = [
                 'issubmit' => 1,
                 'submitby' => $currentUser->userid,
@@ -416,10 +371,6 @@ class LkhService
 
     /**
      * Get LKH approval detail (for info modal)
-     * 
-     * @param string $lkhno
-     * @param string $companycode
-     * @return array|null
      */
     public function getLkhApprovalDetail($lkhno, $companycode)
     {
@@ -429,7 +380,6 @@ class LkhService
             return null;
         }
 
-        // Format levels
         $levels = [];
         
         for ($i = 1; $i <= 3; $i++) {
@@ -480,6 +430,16 @@ class LkhService
     // PRIVATE HELPER METHODS
     // =====================================
 
+    /**
+     * Check if activity is a blok-level activity
+     */
+    private function isBlokActivity($activitycode)
+    {
+        return (bool) DB::table('activity')
+            ->where('activitycode', $activitycode)
+            ->value('isblokactivity');
+    }
+
     private function formatLkhData($lkhList, $plotsByLkh, $workersByLkh, $materialsByLkh)
     {
         return $lkhList->map(function($lkh) use ($plotsByLkh, $workersByLkh, $materialsByLkh) {
@@ -490,6 +450,7 @@ class LkhService
 
             $plots = ($plotsByLkh[$lkh->lkhno] ?? collect())
                 ->pluck('plot')
+                ->filter()
                 ->unique()
                 ->join(', ');
 
@@ -637,18 +598,37 @@ class LkhService
         return $approvals;
     }
 
-    private function loadLkhEditFormData($companycode)
+    /**
+     * Load form data for LKH edit — now includes mandor-filtered workers
+     */
+    private function loadLkhEditFormData($companycode, $mandorid = null)
     {
-        return [
-            'tenagaKerja' => DB::table('tenagakerja')
+        // Workers belonging to this mandor (default view)
+        $mandorWorkers = collect();
+        if ($mandorid) {
+            $mandorWorkers = DB::table('tenagakerja')
                 ->where('companycode', $companycode)
                 ->where('isactive', 1)
-                ->select(['tenagakerjaid', 'nama', 'nik', 'jenistenagakerja'])
+                ->where('mandoruserid', $mandorid)
+                ->select(['tenagakerjaid', 'nama', 'nik', 'jenistenagakerja', 'mandoruserid'])
                 ->orderBy('nama')
-                ->get(),
-            'bloks' => $this->masterDataRepo->getBlokData($companycode),
-            'masterlist' => $this->batchRepo->getAllActivePlotsWithBatch($companycode),
-            'plots' => $this->batchRepo->getAllActivePlotsWithBatch($companycode),
+                ->get();
+        }
+
+        // All workers (for "Show All" toggle)
+        $allWorkers = DB::table('tenagakerja')
+            ->where('companycode', $companycode)
+            ->where('isactive', 1)
+            ->select(['tenagakerjaid', 'nama', 'nik', 'jenistenagakerja', 'mandoruserid'])
+            ->orderBy('nama')
+            ->get();
+
+        return [
+            'tenagaKerja'       => $mandorWorkers,
+            'allTenagaKerja'    => $allWorkers,
+            'bloks'             => $this->masterDataRepo->getBlokData($companycode),
+            'masterlist'        => $this->batchRepo->getAllActivePlotsWithBatch($companycode),
+            'plots'             => $this->batchRepo->getAllActivePlotsWithBatch($companycode),
         ];
     }
 
@@ -676,23 +656,23 @@ class LkhService
         return $totalArea * ($rate ?? 0);
     }
 
+    /**
+     * Build plot details for NORMAL activities
+     */
     private function buildLkhPlotDetails($plots, $lkhno, $companycode)
     {
         $details = [];
         
-        // Get lkhhdrid from header
         $lkhhdrid = DB::table('lkhhdr')
             ->where('companycode', $companycode)
             ->where('lkhno', $lkhno)
             ->value('id');
         
         foreach ($plots as $plot) {
-            // Lookup batchno & batchid dari masterlist (seperti di Generator)
             $batchid = null;
             $batchno = $plot['batchno'] ?? null;
             
             if (!$batchno && isset($plot['plot'])) {
-                // Get from masterlist if not provided
                 $masterlist = DB::table('masterlist')
                     ->where('companycode', $companycode)
                     ->where('plot', $plot['plot'])
@@ -704,7 +684,6 @@ class LkhService
                 }
             }
             
-            // Get batchid from batch table
             if ($batchno) {
                 $batch = DB::table('batch')
                     ->where('batchno', $batchno)
@@ -729,6 +708,61 @@ class LkhService
         }
         
         return $details;
+    }
+
+    /**
+     * Sync blok activity plot details — preserves existing rows, adds new, removes deleted.
+     * Does NOT touch plot/luas/batch columns on existing rows (keeps original mobile data).
+     */
+    private function syncBlokActivityPlotDetails($plots, $lkhno, $companycode)
+    {
+        $lkhhdrid = DB::table('lkhhdr')
+            ->where('companycode', $companycode)
+            ->where('lkhno', $lkhno)
+            ->value('id');
+
+        // Get existing blok rows — trim blok keys (char(3) pads with spaces)
+        $existingRows = DB::table('lkhdetailplot')
+            ->where('companycode', $companycode)
+            ->where('lkhno', $lkhno)
+            ->get()
+            ->keyBy(fn($row) => trim($row->blok));
+
+        $incomingBloks = collect($plots)->pluck('blok')->map(fn($b) => trim($b))->filter()->toArray();
+
+        // Delete removed bloks
+        $existingBloks = $existingRows->keys()->toArray();
+        $bloksToDelete = array_diff($existingBloks, $incomingBloks);
+
+        if (!empty($bloksToDelete)) {
+            DB::table('lkhdetailplot')
+                ->where('companycode', $companycode)
+                ->where('lkhno', $lkhno)
+                ->whereIn('blok', $bloksToDelete)
+                ->delete();
+        }
+
+        // Insert new bloks (that don't exist yet)
+        foreach ($plots as $plot) {
+            $blok = trim($plot['blok']);
+            if (!$existingRows->has($blok)) {
+                DB::table('lkhdetailplot')->insert([
+                    'companycode'     => $companycode,
+                    'lkhno'           => $lkhno,
+                    'lkhhdrid'        => $lkhhdrid,
+                    'blok'            => $blok,
+                    'plot'            => null,
+                    'luasrkh'         => null,
+                    'luashasil'       => null,
+                    'luassisa'        => null,
+                    'batchno'         => null,
+                    'batchid'         => null,
+                    'keterangan'      => $plot['keterangan'] ?? null,
+                    'createdat'       => now()
+                ]);
+            }
+            // Existing rows: don't touch — preserve original data from mobile
+        }
     }
 
     private function buildLkhWorkerDetails($workers, $lkhno, $companycode)
@@ -789,12 +823,6 @@ class LkhService
 
     /**
      * Authorize current user for the activitygroup of the given LKH.
-     * Resolves activitygroup via lkhhdr → rkhhdr.
-     * Throws AuthorizationException if not permitted.
-     *
-     * @param string $lkhno
-     * @param string $companycode
-     * @throws \Illuminate\Auth\Access\AuthorizationException
      */
     private function authorizeActivityGroup($lkhno, $companycode): void
     {
