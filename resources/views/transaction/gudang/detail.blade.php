@@ -616,7 +616,7 @@
                 console.log('roundto1 input', num, 'x100=', num * 100);
                 if (num <= 0) return 0;
 
-                let qty = Math.round(num * 100) / 100;
+                let qty = Math.round((num + Number.EPSILON) * 100) / 100;
                 console.log('roundto1 output', qty);
                 if (qty === 0) return 0.01;
 
