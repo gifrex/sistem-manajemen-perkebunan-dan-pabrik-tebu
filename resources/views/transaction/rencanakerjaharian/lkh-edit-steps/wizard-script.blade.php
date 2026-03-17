@@ -27,12 +27,20 @@ document.addEventListener('alpine:init', () => {
 
     // Data from server
     lkhData: @json($lkhData),
-    tenagaKerja: @json($tenagaKerja ?? []),
-    workers: @json($lkhWorkerDetails->toArray()),
-    materials: @json($lkhMaterialDetails->toArray()),
     keterangan: '{{ old('keterangan', $lkhData->keterangan) }}',
     jenistenagakerja: {{ $lkhData->jenistenagakerja }},
     boronganRate: {{ $boronganRate ?? 0 }},
+
+    // ✅ Blok Activity flag
+    isBlokActivity: {{ $isBlokActivity ? 'true' : 'false' }},
+
+    // ✅ Worker data — mandor-filtered + all
+    tenagaKerja: @json($tenagaKerja ?? []),
+    allTenagaKerja: @json($allTenagaKerja ?? []),
+    showAllWorkers: false,
+
+    workers: @json($lkhWorkerDetails->toArray()),
+    materials: @json($lkhMaterialDetails->toArray()),
 
     // Plot selection state
     plots: @json($lkhPlotDetails->toArray()),
@@ -40,29 +48,35 @@ document.addEventListener('alpine:init', () => {
     plotSearch: '',
     availableBloks: [],
 
+    // ✅ Blok activity: available blok list for add
+    blokOptions: @json($bloks ?? []),
+
     // Initialization
     init() {
-      console.log('🚀 LKH Edit Wizard initialized');
-      
       this.buildAvailableBloks();
       
       if (this.availableBloks.length > 0) {
         this.selectedBlok = this.availableBloks[0];
       }
       
-      this.plots.forEach((p, i) => this.calculateLuasSisa(i));
+      if (!this.isBlokActivity) {
+        this.plots.forEach((p, i) => this.calculateLuasSisa(i));
+      }
       
-      this.tenagaKerja = this.tenagaKerja.map(tk => ({
+      // Normalize tenagaKerja IDs
+      const normalizeTk = (list) => list.map(tk => ({
         ...tk,
         tenagakerjaid: String(tk.tenagakerjaid || '').trim()
       }));
+
+      this.tenagaKerja = normalizeTk(this.tenagaKerja);
+      this.allTenagaKerja = normalizeTk(this.allTenagaKerja);
+
+      // Check if any existing worker is NOT in mandor list — auto-enable show all
+      const mandorIds = new Set(this.tenagaKerja.map(tk => tk.tenagakerjaid));
       
       this.workers = this.workers.map(w => {
         const normalizedId = String(w.tenagakerjaid || '').trim();
-        const exists = this.tenagaKerja.some(tk => tk.tenagakerjaid === normalizedId);
-        if (!exists && normalizedId) {
-          console.warn('⚠️ Worker ID not found in options:', normalizedId);
-        }
         return {
           ...w,
           tenagakerjaid: normalizedId,
@@ -70,6 +84,11 @@ document.addEventListener('alpine:init', () => {
           nama: w.nama || ''
         };
       });
+
+      const hasOutsideMandor = this.workers.some(w => w.tenagakerjaid && !mandorIds.has(w.tenagakerjaid));
+      if (hasOutsideMandor) {
+        this.showAllWorkers = true;
+      }
 
       this.materials = this.materials.map(m => ({
         ...m,
@@ -84,19 +103,27 @@ document.addEventListener('alpine:init', () => {
         keterangan: String(m.keterangan || '')
       }));
       
-      console.group('📊 Data Verification');
-      console.log('Total workers:', this.workers.length);
-      console.log('Total materials:', this.materials.length);
-      console.log('Jenis Tenaga Kerja:', this.jenistenagakerja, '(1=Harian, 2=Borongan)');
-      console.log('Borongan Rate:', this.boronganRate);
-      console.groupEnd();
-      
       this.$nextTick(() => {
         this.workers = [...this.workers];
         this.materials = [...this.materials];
         this.lastRecalculateHash = this.getWorkerDataHash();
         this.isDirty = false;
       });
+    },
+
+    // =====================================
+    // WORKER LIST (mandor filter)
+    // =====================================
+
+    /**
+     * Returns the active worker list based on toggle
+     */
+    getActiveWorkerList() {
+      return this.showAllWorkers ? this.allTenagaKerja : this.tenagaKerja;
+    },
+
+    toggleShowAllWorkers() {
+      this.showAllWorkers = !this.showAllWorkers;
     },
 
     // =====================================
@@ -167,15 +194,69 @@ document.addEventListener('alpine:init', () => {
     },
 
     getTotalLuas() {
+      if (this.isBlokActivity) return '0.00';
       return this.plots.reduce((sum, p) => sum + (parseFloat(p.luashasil) || 0), 0).toFixed(2);
     },
 
     getTotalLuasRKH() {
+      if (this.isBlokActivity) return '0.00';
       return this.plots.reduce((sum, p) => sum + (parseFloat(p.luasrkh) || 0), 0).toFixed(2);
     },
 
     getTotalLuasSisa() {
+      if (this.isBlokActivity) return '0.00';
       return this.plots.reduce((sum, p) => sum + (parseFloat(p.luassisa) || 0), 0).toFixed(2);
+    },
+
+    // =====================================
+    // BLOK ACTIVITY METHODS
+    // =====================================
+
+    /**
+     * Get unique blok options not yet added
+     * Uses blokOptions (from master data) — each item may have .blok or .kodeblok property
+     */
+    getAvailableBlokOptions() {
+      const usedBloks = new Set(this.plots.map(p => p.blok));
+      
+      // blokOptions from server: extract blok codes
+      const allBloks = new Set();
+      (this.blokOptions || []).forEach(b => {
+        const code = b.blok || b.kodeblok || b.blokcode || b;
+        if (code) allBloks.add(String(code));
+      });
+      
+      // Also include bloks from masterlistData as fallback
+      this.availableBloks.forEach(b => allBloks.add(b));
+      
+      return Array.from(allBloks).sort().filter(b => !usedBloks.has(b));
+    },
+
+    addBlokRow(blok) {
+      if (!blok) return;
+      // Check duplicate
+      if (this.plots.some(p => p.blok === blok)) {
+        this.showToast('Blok ' + blok + ' sudah ditambahkan', 'warning');
+        return;
+      }
+      this.plots.push({
+        blok: blok,
+        plot: null,
+        luasrkh: null,
+        luashasil: null,
+        luassisa: null,
+        batchno: null,
+        batchid: null,
+        keterangan: null
+      });
+    },
+
+    removeBlokRow(index) {
+      if (this.plots.length <= 1) {
+        this.showToast('Minimal 1 blok harus ada', 'warning');
+        return;
+      }
+      this.plots.splice(index, 1);
     },
 
     // =====================================
@@ -210,14 +291,15 @@ document.addEventListener('alpine:init', () => {
     canProceed() {
       switch(this.currentStep) {
         case 1: 
+          if (this.isBlokActivity) {
+            // Blok activity: at least 1 blok row, keterangan required
+            return this.plots.length > 0 && this.keterangan.trim() !== '';
+          }
           return this.plots.length > 0 && this.keterangan.trim() !== '';
         case 2:
           if (this.workers.length === 0) return false;
           if (!this.allWorkersHaveSelection()) return false;
-          // ✅ NEW: For BORONGAN, check if rate exists
-          if (this.jenistenagakerja === 2 && !this.hasBoronganRate()) {
-            return false;
-          }
+          if (this.jenistenagakerja === 2 && !this.hasBoronganRate()) return false;
           return true;
         case 3: 
           return !this.hasMaterialValidationError();
@@ -258,16 +340,18 @@ document.addEventListener('alpine:init', () => {
         return;
       }
       
-      const tk = this.tenagaKerja.find(t => t.tenagakerjaid === w.tenagakerjaid);
+      // Search in active list first, then fallback to all
+      let tk = this.getActiveWorkerList().find(t => t.tenagakerjaid === w.tenagakerjaid);
+      if (!tk) {
+        tk = this.allTenagaKerja.find(t => t.tenagakerjaid === w.tenagakerjaid);
+      }
       
       if (tk) {
         w.nik = tk.nik || '';
         w.nama = tk.nama || '';
-        console.log('Worker data updated:', w.tenagakerjaid, '->', tk.nama);
       } else {
         w.nik = '';
         w.nama = '';
-        console.warn('⚠️ Worker not found:', w.tenagakerjaid);
       }
       
       this.markDirty();
@@ -275,7 +359,10 @@ document.addEventListener('alpine:init', () => {
 
     getWorkerName(id) {
       if (!id) return '-';
-      const tk = this.tenagaKerja.find(t => t.tenagakerjaid === id);
+      let tk = this.getActiveWorkerList().find(t => t.tenagakerjaid === id);
+      if (!tk) {
+        tk = this.allTenagaKerja.find(t => t.tenagakerjaid === id);
+      }
       return tk ? tk.nama : '-';
     },
 
@@ -300,9 +387,6 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
-    /**
-     * ✅ NEW: Check if borongan rate is available
-     */
     hasBoronganRate() {
       if (this.jenistenagakerja !== 2) return true;
       return this.boronganRate > 0;
@@ -333,7 +417,7 @@ document.addEventListener('alpine:init', () => {
             lkhdate: this.lkhData.lkhdate,
             jenistenagakerja: this.jenistenagakerja,
             workers: normalizedWorkers,
-            plots: this.plots,
+            plots: this.isBlokActivity ? [] : this.plots,
           })
         });
 
@@ -360,7 +444,7 @@ document.addEventListener('alpine:init', () => {
           this.showToast('❌ ' + (result.message || 'Failed to recalculate'), 'error');
         }
       } catch (e) {
-        console.error('❌ Recalculate error:', e);
+        console.error('Recalculate error:', e);
         this.showToast('❌ Error: ' + e.message, 'error');
       } finally {
         this.isCalculating = false;
@@ -374,11 +458,6 @@ document.addEventListener('alpine:init', () => {
     validateMaterialUsed(material) {
       const used = parseFloat(material.qtydigunakan || 0);
       const received = parseFloat(material.qtyditerima || 0);
-      
-      if (used > received) {
-        console.warn(`⚠️ Material ${material.itemcode}: Used (${used}) exceeds Received (${received})`);
-      }
-      
       material.qtysisa = received - used;
     },
     
@@ -391,23 +470,17 @@ document.addEventListener('alpine:init', () => {
     },
     
     getTotalReceived() {
-      return this.materials.reduce((sum, m) => {
-        return sum + parseFloat(m.qtyditerima || 0);
-      }, 0).toFixed(3);
+      return this.materials.reduce((sum, m) => sum + parseFloat(m.qtyditerima || 0), 0).toFixed(3);
     },
     
     getTotalRemaining() {
       return this.materials.reduce((sum, m) => {
-        const received = parseFloat(m.qtyditerima || 0);
-        const used = parseFloat(m.qtydigunakan || 0);
-        return sum + (received - used);
+        return sum + (parseFloat(m.qtyditerima || 0) - parseFloat(m.qtydigunakan || 0));
       }, 0).toFixed(3);
     },
     
     getTotalUsed() {
-      return this.materials.reduce((sum, m) => {
-        return sum + parseFloat(m.qtydigunakan || 0);
-      }, 0).toFixed(3);
+      return this.materials.reduce((sum, m) => sum + parseFloat(m.qtydigunakan || 0), 0).toFixed(3);
     },
 
     // =====================================
@@ -421,7 +494,7 @@ document.addEventListener('alpine:init', () => {
       }
 
       if (this.plots.length === 0) {
-        this.validationErrors.push('At least 1 plot is required');
+        this.validationErrors.push(this.isBlokActivity ? 'Minimal 1 blok harus ada' : 'At least 1 plot is required');
       }
 
       if (this.workers.length === 0) {
@@ -460,10 +533,9 @@ document.addEventListener('alpine:init', () => {
           keterangan: this.keterangan,
           plots: this.plots,
           workers: normalizedWorkers,
-          materials: this.materials
+          materials: this.materials,
+          is_blok_activity: this.isBlokActivity,
         };
-
-        console.log('📤 Submitting LKH data:', formData);
 
         const res = await fetch('{{ route("transaction.rencanakerjaharian.updateLKH", $lkhData->lkhno) }}', {
           method: 'POST',
@@ -475,34 +547,28 @@ document.addEventListener('alpine:init', () => {
           body: JSON.stringify(formData)
         });
 
-        console.log('📥 Response status:', res.status);
         const responseText = await res.text();
-        console.log('📥 Response text (first 500 chars):', responseText.substring(0, 500));
 
         let result;
         try {
           result = JSON.parse(responseText);
-          console.log('✅ Parsed JSON result:', result);
         } catch (parseError) {
-          console.error('❌ JSON Parse Error:', parseError);
-          console.error('📄 Full response:', responseText);
-          this.showToast('❌ Server returned invalid response. Check console for details.', 'error');
+          console.error('JSON Parse Error:', parseError);
+          this.showToast('❌ Server returned invalid response.', 'error');
           this.isSubmitting = false;
           return;
         }
 
         if (result.success) {
-          console.log('✅ LKH update successful');
           window.dispatchEvent(new CustomEvent('lkh-success', {
             detail: { lkhno: this.lkhData.lkhno, message: result.message || 'LKH berhasil diupdate' }
           }));
         } else {
-          console.warn('⚠️ LKH update failed:', result.message);
           this.showToast('❌ ' + (result.message || 'Failed to save'), 'error');
           this.isSubmitting = false;
         }
       } catch (e) {
-        console.error('❌ Submit error:', e);
+        console.error('Submit error:', e);
         this.showToast('❌ Error: ' + e.message, 'error');
         this.isSubmitting = false;
       }
@@ -546,19 +612,16 @@ document.addEventListener('alpine:init', () => {
     markDirty() {
       if (this.jenistenagakerja != 1) return;
       this.isDirty = true;
-      console.log('🔴 Worker data marked as dirty - recalculation required');
     },
 
     getWorkerDataHash() {
       if (this.jenistenagakerja != 1) return null;
-      
       const data = this.workers.map(w => ({
         id: w.tenagakerjaid,
         in: w.jammasuk,
         out: w.jamselesai,
         ot: w.overtimehours
       }));
-      
       return JSON.stringify(data);
     }
   }));

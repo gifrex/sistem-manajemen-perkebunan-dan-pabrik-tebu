@@ -35,9 +35,6 @@ class LkhController extends Controller
 
     /**
      * Get LKH data for specific RKH
-     * 
-     * @param string $rkhno
-     * @return \Illuminate\Http\JsonResponse
      */
     public function getLKHData($rkhno)
     {
@@ -140,10 +137,6 @@ class LkhController extends Controller
 
     /**
      * Update LKH record
-     * 
-     * @param Request $request
-     * @param string $lkhno
-     * @return \Illuminate\Http\JsonResponse
      */
     public function updateLKH(Request $request, $lkhno)
     {
@@ -151,20 +144,13 @@ class LkhController extends Controller
             // Validate
             $this->validationService->validateLkhUpdateRequest($request);
 
-            // ✅ FIX: Include materials in DTO
             $dto = [
-                'keterangan' => $request->input('keterangan'),
-                'plots' => $request->input('plots'),
-                'workers' => $request->input('workers'),
-                'materials' => $request->input('materials'), // ✅ NOW INCLUDED
+                'keterangan'       => $request->input('keterangan'),
+                'plots'            => $request->input('plots'),
+                'workers'          => $request->input('workers'),
+                'materials'        => $request->input('materials'),
+                'is_blok_activity' => $request->boolean('is_blok_activity'),
             ];
-
-            // Debug log
-            \Log::info("🔵 LkhController::updateLKH called", [
-                'lkhno' => $lkhno,
-                'has_materials' => !empty($dto['materials']),
-                'materials_count' => count($dto['materials'] ?? [])
-            ]);
 
             // Update LKH
             $companycode = Session::get('companycode');
@@ -188,9 +174,6 @@ class LkhController extends Controller
 
     /**
      * Submit LKH for approval
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
      */
     public function submitLKH(Request $request)
     {
@@ -200,14 +183,12 @@ class LkhController extends Controller
             $companycode = Session::get('companycode');
             $lkhno = $request->lkhno;
 
-            // Validate can submit
             $validation = $this->validationService->validateCanSubmit($lkhno, $companycode);
             
             if (!$validation['success']) {
                 return response()->json($validation);
             }
 
-            // Submit LKH
             $result = $this->lkhService->submitLkh($lkhno, $companycode);
             
             return response()->json($result);
@@ -222,18 +203,13 @@ class LkhController extends Controller
     }
 
     /**
-     * Generate LKH manually (calls existing generator service)
-     * 
-     * @param Request $request
-     * @param string $rkhno
-     * @return \Illuminate\Http\JsonResponse
+     * Generate LKH manually
      */
     public function manualGenerateLkh(Request $request, $rkhno)
     {
         try {
             $companycode = Session::get('companycode');
             
-            // Use existing LkhGeneratorService (kept as-is for now)
             $lkhGenerator = new LkhGeneratorService();
             $result = $lkhGenerator->generateLkhFromRkh($rkhno, $companycode);
 
@@ -250,9 +226,6 @@ class LkhController extends Controller
 
     /**
      * Recalculate wages for LKH edit
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
      */
     public function recalculateWages(Request $request)
     {
@@ -283,7 +256,6 @@ class LkhController extends Controller
                     $validated['lkhdate']
                 );
 
-                // Check for errors
                 if (isset($results['error'])) {
                     return response()->json([
                         'success' => false,
@@ -307,7 +279,6 @@ class LkhController extends Controller
                     $validated['lkhdate']
                 );
 
-                // Check for errors
                 if (isset($result['error'])) {
                     return response()->json([
                         'success' => false,

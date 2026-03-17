@@ -31,6 +31,30 @@
     </div>
   </div>
 
+  {{-- ✅ Mandor Filter Toggle --}}
+  <div class="bg-white border border-gray-200 rounded-lg p-3 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+      </svg>
+      <span class="text-sm text-gray-700">
+        Showing: <strong x-text="showAllWorkers ? 'Semua Tenaga Kerja' : 'Tenaga Kerja Mandor Ini'"></strong>
+        <span class="text-xs text-gray-500 ml-1">
+          (<span x-text="getActiveWorkerList().length"></span> workers)
+        </span>
+      </span>
+    </div>
+    <button type="button" @click="toggleShowAllWorkers()"
+      class="px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5"
+      :class="showAllWorkers ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+              :d="showAllWorkers ? 'M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z' : 'M4 6h16M4 10h16M4 14h16M4 18h16'"></path>
+      </svg>
+      <span x-text="showAllWorkers ? 'Filter Mandor' : 'Show All Workers'"></span>
+    </button>
+  </div>
+
   {{-- Wage Type Info --}}
   <div class="rounded-lg p-4 border-2"
        :class="jenistenagakerja == 1 ? 'bg-blue-50 border-blue-200' : 'bg-purple-50 border-purple-200'">
@@ -105,7 +129,7 @@
                   class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
                   :class="!w.tenagakerjaid && 'border-red-300'">
                   <option value="">-- Select --</option>
-                  <template x-for="tk in tenagaKerja" :key="tk.tenagakerjaid">
+                  <template x-for="tk in getActiveWorkerList()" :key="tk.tenagakerjaid">
                     <option :value="tk.tenagakerjaid" 
                             :selected="tk.tenagakerjaid === w.tenagakerjaid"
                             x-text="`[${tk.tenagakerjaid}] ${tk.nama}`"></option>
@@ -151,7 +175,6 @@
       </table>
     </div>
     
-    {{-- Empty State --}}
     <div x-show="workers.length === 0" class="px-4 py-10 text-center bg-gray-50">
       <svg class="w-10 h-10 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
@@ -234,7 +257,7 @@
                   class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
                   :class="!w.tenagakerjaid && 'border-red-300'">
                   <option value="">-- Select --</option>
-                  <template x-for="tk in tenagaKerja" :key="tk.tenagakerjaid">
+                  <template x-for="tk in getActiveWorkerList()" :key="tk.tenagakerjaid">
                     <option :value="tk.tenagakerjaid"
                             :selected="tk.tenagakerjaid === w.tenagakerjaid"
                             x-text="`[${tk.tenagakerjaid}] ${tk.nama}`"></option>
@@ -255,7 +278,6 @@
       </table>
     </div>
     
-    {{-- Empty State --}}
     <div x-show="workers.length === 0" class="px-4 py-10 text-center bg-gray-50">
       <svg class="w-10 h-10 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
