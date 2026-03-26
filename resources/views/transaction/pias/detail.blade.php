@@ -60,17 +60,22 @@
       <div class="grid grid-cols-4 gap-3">
         <!-- Card Input -->
         <div class="col-span-1 border rounded-md p-3 bg-white shadow-sm no-print">
-          <h3 class="text-base font-bold mb-3">Input TJ & TC</h3>
+          <h3 class="text-base font-bold mb-3">Input TJ, TC & TV</h3>
           <div class="space-y-3">
             <div>
               <label class="block mb-1 text-sm">Total TJ (stok opsional)</label>
               <input type="number" name="inputTJ" id="inputTJ" class="w-full border rounded-md p-1 bg-gray-50 text-sm" placeholder="Masukkan Total TJ" 
-              value="{{ old('inputTJ', optional($hdr)->tj)*1 }}" onchange="render()">
+              value="{{ old('inputTJ', optional($hdr)->tj)*1 ?? ''}}" onchange="render()">
             </div>
             <div>
               <label class="block mb-1 text-sm">Total TC (stok opsional)</label>
               <input type="number" name="inputTC" id="inputTC" class="w-full border rounded-md p-1 bg-gray-50 text-sm" placeholder="Masukkan Total TC" 
-              value="{{ old('inputTC', optional($hdr)->tc)*1 }}" onchange="render()">
+              value="{{ old('inputTC', optional($hdr)->tc)*1 ?? '' }}" onchange="render()">
+            </div>
+            <div>
+              <label class="block mb-1 text-sm">Total TV (stok opsional)</label>
+              <input type="number" name="inputTV" id="inputTV" class="w-full border rounded-md p-1 bg-gray-50 text-sm" placeholder="Masukkan Total TV" 
+              value="{{ old('inputTV', optional($hdr)->tv)*1 ?? '' }}">
             </div>
             <div style="text-align:right"> 
               <label class="text-sm font-medium">Dosis / Ha</label>
@@ -92,11 +97,12 @@
             <div class="flex items-center justify-center gap-1">
               <div class="text-base font-bold">TJ <span id="totalTJ">0</span></div>
               <div class="text-base font-bold">TC <span id="totalTC">0</span></div>
+              <div class="text-base font-bold">TV <span id="totalTV">0</span></div>
             </div>
           </div>
           <div class="border rounded p-1 bg-gray-50">
             <div class="text-xs text-gray-600 mb-1 text-center">Stok & Sisa</div>
-            <div class="grid grid-cols-2 gap-1">
+            <div class="grid grid-cols-3 gap-1">
               <div class="text-center">
                 <div class="text-xs">Stok TJ</div>
                 <div class="text-sm font-semibold" id="stokTJ">0</div>
@@ -107,11 +113,17 @@
                 <div class="text-sm font-semibold" id="stokTC">0</div>
                 <div class="text-xs">Sisa: <span id="sisaTC">0</span></div>
               </div>
+              <div class="text-center">
+                <div class="text-xs">Stok TV</div>
+                <div class="text-sm font-semibold" id="stokTV">0</div>
+                <div class="text-xs">Sisa: <span id="sisaTV">0</span></div>
+              </div>
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-1">
+          <div class="grid grid-cols-3 gap-1">
             <div id="statusTJ" class="text-center text-xs font-medium rounded py-1"></div>
             <div id="statusTC" class="text-center text-xs font-medium rounded py-1"></div>
+            <div id="statusTV" class="text-center text-xs font-medium rounded py-1"></div>
           </div>
         </div>
       </div>
@@ -141,15 +153,15 @@
         <table class="w-full">
           <thead>
             <tr class="bg-gray-50">
-              <th class="p-3 border-b">Blok</th>
               <th class="p-3 border-b">Plot</th>
-              <th class="p-3 border-b">Umur</th>
-              <th class="p-3 border-b">Kategory</th>
+              <th class="p-3 border-b">Bulan</th>
+              <th class="p-3 border-b">Type</th>
               <th class="p-3 border-b">Varietas</th>
               <th class="p-3 border-b">Luas (Ha)</th>
               <th class="p-3 border-b bg-blue-50 font-semibold">TJ</th>
               <th class="p-3 border-b bg-green-50 font-semibold">TC</th>
-              <th class="p-3 border-b no-print">Rumus</th>
+              <th class="p-3 border-b bg-yellow-50 font-semibold">TV</th>
+              <th class="p-3 border-b no-print">Pembagian</th>
             </tr>
           </thead>
           <tbody id="plotTable">
@@ -160,15 +172,16 @@
                 $exist = $lst->where('blok', $item->blok)->where('plot', $item->plot)->first();
                 $existTJ = optional($exist)->tj_alloc ?? optional($exist)->tj ?? null;
                 $existTC = optional($exist)->tc_alloc ?? optional($exist)->tc ?? null;
+                $existTV = optional($exist)->tv_alloc ?? optional($exist)->tv ?? null;
               @endphp
               <tr class="hover:bg-gray-50"
                   data-luas="{{ $item->luasrkh }}" data-umur="{{ $hari }}" 
-                  data-tj="{{ $existTJ ?? '' }}" data-tc="{{ $existTC ?? '' }}">
-                <td class="p-3 border-b">{{ $item->blok }}</td>
+                  data-tj="{{ $existTJ ?? '' }}" data-tc="{{ $existTC ?? '' }}" 
+                  data-tv="{{ $existTV ?? '' }}">
                 <td class="p-3 border-b">{{ $item->plot }}</td>
                 <td class="p-3 border-b">
                   <span class="inline-flex gap-1">
-                    <span class="px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 text-xs font-semibold">Bulan ke {{ $bulan }}</span>
+                    <span class="px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 text-xs font-semibold"> {{ $bulan }}</span>
                     {{-- <span class="text-gray-700 text-sm">({{ $hari }} hari sejak tanam)</span> --}}
                   </span>
                 </td> 
@@ -198,6 +211,15 @@
                     name="rows[{{ $loop->index }}][tc]"
                   >
                 </td>
+
+                <td class="p-3 border-b bg-yellow-50 font-semibold text-right">
+                  <input
+                    type="number" step="1" min="0"
+                    class="tv-result w-24 text-right border rounded px-2 py-1 bg-white"
+                    value="{{ old("rows.$loop->index.tv", isset($existTV) ? (int)$existTV : '') }}"
+                    name="rows[{{ $loop->index }}][tv]"
+                  >
+                </td>
                 
                 {{-- ✅ FORMULA (tanpa hidden input lagi) --}}
                 <td class="p-3 border-b pias-formula text-left text-sm no-print">
@@ -214,6 +236,9 @@
               </td>
               <td class="p-3 border-t bg-green-50 text-right">
                 <span id="sumTCCell">0</span>
+              </td>
+              <td class="p-3 border-t bg-yellow-50 text-right">
+                <span id="sumTVCell">0</span>
               </td>
               <td class="p-3 border-t"></td>
             </tr>
@@ -255,409 +280,465 @@
   </div>
   <input type="hidden" name="totalNeedTJ" id="totalNeedTJ_hidden" value="0">
   <input type="hidden" name="totalNeedTC" id="totalNeedTC_hidden" value="0">
+  <input type="hidden" name="totalNeedTV" id="totalNeedTV_hidden" value="0">
 </form>
 
 <script>
-  
-  document.addEventListener('DOMContentLoaded', function () {
-    const inputTJ = document.getElementById('inputTJ'); 
-    const inputTC = document.getElementById('inputTC');
-    const plotTable = document.getElementById('plotTable');
+document.addEventListener('DOMContentLoaded', function () {
+  const inputTJ = document.getElementById('inputTJ');
+  const inputTC = document.getElementById('inputTC');
+  const inputTV = document.getElementById('inputTV');
+  const plotTable = document.getElementById('plotTable');
 
-    const totalTJEl = document.getElementById('totalTJ');
-    const totalTCEl = document.getElementById('totalTC');
-    const stokTJEl  = document.getElementById('stokTJ');
-    const stokTCEl  = document.getElementById('stokTC');
-    const sisaTJEl  = document.getElementById('sisaTJ');
-    const sisaTCEl  = document.getElementById('sisaTC');
-    const summary   = document.getElementById('summaryCard');
-    const statusTJ  = document.getElementById('statusTJ');
-    const statusTC  = document.getElementById('statusTC');
-    const sumTJCell = document.getElementById('sumTJCell');
-    const sumTCCell = document.getElementById('sumTCCell');
+  const totalTJEl = document.getElementById('totalTJ');
+  const totalTCEl = document.getElementById('totalTC');
+  const totalTVEl = document.getElementById('totalTV');
 
-    const pcts = [
-      {tj:0.7,tc:0.3},{tj:0.7,tc:0.3},{tj:0.6,tc:0.4},
-      {tj:0.5,tc:0.5},{tj:0.4,tc:0.6},{tj:0.3,tc:0.7},
-      {tj:0.3,tc:0.7},{tj:0.3,tc:0.7},{tj:0.3,tc:0.7},{tj:0.3,tc:0.7}
-    ];
+  const stokTJEl  = document.getElementById('stokTJ');
+  const stokTCEl  = document.getElementById('stokTC');
+  const stokTVEl  = document.getElementById('stokTV');
 
-    const hasBoth = () => {
-      const tj = parseFloat(inputTJ.value), tc = parseFloat(inputTC.value);
-      return tj > 0 && Number.isFinite(tj) && tc > 0 && Number.isFinite(tc);
-    };
+  const sisaTJEl  = document.getElementById('sisaTJ');
+  const sisaTCEl  = document.getElementById('sisaTC');
+  const sisaTVEl  = document.getElementById('sisaTV');
 
-    const NF0 = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
-    const fmt0 = (x) => NF0.format(Math.round(x || 0));
-    const dosageEl = document.getElementById('dosage');
-    function getDosage(){
-      return parseFloat(dosageEl?.value || '25');
+  const summary   = document.getElementById('summaryCard');
+  const statusTJ  = document.getElementById('statusTJ');
+  const statusTC  = document.getElementById('statusTC');
+  const statusTV  = document.getElementById('statusTV');
+
+  const sumTJCell = document.getElementById('sumTJCell');
+  const sumTCCell = document.getElementById('sumTCCell');
+  const sumTVCell = document.getElementById('sumTVCell');
+
+  const dosageEl = document.getElementById('dosage');
+
+  const pcts = [
+    { tj: 0.70, tc: 0.165, tv: 0.135 },
+    { tj: 0.70, tc: 0.165, tv: 0.135 },
+    { tj: 0.60, tc: 0.22,  tv: 0.18  },
+    { tj: 0.50, tc: 0.275, tv: 0.225 },
+    { tj: 0.40, tc: 0.33,  tv: 0.27  },
+    { tj: 0.30, tc: 0.385, tv: 0.315 },
+    { tj: 0.30, tc: 0.385, tv: 0.315 },
+    { tj: 0.30, tc: 0.385, tv: 0.315 },
+    { tj: 0.30, tc: 0.385, tv: 0.315 },
+    { tj: 0.30, tc: 0.385, tv: 0.315 }
+  ];
+
+  const NF0 = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
+  const fmt0 = (x) => NF0.format(Math.round(x || 0));
+
+  function getDosage(){
+    return parseFloat(dosageEl?.value || '25');
+  }
+
+  function hasAllStocks() {
+    const tj = parseFloat(inputTJ.value);
+    const tc = parseFloat(inputTC.value);
+    const tv = parseFloat(inputTV.value);
+
+    return tj > 0 && Number.isFinite(tj) &&
+           tc > 0 && Number.isFinite(tc) &&
+           tv > 0 && Number.isFinite(tv);
+  }
+
+  function sumInputs(sel){
+    return [...document.querySelectorAll(sel)].reduce((a, el) => a + (parseFloat(el.value) || 0), 0);
+  }
+
+  // ================= CRC32 (match PHP) =================
+  const CRC_TABLE = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) {
+        c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      }
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(str){
+    let crc = 0 ^ (-1);
+    for (let i = 0; i < str.length; i++) {
+      crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ str.charCodeAt(i)) & 0xFF];
+    }
+    return (crc ^ (-1)) >>> 0;
+  }
+
+  function allocateInt(needs, stock) {
+    const n = needs.length;
+    if (n === 0) return [];
+
+    const sumNeedInt = needs.reduce((a,b) => a + Math.round(b), 0);
+    const target = Math.min(Math.floor(stock || 0), sumNeedInt);
+
+    if (target <= 0 || sumNeedInt <= 0) return Array(n).fill(0);
+
+    const rkhInput = document.querySelector('input[name="rkhno"]');
+    const seed = crc32(rkhInput?.value || '');
+
+    const trs = Array.from(document.getElementById('plotTable').rows);
+    const ids = trs.map(tr =>
+      tr.getAttribute('data-id')?.trim() ||
+      `${(tr.cells?.[0]?.textContent || '').trim()}|${(tr.cells?.[1]?.textContent || '').trim()}`
+    );
+
+    const cap = needs.map(v => Math.round(v));
+
+    const sumFloat = needs.reduce((a,b)=>a+b, 0);
+    const quotas = needs.map(v => (sumFloat > 0 ? (v / sumFloat * target) : 0));
+    const fracs  = quotas.map(q => q - Math.floor(q));
+
+    const base  = Math.floor(target / n);
+    const alloc = Array(n).fill(0).map((_, i) => Math.min(base, cap[i]));
+    let remain  = target - alloc.reduce((a,b)=>a+b,0);
+    if (remain <= 0) return alloc;
+
+    const needInt = needs.map(v => Math.round(v));
+    const groups  = new Map();
+
+    for (let i = 0; i < n; i++) {
+      if (!groups.has(needInt[i])) groups.set(needInt[i], []);
+      groups.get(needInt[i]).push(i);
     }
 
-    // ====== PRECOMPUTE SEKALI: baris, needs, elemen DOM ======
-    const rows = Array.from(plotTable.rows); // <tr> di tbody
-    const meta = [];            // { tjEl, tcEl, fEl, total, bulan, needTJ, needTC }
-    let needsTJ=[], needsTC=[];
-    for (const r of rows) {
+    const groupKeys = Array.from(groups.keys()).sort((a,b)=>b-a);
+
+    const orderGroup = idxs => idxs.slice().sort((a,b)=>{
+      const ha = (crc32(ids[a] || '') ^ seed) >>> 0;
+      const hb = (crc32(ids[b] || '') ^ seed) >>> 0;
+      if (ha === hb) {
+        if (fracs[a] === fracs[b]) return a - b;
+        return fracs[b] - fracs[a];
+      }
+      return ha - hb;
+    });
+
+    while (remain > 0) {
+      let progressed = false;
+
+      for (const k of groupKeys) {
+        if (remain <= 0) break;
+
+        const all = groups.get(k);
+        const idxs = all.filter(i => alloc[i] < cap[i]);
+        if (idxs.length === 0) continue;
+
+        const ord = orderGroup(idxs);
+
+        if (remain >= ord.length) {
+          for (const i of ord) alloc[i] += 1;
+          remain -= ord.length;
+          progressed = true;
+          continue;
+        }
+
+        for (let t = 0; t < remain; t++) alloc[ord[t]] += 1;
+        remain = 0;
+        progressed = true;
+        break;
+      }
+
+      if (!progressed) break;
+    }
+
+    return alloc;
+  }
+
+  const rows = Array.from(plotTable.rows);
+  const meta = [];
+
+  let needsTJ = [];
+  let needsTC = [];
+  let needsTV = [];
+
+  let sumNeedTJIntConst = 0;
+  let sumNeedTCIntConst = 0;
+  let sumNeedTVIntConst = 0;
+
+  function rebuildNeedsAndFormula() {
+    needsTJ = [];
+    needsTC = [];
+    needsTV = [];
+
+    const dosage = getDosage();
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
       const luas = parseFloat(r.dataset.luas) || 0;
       const umur = parseInt(r.dataset.umur) || 0;
-      const bulan = Math.max(1, Math.ceil(umur/30));
-      const p = pcts[Math.min(bulan,10)-1] || {tj:0.5,tc:0.5};
-      const total = luas * getDosage();
+      const bulan = Math.max(1, Math.ceil(umur / 30));
+      const p = pcts[Math.min(bulan, 10) - 1] || { tj: 0.5, tc: 0.3, tv: 0.2 };
+
+      const total = luas * dosage;
       const needTJ = total * p.tj;
       const needTC = total * p.tc;
+      const needTV = total * p.tv;
 
       const tjEl = r.querySelector('.tj-result');
       const tcEl = r.querySelector('.tc-result');
+      const tvEl = r.querySelector('.tv-result');
       const fEl  = r.querySelector('.pias-formula');
 
-      // Bangun bagian statis RUMUS SEKALI
-      if (fEl) {
-        fEl.innerHTML =
-          `Pembagian: ` +
-          `<span class="inline-block rounded px-2 py-0.5 bg-blue-100 font-semibold">TJ ${Math.round(p.tj*100)}%</span> / ` +
-          `<span class="inline-block rounded px-2 py-0.5 bg-green-100 font-semibold">TC ${Math.round(p.tc*100)}%</span> dari ${fmt0(total)} lembar. <br>`+
-          `Kebutuhan: ` +
-          `<span class="inline-block rounded px-2 py-0.5 bg-blue-100 font-semibold">TJ ${needTJ.toFixed(2)}</span>, ` +
-          `<span class="inline-block rounded px-2 py-0.5 bg-green-100 font-semibold">TC ${needTC.toFixed(2)}</span>`;
+      if (!meta[i]) {
+        meta[i] = { tjEl, tcEl, tvEl, fEl, total, bulan, needTJ, needTC, needTV };
+      } else {
+        meta[i].tjEl = tjEl;
+        meta[i].tcEl = tcEl;
+        meta[i].tvEl = tvEl;
+        meta[i].fEl = fEl;
+        meta[i].total = total;
+        meta[i].bulan = bulan;
+        meta[i].needTJ = needTJ;
+        meta[i].needTC = needTC;
+        meta[i].needTV = needTV;
       }
 
-      meta.push({ tjEl, tcEl, fEl, total, bulan, needTJ, needTC });
       needsTJ.push(needTJ);
       needsTC.push(needTC);
+      needsTV.push(needTV);
+
+      if (fEl) {
+        fEl.innerHTML =
+        `<span class="inline-block rounded px-0.5 py-0 text-xs bg-blue-100 font-semibold"> ${Math.round(p.tj * 100)}%</span>, ` +
+        `<span class="inline-block rounded px-0.5 py-0 text-xs bg-green-100 font-semibold"> ${Math.round(p.tc * 100)}%</span>, ` +
+        `<span class="inline-block rounded px-0.5 py-0 text-xs bg-yellow-100 font-semibold"> ${Math.round(p.tv * 100)}%</span> <br>` +
+        `Butuh ${fmt0(total)}: <br>` +
+        `<span class="inline-block rounded px-0 py-0 text-xs bg-blue-100 "> ${needTJ.toFixed(2)}</span>, ` +
+        `<span class="inline-block rounded px-0 py-0 text-xs bg-green-100 "> ${needTC.toFixed(2)}</span>, ` +
+        `<span class="inline-block rounded px-0 py-0 text-xs bg-yellow-100 "> ${needTV.toFixed(2)}</span>`;
+      }
+      
     }
+    
 
-    let initTJ = 0, initTC = 0;
-    for (const r of rows) {
-      initTJ += parseFloat(r.dataset.tj) || 0;
-      initTC += parseFloat(r.dataset.tc) || 0;
-    }
-    if (sumTJCell) sumTJCell.textContent = fmt0(initTJ);
-    if (sumTCCell) sumTCCell.textContent = fmt0(initTC);
-
-    const stokTJ0 = parseFloat(inputTJ.value) || 0;
-    const stokTC0 = parseFloat(inputTC.value) || 0;
-    if (sisaTJEl) sisaTJEl.textContent = fmt0(Math.floor(stokTJ0) - initTJ);
-    if (sisaTCEl) sisaTCEl.textContent = fmt0(Math.floor(stokTC0) - initTC);
-
-    // Sum kebutuhan INTEGER (supaya sinkron dengan piaslst/controller)
     const needTJIntArr = needsTJ.map(v => Math.round(v));
     const needTCIntArr = needsTC.map(v => Math.round(v));
-    let sumNeedTJIntConst = needTJIntArr.reduce((a,b)=>a+b,0);
-    let sumNeedTCIntConst = needTCIntArr.reduce((a,b)=>a+b,0);
+    const needTVIntArr = needsTV.map(v => Math.round(v));
 
-    // ✅ INIT: Tampilkan total kebutuhan dan stok saat page load
+    sumNeedTJIntConst = needTJIntArr.reduce((a,b)=>a+b,0);
+    sumNeedTCIntConst = needTCIntArr.reduce((a,b)=>a+b,0);
+    sumNeedTVIntConst = needTVIntArr.reduce((a,b)=>a+b,0);
+
     if (totalTJEl) totalTJEl.textContent = sumNeedTJIntConst.toLocaleString('id-ID');
     if (totalTCEl) totalTCEl.textContent = sumNeedTCIntConst.toLocaleString('id-ID');
-    if (stokTJEl) stokTJEl.textContent = fmt0(stokTJ0);
-    if (stokTCEl) stokTCEl.textContent = fmt0(stokTC0);
+    if (totalTVEl) totalTVEl.textContent = sumNeedTVIntConst.toLocaleString('id-ID');
 
     document.getElementById('totalNeedTJ_hidden').value = sumNeedTJIntConst;
     document.getElementById('totalNeedTC_hidden').value = sumNeedTCIntConst;
-
-    // ================= CRC32 (match PHP) =================
-    const CRC_TABLE = (() => {
-      const t = new Uint32Array(256);
-      for (let n=0;n<256;n++){
-        let c = n;
-        for (let k=0;k<8;k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
-        t[n] = c >>> 0;
-      }
-      return t;
-    })();
-    function crc32(str){
-      let crc = 0 ^ (-1);
-      for (let i=0;i<str.length;i++){
-        crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ str.charCodeAt(i)) & 0xFF];
-      }
-      return (crc ^ (-1)) >>> 0;
-    }
-
-    // =================== Allocator: Equal-first + Group-fair (CRC32) ===================
-    function allocateInt(needs, stock) {
-      const n = needs.length;
-      if (n === 0) return [];
-      const sumNeedInt = needs.reduce((a,b)=>a + Math.round(b), 0);                // <— pakai SUM(round)
-      const target     = Math.min(Math.floor(stock || 0), sumNeedInt);             // <— target sinkron
-      if (target <= 0 || sumNeedInt <= 0) return Array(n).fill(0);
-
-      // seed sama dengan controller: crc32(rkhno)
-      const rkhInput = document.querySelector('input[name="rkhno"]');
-      const seed = crc32(rkhInput?.value || '');
-
-      // ids stabil: "Blok|Plot" dari data-id kalau ada; fallback teks kolom 0 & 1
-      const trs = Array.from(document.getElementById('plotTable').rows);
-      const ids = trs.map(tr => tr.getAttribute('data-id')?.trim()
-        || `${(tr.cells?.[0]?.textContent||'').trim()}|${(tr.cells?.[1]?.textContent||'').trim()}`);
-
-      // cap = round(need) (selaras controller & DB)
-      const cap    = needs.map(v => Math.round(v));
-
-      // kuota proporsional (prioritas sekunder untuk tie-break)
-      const sumFloat = needs.reduce((a,b)=>a+b, 0);
-      const quotas = needs.map(v => (sumFloat>0 ? v/sumFloat*target : 0));
-      const fracs  = quotas.map(q => q - Math.floor(q));
-
-      // 1) equal-first baseline (clamp cap)
-      const base  = Math.floor(target / n);
-      const alloc = Array(n).fill(0).map((_,i)=> Math.min(base, cap[i]));
-      let remain  = target - alloc.reduce((a,b)=>a+b,0);
-      if (remain <= 0) return alloc;
-
-      // 2) group by rounded need (desc)
-      const needInt = needs.map(v => Math.round(v));
-      const groups  = new Map();
-      for (let i=0;i<n;i++){ (groups.get(needInt[i]) ?? groups.set(needInt[i],[]).get(needInt[i])).push(i); }
-      const groupKeys = Array.from(groups.keys()).sort((a,b)=>b-a);
-
-      // urut anggota grup: (crc32(id)^seed) asc, tie frac desc, tie index asc
-      const orderGroup = idxs => idxs.slice().sort((a,b)=>{
-        const ha = (crc32(ids[a]||'') ^ seed) >>> 0;
-        const hb = (crc32(ids[b]||'') ^ seed) >>> 0;
-        if (ha === hb){
-          if (fracs[a] === fracs[b]) return a - b;
-          return fracs[b] - fracs[a];
-        }
-        return ha - hb;
-      });
-
-      // 3) bagi sisa per GRUP need: meratakan dulu; selisih dalam grup ≤ 1
-      while (remain > 0){
-        let progressed = false;
-
-        for (const k of groupKeys){
-          if (remain <= 0) break;
-
-          const all = groups.get(k);
-          const idxs = all.filter(i => alloc[i] < cap[i]);
-          if (idxs.length === 0) continue;
-
-          const ord = orderGroup(idxs);
-
-          if (remain >= ord.length){
-            for (const i of ord) alloc[i] += 1;
-            remain -= ord.length;
-            progressed = true;
-            continue;
-          }
-
-          for (let t=0; t<remain; t++) alloc[ord[t]] += 1;
-          remain = 0;
-          progressed = true;
-          break;
-        }
-
-        if (!progressed) break;
-      }
-
-      return alloc;
-    }
-
-    // Cache state input terakhir untuk skip render yang sama
-    let lastTJ = null, lastTC = null;
-
-    function render(){
-      if (!hasBoth()) { resetUI(); return; }
-
-      const stokTJ = parseFloat(inputTJ.value) || 0;
-      const stokTC = parseFloat(inputTC.value) || 0;
-      if (stokTJ === lastTJ && stokTC === lastTC) return; // tidak berubah → skip
-      lastTJ = stokTJ; lastTC = stokTC;
-
-      const allocTJ = allocateInt(needsTJ, stokTJ);
-      const allocTC = allocateInt(needsTC, stokTC);
-
-      let sumAllocTJ = 0, sumAllocTC = 0;
-
-      // Hanya update angka (tanpa rebuild innerHTML)
-      for (let i=0;i<meta.length;i++){
-        const m = meta[i];
-        const aTJ = allocTJ[i]|0, aTC = allocTC[i]|0;
-        sumAllocTJ += aTJ; sumAllocTC += aTC;
-
-        // if (m.tjEl) m.tjEl.textContent = fmt0(aTJ);
-        // if (m.tcEl) m.tcEl.textContent = fmt0(aTC);
-
-      if (m.tjEl) (m.tjEl.tagName === 'INPUT') ? m.tjEl.value = String(aTJ) : m.tjEl.textContent = fmt0(aTJ);
-      if (m.tcEl) (m.tcEl.tagName === 'INPUT') ? m.tcEl.value = String(aTC) : m.tcEl.textContent = fmt0(aTC);
-
-      }
-
-      if (sumTJCell)  sumTJCell.textContent  = fmt0(sumAllocTJ);
-      if (sumTCCell)  sumTCCell.textContent  = fmt0(sumAllocTC);
-
-      // ===== Ringkasan pakai kebutuhan integer & target kebutuhan =====
-      const needTJInt = sumNeedTJIntConst;
-      const needTCInt = sumNeedTCIntConst;
-
-      totalTJEl.textContent = needTJInt.toLocaleString('id-ID');
-      totalTCEl.textContent = needTCInt.toLocaleString('id-ID');
-
-      // target = min(floor(stok), sumNeedInt)
-      const targetTJ = Math.min(Math.floor(stokTJ), needTJInt);
-      const targetTC = Math.min(Math.floor(stokTC), needTCInt);
-
-      stokTJEl.textContent  = fmt0(stokTJ);
-      stokTCEl.textContent  = fmt0(stokTC);
-      sisaTJEl.textContent  = fmt0(Math.floor(stokTJ) - sumAllocTJ);
-      sisaTCEl.textContent  = fmt0(Math.floor(stokTC) - sumAllocTC);
-
-      const okTJ = sumAllocTJ >= needTJInt;
-      const okTC = sumAllocTC >= needTCInt;
-      statusTJ.textContent = okTJ ? 'TJ CUKUP' : 'TJ KURANG';
-      statusTC.textContent = okTC ? 'TC CUKUP' : 'TC KURANG';
-      statusTJ.className = `text-center text-sm font-medium rounded-md py-1 ${okTJ ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}`;
-      statusTC.className = `text-center text-sm font-medium rounded-md py-1 ${okTC ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}`;
-
-      summary.classList.remove('hidden');
-    }
-
-    function resetUI(){
-      for (const m of meta) {
-        if (m.tjEl) m.tjEl.textContent = '';
-        if (m.tcEl) m.tcEl.textContent = '';
-      }
-    }
-
-    // Debounce ringan
-    let timer; const IDLE=500;
-    function schedule(){
-      clearTimeout(timer);
-      if (hasBoth()) timer=setTimeout(render, IDLE);
-      else resetUI();
-    }
-    inputTJ.addEventListener('input', schedule);
-    inputTC.addEventListener('input', schedule);
-    inputTJ.addEventListener('change', schedule);
-    inputTC.addEventListener('change', schedule);
-
-    // Render awal (non-blocking)
-// Render awal (non-blocking) - HANYA jika user mengetik stok TJ/TC
-function scheduleFirstRender(){
-  // ✅ JANGAN auto-render saat page load
-  // Biarkan user yang trigger render dengan mengetik stok TJ/TC
-  
-  // Tapi tetap hitung total dan sisa dari data existing
-  if (hasBoth()) {
-    recalcTotalsFromInputs();
+    document.getElementById('totalNeedTV_hidden').value = sumNeedTVIntConst;
   }
-}
-scheduleFirstRender();
 
-    // Cetak: render sebelum print
-    // window.onbeforeprint = function(){ if (hasBoth()) render(); };
-    // if (window.matchMedia) {
-    //   const mq = window.matchMedia('print');
-    //   mq.addEventListener?.('change', e => { if (e.matches && hasBoth()) render(); });
-    // }
+  let initTJ = 0, initTC = 0, initTV = 0;
+  for (const r of rows) {
+    initTJ += parseFloat(r.dataset.tj) || 0;
+    initTC += parseFloat(r.dataset.tc) || 0;
+    initTV += parseFloat(r.dataset.tv) || 0;
+  }
 
-    // ===== FUNGSI RECALC (PINDAHKAN KE DALAM SCOPE) =====
-    function recalcTotalsFromInputs(){
-      const stokTJ = parseFloat(inputTJ.value)||0;
-      const stokTC = parseFloat(inputTC.value)||0;
-      const sumTJ  = sumInputs('.tj-result');
-      const sumTC  = sumInputs('.tc-result');
+  if (sumTJCell) sumTJCell.textContent = fmt0(initTJ);
+  if (sumTCCell) sumTCCell.textContent = fmt0(initTC);
+  if (sumTVCell) sumTVCell.textContent = fmt0(initTV);
 
-      if (sumTJCell)  sumTJCell.textContent  = fmt0(sumTJ);
-      if (sumTCCell)  sumTCCell.textContent  = fmt0(sumTC);
-      
-      // Update stok
-      if (stokTJEl) stokTJEl.textContent = fmt0(stokTJ);
-      if (stokTCEl) stokTCEl.textContent = fmt0(stokTC);
-      
-      // Update sisa
-      sisaTJEl.textContent = fmt0(Math.floor(stokTJ) - sumTJ);
-      sisaTCEl.textContent = fmt0(Math.floor(stokTC) - sumTC);
+  const stokTJ0 = parseFloat(inputTJ.value) || 0;
+  const stokTC0 = parseFloat(inputTC.value) || 0;
+  const stokTV0 = parseFloat(inputTV.value) || 0;
 
-      // Update total kebutuhan
-      if (totalTJEl) totalTJEl.textContent = sumNeedTJIntConst.toLocaleString('id-ID');
-      if (totalTCEl) totalTCEl.textContent = sumNeedTCIntConst.toLocaleString('id-ID');
+  if (stokTJEl) stokTJEl.textContent = fmt0(stokTJ0);
+  if (stokTCEl) stokTCEl.textContent = fmt0(stokTC0);
+  if (stokTVEl) stokTVEl.textContent = fmt0(stokTV0);
 
-      document.getElementById('totalNeedTJ_hidden').value = sumNeedTJIntConst;
-      document.getElementById('totalNeedTC_hidden').value = sumNeedTCIntConst;
+  if (sisaTJEl) sisaTJEl.textContent = fmt0(Math.floor(stokTJ0) - initTJ);
+  if (sisaTCEl) sisaTCEl.textContent = fmt0(Math.floor(stokTC0) - initTC);
+  if (sisaTVEl) sisaTVEl.textContent = fmt0(Math.floor(stokTV0) - initTV);
 
-      const okTJ = sumTJ >= sumNeedTJIntConst;
-      const okTC = sumTC >= sumNeedTCIntConst;
-      statusTJ.textContent = okTJ ? 'TJ CUKUP' : 'TJ KURANG';
-      statusTC.textContent = okTC ? 'TC CUKUP' : 'TC KURANG';
-      statusTJ.className = `text-center text-sm font-medium rounded-md py-1 ${okTJ ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}`;
-      statusTC.className = `text-center text-sm font-medium rounded-md py-1 ${okTC ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}`;
+  rebuildNeedsAndFormula();
+
+  let lastTJ = null;
+  let lastTC = null;
+  let lastTV = null;
+
+  function render(){
+    if (!hasAllStocks()) {
+      resetUI();
+      return;
     }
 
-    // Helper function
-    function sumInputs(sel){ 
-      return [...document.querySelectorAll(sel)].reduce((a,el)=> a + (parseFloat(el.value)||0), 0); 
+    const stokTJ = parseFloat(inputTJ.value) || 0;
+    const stokTC = parseFloat(inputTC.value) || 0;
+    const stokTV = parseFloat(inputTV.value) || 0;
+
+    if (stokTJ === lastTJ && stokTC === lastTC && stokTV === lastTV) return;
+
+    lastTJ = stokTJ;
+    lastTC = stokTC;
+    lastTV = stokTV;
+
+    const allocTJ = allocateInt(needsTJ, stokTJ);
+    const allocTC = allocateInt(needsTC, stokTC);
+    const allocTV = allocateInt(needsTV, stokTV);
+
+    let sumAllocTJ = 0;
+    let sumAllocTC = 0;
+    let sumAllocTV = 0;
+
+    for (let i = 0; i < meta.length; i++) {
+      const m = meta[i];
+      const aTJ = allocTJ[i] | 0;
+      const aTC = allocTC[i] | 0;
+      const aTV = allocTV[i] | 0;
+
+      sumAllocTJ += aTJ;
+      sumAllocTC += aTC;
+      sumAllocTV += aTV;
+
+      if (m.tjEl) {
+        if (m.tjEl.tagName === 'INPUT') m.tjEl.value = String(aTJ);
+        else m.tjEl.textContent = fmt0(aTJ);
+      }
+      if (m.tcEl) {
+        if (m.tcEl.tagName === 'INPUT') m.tcEl.value = String(aTC);
+        else m.tcEl.textContent = fmt0(aTC);
+      }
+      if (m.tvEl) {
+        if (m.tvEl.tagName === 'INPUT') m.tvEl.value = String(aTV);
+        else m.tvEl.textContent = fmt0(aTV);
+      }
     }
 
-    // ✅ Real-time update saat user mengedit TJ/TC di plot
-    plotTable.addEventListener('input', (e)=>{
-      if (e.target.matches('.tj-result, .tc-result')) recalcTotalsFromInputs();
-    });
+    if (sumTJCell) sumTJCell.textContent = fmt0(sumAllocTJ);
+    if (sumTCCell) sumTCCell.textContent = fmt0(sumAllocTC);
+    if (sumTVCell) sumTVCell.textContent = fmt0(sumAllocTV);
 
-    plotTable.addEventListener('change', (e)=>{
-      if (e.target.matches('.tj-result, .tc-result')) recalcTotalsFromInputs();
-    });
+    totalTJEl.textContent = sumNeedTJIntConst.toLocaleString('id-ID');
+    totalTCEl.textContent = sumNeedTCIntConst.toLocaleString('id-ID');
+    totalTVEl.textContent = sumNeedTVIntConst.toLocaleString('id-ID');
 
-    // Event listener untuk input stok TJ/TC
-    inputTJ.addEventListener('change', recalcTotalsFromInputs);
-    inputTC.addEventListener('change', recalcTotalsFromInputs);
-    inputTJ.addEventListener('input', recalcTotalsFromInputs);
-    inputTC.addEventListener('input', recalcTotalsFromInputs);
+    stokTJEl.textContent = fmt0(stokTJ);
+    stokTCEl.textContent = fmt0(stokTC);
+    stokTVEl.textContent = fmt0(stokTV);
 
-    dosageEl.addEventListener('change', function(){
-  // Recalc all needs dengan basis baru
-  needsTJ = [];
-  needsTC = [];
-  const dosage = getDosage();
+    sisaTJEl.textContent = fmt0(Math.floor(stokTJ) - sumAllocTJ);
+    sisaTCEl.textContent = fmt0(Math.floor(stokTC) - sumAllocTC);
+    sisaTVEl.textContent = fmt0(Math.floor(stokTV) - sumAllocTV);
 
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i];
-    const luas = parseFloat(r.dataset.luas) || 0;
-    const umur = parseInt(r.dataset.umur) || 0;
-    const bulan = Math.max(1, Math.ceil(umur/30));
-    const p = pcts[Math.min(bulan,10)-1] || {tj:0.5,tc:0.5};
-    
-    const total = luas * dosage;
-    const needTJ = total * p.tj;
-    const needTC = total * p.tc;
+    const okTJ = sumAllocTJ >= sumNeedTJIntConst;
+    const okTC = sumAllocTC >= sumNeedTCIntConst;
+    const okTV = sumAllocTV >= sumNeedTVIntConst;
 
-    needsTJ.push(needTJ);
-    needsTC.push(needTC);
+    statusTJ.textContent = okTJ ? 'TJ CUKUP' : 'TJ KURANG';
+    statusTC.textContent = okTC ? 'TC CUKUP' : 'TC KURANG';
+    statusTV.textContent = okTV ? 'TV CUKUP' : 'TV KURANG';
 
-    if (meta[i] && meta[i].fEl) {
-      meta[i].fEl.innerHTML =
-        `Pembagian: ` +
-        `<span class="inline-block rounded px-2 py-0.5 bg-blue-100 font-semibold">TJ ${Math.round(p.tj*100)}%</span> / ` +
-        `<span class="inline-block rounded px-2 py-0.5 bg-green-100 font-semibold">TC ${Math.round(p.tc*100)}%</span> dari ${fmt0(total)} lembar. <br>`+
-        `Kebutuhan: ` +
-        `<span class="inline-block rounded px-2 py-0.5 bg-blue-100 font-semibold">TJ ${needTJ.toFixed(2)}</span>, ` +
-        `<span class="inline-block rounded px-2 py-0.5 bg-green-100 font-semibold">TC ${needTC.toFixed(2)}</span>`;
+    statusTJ.className = `text-center text-sm font-medium rounded-md py-1 ${okTJ ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}`;
+    statusTC.className = `text-center text-sm font-medium rounded-md py-1 ${okTC ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}`;
+    statusTV.className = `text-center text-sm font-medium rounded-md py-1 ${okTV ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}`;
+
+    summary.classList.remove('hidden');
+  }
+
+  function resetUI(){
+    for (const m of meta) {
+      if (m.tjEl && m.tjEl.tagName === 'INPUT') m.tjEl.value = '';
+      if (m.tcEl && m.tcEl.tagName === 'INPUT') m.tcEl.value = '';
+      if (m.tvEl && m.tvEl.tagName === 'INPUT') m.tvEl.value = '';
     }
   }
 
-  const needTJIntArr = needsTJ.map(v => Math.round(v));
-  const needTCIntArr = needsTC.map(v => Math.round(v));
-  sumNeedTJIntConst = needTJIntArr.reduce((a,b)=>a+b,0);
-  sumNeedTCIntConst = needTCIntArr.reduce((a,b)=>a+b,0);
+  function recalcTotalsFromInputs(){
+    const stokTJ = parseFloat(inputTJ.value) || 0;
+    const stokTC = parseFloat(inputTC.value) || 0;
+    const stokTV = parseFloat(inputTV.value) || 0;
 
-  if (totalTJEl) totalTJEl.textContent = sumNeedTJIntConst.toLocaleString('id-ID');
-  if (totalTCEl) totalTCEl.textContent = sumNeedTCIntConst.toLocaleString('id-ID');
-  
-  document.getElementById('totalNeedTJ_hidden').value = sumNeedTJIntConst;
-  document.getElementById('totalNeedTC_hidden').value = sumNeedTCIntConst;
+    const sumTJ = sumInputs('.tj-result');
+    const sumTC = sumInputs('.tc-result');
+    const sumTV = sumInputs('.tv-result');
 
-  lastTJ = null; lastTC = null;
-  if (hasBoth()) render();
-  else recalcTotalsFromInputs();
-});
+    if (sumTJCell) sumTJCell.textContent = fmt0(sumTJ);
+    if (sumTCCell) sumTCCell.textContent = fmt0(sumTC);
+    if (sumTVCell) sumTVCell.textContent = fmt0(sumTV);
 
+    if (stokTJEl) stokTJEl.textContent = fmt0(stokTJ);
+    if (stokTCEl) stokTCEl.textContent = fmt0(stokTC);
+    if (stokTVEl) stokTVEl.textContent = fmt0(stokTV);
 
-    // Initial calculation
-    setTimeout(recalcTotalsFromInputs, 250);
+    sisaTJEl.textContent = fmt0(Math.floor(stokTJ) - sumTJ);
+    sisaTCEl.textContent = fmt0(Math.floor(stokTC) - sumTC);
+    sisaTVEl.textContent = fmt0(Math.floor(stokTV) - sumTV);
 
+    if (totalTJEl) totalTJEl.textContent = sumNeedTJIntConst.toLocaleString('id-ID');
+    if (totalTCEl) totalTCEl.textContent = sumNeedTCIntConst.toLocaleString('id-ID');
+    if (totalTVEl) totalTVEl.textContent = sumNeedTVIntConst.toLocaleString('id-ID');
+
+    document.getElementById('totalNeedTJ_hidden').value = sumNeedTJIntConst;
+    document.getElementById('totalNeedTC_hidden').value = sumNeedTCIntConst;
+    document.getElementById('totalNeedTV_hidden').value = sumNeedTVIntConst;
+
+    const okTJ = sumTJ >= sumNeedTJIntConst;
+    const okTC = sumTC >= sumNeedTCIntConst;
+    const okTV = sumTV >= sumNeedTVIntConst;
+
+    statusTJ.textContent = okTJ ? 'TJ CUKUP' : 'TJ KURANG';
+    statusTC.textContent = okTC ? 'TC CUKUP' : 'TC KURANG';
+    statusTV.textContent = okTV ? 'TV CUKUP' : 'TV KURANG';
+
+    statusTJ.className = `text-center text-sm font-medium rounded-md py-1 ${okTJ ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}`;
+    statusTC.className = `text-center text-sm font-medium rounded-md py-1 ${okTC ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}`;
+    statusTV.className = `text-center text-sm font-medium rounded-md py-1 ${okTV ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}`;
+  }
+
+  let timer;
+  const IDLE = 500;
+
+  function schedule(){
+    clearTimeout(timer);
+    if (hasAllStocks()) timer = setTimeout(render, IDLE);
+    else resetUI();
+  }
+
+  inputTJ.addEventListener('input', schedule);
+  inputTC.addEventListener('input', schedule);
+  inputTV.addEventListener('input', schedule);
+
+  inputTJ.addEventListener('change', schedule);
+  inputTC.addEventListener('change', schedule);
+  inputTV.addEventListener('change', schedule);
+
+  plotTable.addEventListener('input', (e)=>{
+    if (e.target.matches('.tj-result, .tc-result, .tv-result')) recalcTotalsFromInputs();
   });
 
+  plotTable.addEventListener('change', (e)=>{
+    if (e.target.matches('.tj-result, .tc-result, .tv-result')) recalcTotalsFromInputs();
+  });
 
+  inputTJ.addEventListener('change', recalcTotalsFromInputs);
+  inputTC.addEventListener('change', recalcTotalsFromInputs);
+  inputTV.addEventListener('change', recalcTotalsFromInputs);
+
+  inputTJ.addEventListener('input', recalcTotalsFromInputs);
+  inputTC.addEventListener('input', recalcTotalsFromInputs);
+  inputTV.addEventListener('input', recalcTotalsFromInputs);
+
+  dosageEl.addEventListener('change', function(){
+    rebuildNeedsAndFormula();
+    lastTJ = null;
+    lastTC = null;
+    lastTV = null;
+
+    if (hasAllStocks()) render();
+    else recalcTotalsFromInputs();
+  });
+
+  if (hasAllStocks()) {
+    recalcTotalsFromInputs();
+  } else {
+    setTimeout(recalcTotalsFromInputs, 250);
+  }
+});
 </script>
 
 
