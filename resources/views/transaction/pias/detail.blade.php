@@ -14,13 +14,46 @@
       font:600 16px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     }
     .toast-error{ background:#ffe4e6; border-color:#fda4af; } /* soft red */
-    @media print { .toast-center{ display:none !important; }   .print-only { display:block;}    
-      input[type="number"] { 
-        border: none !important; 
-        background: transparent !important;
-        padding: 0 !important;
+      @media print {
+        .toast-center { display:none !important; }
+        .print-only { display:inline !important; }
+        .no-print { display:none !important; }
+
+        table {
+          border-collapse: collapse !important;
+          width: 100% !important;
+        }
+
+        .border {
+          border: none !important;
+        }
+
+        th, td {
+          border: 1px solid #666 !important;
+          padding: 6px 8px !important;
+          vertical-align: middle !important;
+        }
+
+        thead { display: table-header-group; }
+        tfoot { display: table-footer-group; }
+
+        tr { page-break-inside: avoid !important; }
+
+        .tj-print, .tc-print, .tv-print {
+          display: inline-block;
+          min-width: 24px;
+          text-align: right;
+          font-weight: 600;
+        }
+
+        .tj-result,
+        .tc-result,
+        .tv-result {
+          all: unset;
+          text-align: right;
+          width: 100%;
+        }
       }
-    }
     @media screen { .print-only { display:none; } }
   </style>
 @endonce
@@ -90,7 +123,7 @@
   
         <!-- Card Summary - lebih lebar -->
         <div id="summaryCard" class="col-span-2 border rounded-md p-1 bg-white shadow-sm">
-        <h3 class="text-base font-bold mb-1 text-center">Ringkasan Kebutuhan vs Stok</h3>
+        <h3 class="text-base font-bold mb-1 text-center">Ringkasan Kebutuhan</h3>
         <div class="space-y-2">
           <div class="border rounded p-1 bg-blue-50">
             <div class="text-xs text-gray-600 mb-1 text-center">Total Kebutuhan</div>
@@ -196,7 +229,7 @@
                   <input type="hidden" name="rows[{{ $loop->index }}][lkhno]" value="{{ $item->lkhno }}">
                   <input
                     type="number" step="1" min="0"
-                    class="tj-result w-24 text-right border rounded px-2 py-1 bg-white"
+                    class="tj-result w-full text-right border rounded px-2 py-1 bg-white"
                     value="{{ old("rows.$loop->index.tj", isset($existTJ) ? (int)$existTJ : '') }}"
                     name="rows[{{ $loop->index }}][tj]"
                   >
@@ -206,7 +239,7 @@
                 <td class="p-3 border-b bg-green-50 font-semibold text-right">
                   <input
                     type="number" step="1" min="0"
-                    class="tc-result w-24 text-right border rounded px-2 py-1 bg-white"
+                    class="tc-result w-full text-right border rounded px-2 py-1 bg-white"
                     value="{{ old("rows.$loop->index.tc", isset($existTC) ? (int)$existTC : '') }}"
                     name="rows[{{ $loop->index }}][tc]"
                   >
@@ -215,7 +248,7 @@
                 <td class="p-3 border-b bg-yellow-50 font-semibold text-right">
                   <input
                     type="number" step="1" min="0"
-                    class="tv-result w-24 text-right border rounded px-2 py-1 bg-white"
+                    class="tv-result w-full text-right border rounded px-2 py-1 bg-white"
                     value="{{ old("rows.$loop->index.tv", isset($existTV) ? (int)$existTV : '') }}"
                     name="rows[{{ $loop->index }}][tv]"
                   >
@@ -229,8 +262,8 @@
             @endforeach
           </tbody>
           <tfoot>
-            <tr class="bg-gray-100 font-bold">
-              <td class="p-3 border-t" colspan="6" style="text-align:right">TOTAL</td>
+            <tr class="font-bold">
+              <td class="p-3 border-t" colspan="5" style="text-align:right">TOTAL</td>
               <td class="p-3 border-t bg-blue-50 text-right">
                 <span id="sumTJCell">0</span>
               </td>
@@ -240,7 +273,7 @@
               <td class="p-3 border-t bg-yellow-50 text-right">
                 <span id="sumTVCell">0</span>
               </td>
-              <td class="p-3 border-t"></td>
+              <td class="p-3 border-t no-print"></td>
             </tr>
           </tfoot>
         </table>
