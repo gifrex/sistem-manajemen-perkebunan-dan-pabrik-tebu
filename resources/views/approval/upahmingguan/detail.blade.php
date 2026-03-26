@@ -16,7 +16,11 @@
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <div>
                 <h2 class="text-base font-semibold text-slate-900">Detail Approval Upah Mingguan</h2>
-                <p class="text-xs text-slate-400 mt-0.5" x-text="upahModal.transno"></p>
+                <p class="text-xs text-slate-400 mt-0.5"
+                    x-text="upahModal.data?.transactions?.length > 1
+                        ? (upahModal.data.transactions.length + ' transaksi · ' + (upahModal.data.header?.mandorname ?? ''))
+                        : (upahModal.data?.transactions?.[0]?.transno ?? upahModal.transno_list)">
+                </p>
             </div>
             <button @click="upahModal.open = false"
                 class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
@@ -86,7 +90,9 @@
                             <p class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1">Grand Total
                             </p>
                             <p class="font-bold text-emerald-700 text-xs"
-                                x-text="new Intl.NumberFormat('id-ID', {style:'currency', currency:'IDR', minimumFractionDigits:0}).format(upahModal.data.header?.grandtotal ?? 0)">
+                                x-text="new Intl.NumberFormat('id-ID', {style:'currency', currency:'IDR', minimumFractionDigits:0}).format(
+                                    upahModal.data.transactions?.reduce((s, t) => s + parseFloat(t.grandtotal ?? 0), 0) ?? 0
+                                )">
                             </p>
                         </div>
                     </div>
@@ -107,6 +113,100 @@
                         </span>
                     </div>
 
+                    {{-- Daftar Transaksi per Aktivitas --}}
+                    <template x-if="upahModal.data.transactions && upahModal.data.transactions.length > 0">
+                        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                            <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                                <h3 class="text-sm font-semibold text-slate-800">Rincian Transaksi</h3>
+                                <span class="text-xs text-slate-500"
+                                    x-text="upahModal.data.transactions.length + ' transaksi'"></span>
+                            </div>
+
+                            <template x-for="(trx, idx) in upahModal.data.transactions" :key="trx.transno">
+                                <div :class="idx > 0 ? 'border-t border-slate-100' : ''">
+                                    {{-- Transaksi header row --}}
+                                    <div class="px-4 py-2.5 bg-slate-50/60 flex items-center justify-between gap-3">
+                                        <div class="flex items-center gap-2">
+                                            <span
+                                                class="font-mono text-[11px] text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded"
+                                                x-text="trx.transno"></span>
+                                            <span class="text-sm font-medium text-slate-800"
+                                                x-text="trx.activityname ?? '-'"></span>
+                                        </div>
+                                        <span class="text-xs text-slate-400 whitespace-nowrap"
+                                            x-text="trx.startdate
+                                                ? (new Date(trx.startdate).toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'})
+                                                   + ' s/d '
+                                                   + new Date(trx.enddate).toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'}))
+                                                : '-'">
+                                        </span>
+                                    </div>
+
+                                    {{-- Worker list for this transaction --}}
+                                    <template x-if="trx.workers && trx.workers.length > 0">
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-sm">
+                                                <thead>
+                                                    <tr class="border-b border-slate-100">
+                                                        <th
+                                                            class="px-4 py-2 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                                                            No</th>
+                                                        <th
+                                                            class="px-4 py-2 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                                                            ID TK</th>
+                                                        <th
+                                                            class="px-4 py-2 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                                                            Nama</th>
+                                                        <th
+                                                            class="px-4 py-2 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                                                            Upah</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-slate-100">
+                                                    <template x-for="(w, i) in trx.workers" :key="w.tenagakerjaid">
+                                                        <tr class="hover:bg-slate-50/50">
+                                                            <td class="px-4 py-2 text-slate-400 text-xs" x-text="i + 1">
+                                                            </td>
+                                                            <td class="px-4 py-2 text-slate-600 font-mono text-xs"
+                                                                x-text="w.tenagakerjaid"></td>
+                                                            <td class="px-4 py-2 font-medium text-slate-800 text-sm"
+                                                                x-text="w.worker_name"></td>
+                                                            <td class="px-4 py-2 text-right font-medium text-slate-800 text-xs"
+                                                                x-text="w.totalupah_fmt"></td>
+                                                        </tr>
+                                                    </template>
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr class="border-t border-slate-200 bg-slate-50/50">
+                                                        <td colspan="3"
+                                                            class="px-4 py-2 text-xs font-semibold text-slate-500 text-right">
+                                                            Subtotal</td>
+                                                        <td class="px-4 py-2 text-right text-xs font-bold text-emerald-700"
+                                                            x-text="new Intl.NumberFormat('id-ID', {style:'currency', currency:'IDR', minimumFractionDigits:0}).format(trx.grandtotal ?? 0)">
+                                                        </td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+
+                            {{-- Grand Total row jika lebih dari 1 transaksi --}}
+                            <template x-if="upahModal.data.transactions.length > 1">
+                                <div
+                                    class="border-t-2 border-slate-200 px-4 py-3 bg-emerald-50/40 flex items-center justify-between">
+                                    <span class="text-sm font-semibold text-slate-700">Grand Total</span>
+                                    <span class="text-sm font-bold text-emerald-700"
+                                        x-text="new Intl.NumberFormat('id-ID', {style:'currency', currency:'IDR', minimumFractionDigits:0}).format(
+                                            upahModal.data.transactions.reduce((s, t) => s + parseFloat(t.grandtotal ?? 0), 0)
+                                        )">
+                                    </span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
                     {{-- Approval history --}}
                     <template x-if="upahModal.data.history && upahModal.data.history.jumlahapproval">
                         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -120,7 +220,8 @@
                                             <div class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 flex-shrink-0"
                                                 x-text="lvl.level"></div>
                                             <div>
-                                                <p class="text-sm font-medium text-slate-800" x-text="lvl.jabatan"></p>
+                                                <p class="text-sm font-medium text-slate-800" x-text="lvl.jabatan">
+                                                </p>
                                                 <p class="text-xs text-slate-400 mt-0.5">
                                                     <span x-show="lvl.user" x-text="lvl.user"></span>
                                                     <span x-show="lvl.user && lvl.date"> &middot; </span>
@@ -143,50 +244,6 @@
                                         </span>
                                     </div>
                                 </template>
-                            </div>
-                        </div>
-                    </template>
-
-                    {{-- Worker list --}}
-                    <template x-if="upahModal.data.workers && upahModal.data.workers.length > 0">
-                        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                            <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                                <h3 class="text-sm font-semibold text-slate-800">Daftar Tenaga Kerja</h3>
-                                <span class="text-xs text-slate-500"
-                                    x-text="upahModal.data.workers.length + ' orang'"></span>
-                            </div>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-sm">
-                                    <thead>
-                                        <tr class="bg-slate-50 border-b border-slate-100">
-                                            <th
-                                                class="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                                                No</th>
-                                            <th
-                                                class="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                                                ID TK</th>
-                                            <th
-                                                class="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                                                Nama</th>
-                                            <th
-                                                class="px-4 py-2.5 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                                                Upah</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100">
-                                        <template x-for="(w, i) in upahModal.data.workers" :key="w.tenagakerjaid">
-                                            <tr class="hover:bg-slate-50/50">
-                                                <td class="px-4 py-2.5 text-slate-400 text-xs" x-text="i + 1"></td>
-                                                <td class="px-4 py-2.5 text-slate-600 font-mono text-xs"
-                                                    x-text="w.tenagakerjaid"></td>
-                                                <td class="px-4 py-2.5 font-medium text-slate-800 text-sm"
-                                                    x-text="w.worker_name"></td>
-                                                <td class="px-4 py-2.5 text-right font-medium text-slate-800 text-xs"
-                                                    x-text="w.totalupah_fmt"></td>
-                                            </tr>
-                                        </template>
-                                    </tbody>
-                                </table>
                             </div>
                         </div>
                     </template>

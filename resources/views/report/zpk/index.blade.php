@@ -22,15 +22,21 @@
                 <!-- Action Button -->
                 <div>
                     @can('report.zpk.export')
-                        <button
+                        <button id="btn-export" data-base-url="{{ route('report.report-zpk.exportExcel') }}"
                             class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
-                            onclick="window.location.href='{{ route('report.report-zpk.exportExcel', ['start_date' => old('start_date', request()->start_date), 'end_date' => old('end_date', request()->end_date)]) }}'">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            onclick="startExport()">
+                            <svg id="icon-export" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                                 <path fill-rule="evenodd"
                                     d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Zm2 0V2h7a2 2 0 0 1 2 2v9.293l-2-2a1 1 0 0 0-1.414 1.414l.293.293h-6.586a1 1 0 1 0 0 2h6.586l-.293.293A1 1 0 0 0 18 16.707l2-2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9h5a2 2 0 0 0 2-2Z"
                                     clip-rule="evenodd" />
                             </svg>
-                            <span>Export Excel</span>
+                            <svg id="icon-spin" class="w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            <span id="label-export">Export Excel</span>
                         </button>
                     @endcan
                 </div>
@@ -212,7 +218,7 @@
                                 <td class="py-3 px-4 text-center text-gray-700 bg-purple-50">
                                     <span
                                         class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                                        {{ $item->lkhdate ?? '-' }}
+                                        {{ $item->tanggal_zpk ?? '-' }}
                                     </span>
                                 </td>
                                 <td class="py-3 px-4 text-center text-gray-700 bg-red-50">
@@ -291,6 +297,81 @@
     </div>
 
     <script>
+        function startExport() {
+            const btn = document.getElementById('btn-export');
+            const iconExport = document.getElementById('icon-export');
+            const iconSpin = document.getElementById('icon-spin');
+            const label = document.getElementById('label-export');
+
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            const baseUrl = btn.getAttribute('data-base-url');
+
+            const params = new URLSearchParams();
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            const url = baseUrl + '?' + params.toString();
+
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+            iconExport.classList.add('hidden');
+            iconSpin.classList.remove('hidden');
+            label.textContent = 'Mengekspor...';
+
+            fetch(url)
+                .then(function(response) {
+                    const contentType = response.headers.get('Content-Type') || '';
+                    if (contentType.includes('application/json')) {
+                        return response.json().then(function(json) {
+                            showToast('error', json.error || 'Tidak ada data untuk diekspor.');
+                        });
+                    }
+                    return response.blob().then(function(blob) {
+                        const disposition = response.headers.get('Content-Disposition') || '';
+                        const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                        const filename = match ? match[1].replace(/['"]/g, '') : 'ZPKReport.xlsx';
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = filename;
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                    });
+                })
+                .catch(function() {
+                    showToast('error', 'Gagal mengekspor data. Silakan coba lagi.');
+                })
+                .finally(function() {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                    iconExport.classList.remove('hidden');
+                    iconSpin.classList.add('hidden');
+                    label.textContent = 'Export Excel';
+                });
+        }
+
+        function showToast(type, msg) {
+            const colors = type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white';
+            const icon = type === 'success' ?
+                '<svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>' :
+                '<svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>';
+            const t = document.createElement('div');
+            t.className =
+                `fixed top-6 right-6 z-[9999] flex items-start gap-3 px-5 py-4 rounded-xl shadow-xl ${colors} max-w-sm transition-all duration-300 opacity-0 translate-y-2`;
+            t.innerHTML = `${icon}<span class="text-sm font-medium">${msg}</span>`;
+            document.body.appendChild(t);
+            setTimeout(function() {
+                t.style.opacity = '1';
+                t.style.transform = 'translateY(0)';
+            }, 10);
+            setTimeout(function() {
+                t.style.opacity = '0';
+                t.style.transform = 'translateY(-8px)';
+                setTimeout(function() {
+                    t.remove();
+                }, 300);
+            }, 4000);
+        }
+
         function toggleDropdown() {
             const dropdown = document.getElementById('menu-dropdown');
             dropdown.classList.toggle('hidden');

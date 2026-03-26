@@ -27,6 +27,7 @@
       <div>
         <p class="text-xs text-gray-500 mb-1">Activity</p>
         <p class="text-sm font-semibold text-gray-800">{{ $lkhData->activitycode }}</p>
+        <span x-show="isBlokActivity" class="text-[10px] text-amber-600 font-medium">Kegiatan Blok</span>
       </div>
       <div>
         <p class="text-xs text-gray-500 mb-1">Worker Type</p>
@@ -39,14 +40,14 @@
 
   {{-- Summary Stats --}}
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-    {{-- Plots --}}
+    {{-- Plots/Bloks --}}
     <div class="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all"
          @click="goToStep(1)">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-xs text-gray-500 font-medium mb-1">Plots</p>
+          <p class="text-xs text-gray-500 font-medium mb-1" x-text="isBlokActivity ? 'Bloks' : 'Plots'"></p>
           <p class="text-2xl font-bold text-gray-800" x-text="plots.length"></p>
-          <p class="text-xs text-gray-500 mt-1" x-text="getTotalLuas() + ' Ha'"></p>
+          <p class="text-xs text-gray-500 mt-1" x-text="isBlokActivity ? plots.length + ' blok(s)' : getTotalLuas() + ' Ha'"></p>
         </div>
         <div class="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center">
           <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,7 +91,7 @@
       </div>
     </div>
 
-    {{-- Total Wage - ACCENT COLOR --}}
+    {{-- Total Wage --}}
     <div class="bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-lg p-4 shadow-lg">
       <div class="flex items-center justify-between">
         <div class="w-full">
@@ -130,9 +131,7 @@
         <p class="text-xs text-blue-700 mb-1">Per Worker</p>
         <p class="text-lg font-bold text-blue-700" 
            x-text="formatRupiah((getTotalLuas() * boronganRate) / workers.length)"></p>
-        <p class="text-[10px] text-gray-600">
-          (<span x-text="workers.length"></span> workers)
-        </p>
+        <p class="text-[10px] text-gray-600">(<span x-text="workers.length"></span> workers)</p>
       </div>
     </div>
   </div>
@@ -148,8 +147,48 @@
     <p class="text-sm text-gray-700" x-text="keterangan"></p>
   </div>
 
-  {{-- Plot Details Accordion --}}
-  <div x-data="{ openPlots: false }" class="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+  {{-- ✅ BLOK ACTIVITY: Blok Details Accordion --}}
+  <div x-show="isBlokActivity" x-data="{ openBloks: true }" class="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+    <button @click="openBloks = !openBloks" type="button"
+      class="w-full px-4 py-3 bg-white hover:bg-gray-50 flex items-center justify-between transition-colors">
+      <span class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+        </svg>
+        Blok Details (<span x-text="plots.length"></span>)
+      </span>
+      <svg class="w-5 h-5 text-gray-500 transition-transform duration-200" :class="openBloks && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+      </svg>
+    </button>
+    <div x-show="openBloks" x-transition class="border-t border-gray-200 bg-gray-50">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-white">
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-600">#</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-600">Blok</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-600">Keterangan</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 bg-white">
+            <template x-for="(row, i) in plots" :key="i">
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-2 text-gray-600" x-text="i + 1"></td>
+                <td class="px-4 py-2">
+                  <span class="inline-flex items-center px-2 py-1 bg-amber-100 text-amber-800 rounded text-xs font-bold" x-text="'Blok ' + row.blok"></span>
+                </td>
+                <td class="px-4 py-2 text-gray-600" x-text="row.keterangan || '-'"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {{-- NORMAL: Plot Details Accordion --}}
+  <div x-show="!isBlokActivity" x-data="{ openPlots: false }" class="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
     <button @click="openPlots = !openPlots" type="button"
       class="w-full px-4 py-3 bg-white hover:bg-gray-50 flex items-center justify-between transition-colors">
       <span class="text-sm font-semibold text-gray-700 flex items-center gap-2">
@@ -162,11 +201,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
       </svg>
     </button>
-    <div x-show="openPlots" 
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0 -translate-y-2"
-         x-transition:enter-end="opacity-100 translate-y-0"
-         class="border-t border-gray-200 bg-gray-50">
+    <div x-show="openPlots" x-transition class="border-t border-gray-200 bg-gray-50">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -215,11 +250,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
       </svg>
     </button>
-    <div x-show="openWorkers" 
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0 -translate-y-2"
-         x-transition:enter-end="opacity-100 translate-y-0"
-         class="border-t border-gray-200 bg-gray-50">
+    <div x-show="openWorkers" x-transition class="border-t border-gray-200 bg-gray-50">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -253,7 +284,7 @@
     </div>
   </div>
 
-  {{-- ✅ NEW: Material Details Accordion --}}
+  {{-- Material Details Accordion --}}
   <div x-data="{ openMaterials: false }" class="border border-gray-200 rounded-lg overflow-hidden shadow-sm" x-show="materials.length > 0">
     <button @click="openMaterials = !openMaterials" type="button"
       class="w-full px-4 py-3 bg-white hover:bg-gray-50 flex items-center justify-between transition-colors">
@@ -267,11 +298,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
       </svg>
     </button>
-    <div x-show="openMaterials" 
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0 -translate-y-2"
-         x-transition:enter-end="opacity-100 translate-y-0"
-         class="border-t border-gray-200 bg-gray-50">
+    <div x-show="openMaterials" x-transition class="border-t border-gray-200 bg-gray-50">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -336,9 +363,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
           </svg>
         </div>
-        <span class="text-sm text-gray-700">
-          At least 1 plot required (<span class="font-semibold" x-text="plots.length"></span> plots selected)
-        </span>
+        <span class="text-sm text-gray-700" x-text="isBlokActivity ? 'Minimal 1 blok (' + plots.length + ' blok selected)' : 'At least 1 plot required (' + plots.length + ' plots selected)'"></span>
       </div>
       <div class="flex items-center gap-2">
         <div class="w-5 h-5 rounded-full flex items-center justify-center"
@@ -358,9 +383,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
           </svg>
         </div>
-        <span class="text-sm text-gray-700">
-          All workers must have a name selected
-        </span>
+        <span class="text-sm text-gray-700">All workers must have a name selected</span>
       </div>
       <div class="flex items-center gap-2" x-show="materials.length > 0">
         <div class="w-5 h-5 rounded-full flex items-center justify-center"

@@ -69,7 +69,7 @@ class ApprovalDashboardController extends Controller
         $pendingAbsen = $this->getPendingAbsenWithDetails($companycode, $currentUser, $filters);
         $pendingOther = $this->getPendingOtherWithDetails($companycode, $currentUser, $filters);
         $othersDetail = $this->setOtherDetail($pendingOther);
-        $pendingUpah = $this->getPendingUpahWithDetails($companycode, $currentUser, $filters);    
+        $pendingUpah = $this->getPendingUpahWithDetails($companycode, $currentUser, $filters);
         $pendingBBM = OrderBbmApprovalController::getPendingApprovals(
             $companycode,
             $currentUser->idjabatan,
@@ -254,22 +254,71 @@ class ApprovalDashboardController extends Controller
      * @param array $filters
      * @return \Illuminate\Support\Collection
      */
+    
     private function getPendingAbsenWithDetails($companycode, $currentUser, array $filters)
     {
-        return $this->absenRepository->getPendingApprovals(
+        $pendingAbsen = $this->absenRepository->getPendingApprovals(
             $companycode,
             $currentUser->idjabatan,
             $filters
         );
+
+        // Batch check LKH upload status
+        $lkhStatusMap = $this->absenRepository->checkLKHUploadedForAbsens(
+            $companycode,
+            $pendingAbsen
+        );
+
+        // Enrich setiap absen dengan flag lkh_uploaded
+        return $pendingAbsen->map(function ($absen) use ($lkhStatusMap) {
+            $absen->lkh_uploaded = $lkhStatusMap[$absen->absenno] ?? false;
+            return $absen;
+        });
     }
 
     private function getPendingUpahWithDetails(string $companycode, object $currentUser, array $filters)
     {
-        return $this->upahRepository->getPendingApprovals(
+        $items = $this->upahRepository->getPendingApprovals(
             $companycode,
             $currentUser->idjabatan,
             $filters
         );
+
+        if ($items->isEmpty()) {
+            return $items;
+        }
+
+        // Group by mandoruserid + jenistenagakerja:
+        // - Satu card per mandor per jenis (Harian & Borongan dipisah)
+        // - Multiple transno untuk mandor+jenis yang sama digabung
+        $grouped = $items->groupBy(fn($i) => $i->mandoruserid . '_' . $i->jenistenagakerja);
+
+        return $grouped->map(function ($group) {
+            $first = $group->first();
+            return (object) [
+                'mandoruserid' => $first->mandoruserid,
+                'mandorname' => $first->mandorname,
+                'jenistenagakerja' => $first->jenistenagakerja,
+                'jenis_label' => $first->jenis_label,
+                'approval_level' => $first->approval_level,
+                'startdate' => $group->min('startdate'),
+                'enddate' => $group->max('enddate'),
+                'grandtotal' => $group->sum('grandtotal'),
+                'totalworkers' => $group->sum('totalworkers'),
+                'transno_list' => $group->pluck('transno')->toArray(),
+                'transno_count' => $group->count(),
+                // Detail per transaksi untuk ditampilkan di modal
+                'transactions' => $group->map(fn($t) => (object) [
+                    'transno' => $t->transno,
+                    'activityname' => $t->activityname,
+                    'generatedate' => $t->generatedate,
+                    'startdate' => $t->startdate,
+                    'enddate' => $t->enddate,
+                    'grandtotal' => $t->grandtotal,
+                    'totalworkers' => $t->totalworkers,
+                ])->values(),
+            ];
+        })->values();
     }
 
     private function setOtherDetail($otherDetail)

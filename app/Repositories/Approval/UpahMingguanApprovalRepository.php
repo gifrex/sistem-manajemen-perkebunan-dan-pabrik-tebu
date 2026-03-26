@@ -86,6 +86,8 @@ class UpahMingguanApprovalRepository
                 'p.grandtotal',
                 'p.jenistenagakerja',
                 'p.generatedate',
+                'p.mandoruserid',
+                'p.activitycode',
                 'ac.activityname',
                 'u.name as mandorname',
                 DB::raw("
@@ -145,6 +147,17 @@ class UpahMingguanApprovalRepository
         return DB::table('pembayaranupahhdr')
             ->where('companycode', $companycode)
             ->where('transno', $transno)
+            ->first();
+    }
+
+    // ── Find pembayaranupahhdr with activity name joined ─────────────────────
+    public function findHeaderWithActivity(string $companycode, string $transno): ?object
+    {
+        return DB::table('pembayaranupahhdr as p')
+            ->leftJoin('activity as ac', 'ac.activitycode', '=', 'p.activitycode')
+            ->where('p.companycode', $companycode)
+            ->where('p.transno', $transno)
+            ->select('p.*', 'ac.activityname')
             ->first();
     }
 

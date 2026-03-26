@@ -9,16 +9,16 @@
         <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
         </svg>
-        Plot Details
+        <span x-text="isBlokActivity ? 'Blok Details' : 'Plot Details'"></span>
       </h3>
-      <p class="text-xs text-gray-600 mt-1">Select plots and confirm area measurements</p>
+      <p class="text-xs text-gray-600 mt-1" x-text="isBlokActivity ? 'Kegiatan blok — pilih blok yang dikerjakan' : 'Select plots and confirm area measurements'"></p>
     </div>
     <div class="flex items-center gap-4">
       <div class="text-right">
         <div class="text-xl font-bold text-blue-600" x-text="plots.length"></div>
-        <div class="text-[10px] text-gray-500">Selected Plots</div>
+        <div class="text-[10px] text-gray-500" x-text="isBlokActivity ? 'Blok(s)' : 'Selected Plots'"></div>
       </div>
-      <div class="text-right">
+      <div x-show="!isBlokActivity" class="text-right">
         <div class="text-xl font-bold text-green-600" x-text="getTotalLuas() + ' Ha'"></div>
         <div class="text-[10px] text-gray-500">Total Luas Hasil</div>
       </div>
@@ -26,18 +26,23 @@
   </div>
 
   {{-- Activity Info Card --}}
-  <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+  <div class="border rounded-lg p-4"
+       :class="isBlokActivity ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200' : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'">
     <div class="flex items-center gap-3">
-      <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="w-10 h-10 rounded-lg flex items-center justify-center"
+           :class="isBlokActivity ? 'bg-amber-100' : 'bg-blue-100'">
+        <svg class="w-5 h-5" :class="isBlokActivity ? 'text-amber-600' : 'text-blue-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
         </svg>
       </div>
       <div class="flex-1">
         <p class="text-xs text-gray-500">Activity</p>
         <p class="text-sm font-semibold text-gray-800">
-          <span class="font-mono bg-blue-100 px-1.5 py-0.5 rounded text-blue-700">{{ $lkhData->activitycode }}</span>
+          <span class="font-mono px-1.5 py-0.5 rounded" :class="isBlokActivity ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'">{{ $lkhData->activitycode }}</span>
           {{ Str::limit($lkhData->activityname, 50) }}
+        </p>
+        <p x-show="isBlokActivity" class="text-xs text-amber-600 mt-1 font-medium">
+          ⚠ Kegiatan Blok — tidak memerlukan plot & luas
         </p>
       </div>
     </div>
@@ -57,17 +62,91 @@
       :class="!keterangan.trim() ? 'border-red-300 bg-red-50' : 'border-gray-300'"
     ></textarea>
     <div class="flex items-center justify-between mt-2">
-      <p class="text-xs text-gray-500">
-        Alasan ini akan tersimpan sebagai audit trail
-      </p>
-      <span class="text-xs text-gray-500">
-        <span x-text="keterangan.length"></span>/500
-      </span>
+      <p class="text-xs text-gray-500">Alasan ini akan tersimpan sebagai audit trail</p>
+      <span class="text-xs text-gray-500"><span x-text="keterangan.length"></span>/500</span>
     </div>
   </div>
 
-  {{-- Plot Selection Panel --}}
-  <div class="grid grid-cols-12 gap-4">
+  {{-- ============================================================
+       BLOK ACTIVITY MODE
+  ============================================================ --}}
+  <div x-show="isBlokActivity" class="space-y-4">
+
+    {{-- Add Blok Row --}}
+    <div x-data="{ selectedNewBlok: '' }" class="flex items-center gap-3">
+      <select x-model="selectedNewBlok"
+        class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 min-w-[200px]">
+        <option value="">-- Pilih Blok --</option>
+        <template x-for="blok in getAvailableBlokOptions()" :key="blok">
+          <option :value="blok" x-text="'Blok ' + blok"></option>
+        </template>
+      </select>
+      <button type="button" 
+        @click="if(selectedNewBlok) { addBlokRow(selectedNewBlok); selectedNewBlok = ''; }"
+        :disabled="!selectedNewBlok"
+        :class="selectedNewBlok ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'"
+        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        Add Blok
+      </button>
+      <span class="text-xs text-gray-500" x-show="getAvailableBlokOptions().length === 0">
+        Semua blok sudah ditambahkan
+      </span>
+    </div>
+
+    {{-- Blok Rows Table --}}
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <table class="w-full" x-show="plots.length > 0">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 w-12">#</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Blok</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Keterangan</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 w-16">Hapus</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <template x-for="(row, index) in plots" :key="index">
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 text-sm text-gray-600 font-medium" x-text="index + 1"></td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center px-3 py-1.5 bg-amber-100 text-amber-800 rounded-lg text-sm font-bold" x-text="'Blok ' + row.blok"></span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="text-sm text-gray-600" x-text="row.keterangan || '-'"></span>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <button type="button" @click="removeBlokRow(index)"
+                  :disabled="plots.length <= 1"
+                  :class="plots.length <= 1 ? 'opacity-30 cursor-not-allowed' : 'hover:text-red-700 hover:bg-red-50'"
+                  class="p-1.5 text-red-500 rounded transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+
+      {{-- Empty State --}}
+      <div x-show="plots.length === 0" class="px-4 py-12 text-center">
+        <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+        </svg>
+        <p class="text-gray-500 font-medium mb-2">Belum ada blok</p>
+        <p class="text-gray-400 text-sm">Pilih blok dari dropdown di atas untuk menambahkan.</p>
+      </div>
+    </div>
+  </div>
+
+  {{-- ============================================================
+       NORMAL ACTIVITY MODE (existing plot selector)
+  ============================================================ --}}
+  <div x-show="!isBlokActivity" class="grid grid-cols-12 gap-4">
     
     {{-- Left Panel: Blok & Plot Selector --}}
     <div class="col-span-5 border border-gray-200 rounded-lg overflow-hidden bg-white">
@@ -108,15 +187,12 @@
             class="group cursor-pointer px-3 py-2.5 border-b border-gray-100 hover:bg-blue-50 transition-all"
             :class="isPlotSelected(plot) ? 'bg-blue-50' : ''">
             <div class="flex items-center gap-3">
-              {{-- Checkbox --}}
               <div class="w-5 h-5 rounded border-2 flex items-center justify-center transition-all flex-shrink-0"
                 :class="isPlotSelected(plot) ? 'bg-blue-500 border-blue-500' : 'border-gray-300 group-hover:border-blue-400'">
                 <svg x-show="isPlotSelected(plot)" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
                 </svg>
               </div>
-              
-              {{-- Plot Info --}}
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
                   <span class="text-sm font-bold text-gray-800" x-text="plot.plot"></span>
@@ -139,7 +215,6 @@
           </div>
         </template>
 
-        {{-- Empty State --}}
         <div x-show="filteredPlotsForBlok().length === 0" class="px-4 py-8 text-center">
           <svg class="w-10 h-10 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -152,7 +227,6 @@
     {{-- Right Panel: Selected Plots with Luas Input --}}
     <div class="col-span-7 border border-gray-200 rounded-lg overflow-hidden bg-white">
       
-      {{-- Header --}}
       <div class="bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <h4 class="text-sm font-semibold text-gray-800">Selected Plots</h4>
         <button type="button" @click="clearAllPlots()" x-show="plots.length > 0"
@@ -161,7 +235,6 @@
         </button>
       </div>
 
-      {{-- Selected Plots Table --}}
       <div class="max-h-[400px] overflow-y-auto">
         <table class="w-full" x-show="plots.length > 0">
           <thead class="bg-gray-50 sticky top-0">
@@ -215,7 +288,6 @@
           </tfoot>
         </table>
 
-        {{-- Empty State --}}
         <div x-show="plots.length === 0" class="px-4 py-12 text-center">
           <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
@@ -225,12 +297,10 @@
         </div>
       </div>
     </div>
-
   </div>
 
   {{-- Validation Warnings --}}
   <div class="space-y-2">
-    {{-- Keterangan Warning --}}
     <div x-show="!keterangan.trim()" class="bg-red-50 border-l-4 border-red-500 p-3 rounded">
       <div class="flex items-start gap-2">
         <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,15 +313,14 @@
       </div>
     </div>
 
-    {{-- Plot Warning --}}
     <div x-show="plots.length === 0" class="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
       <div class="flex items-start gap-2">
         <svg class="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
         </svg>
         <div>
-          <h3 class="text-sm font-semibold text-yellow-800">At least 1 plot required</h3>
-          <p class="text-xs text-yellow-700 mt-1">Please select plots from the left panel to continue.</p>
+          <h3 class="text-sm font-semibold text-yellow-800" x-text="isBlokActivity ? 'Minimal 1 blok harus ada' : 'At least 1 plot required'"></h3>
+          <p class="text-xs text-yellow-700 mt-1" x-text="isBlokActivity ? 'Pilih blok dari dropdown di atas.' : 'Please select plots from the left panel to continue.'"></p>
         </div>
       </div>
     </div>

@@ -286,7 +286,7 @@
                                         data-dosage="{{$item->dosageperha}}" 
                                         data-measure="{{ $item->measure }}" 
                                         data-itemname="{{ $item->itemname }}"
-                                        data-rounddosage="{{ $item->rounddosage ?? 1 }}">
+                                        data-rounddosage="{{ $item->rounddosage ?? 0 }}">
                                         {{$item->activitycode}} • {{ $item->itemcode }} • {{ $item->itemname }} • {{$item->dosageperha}} ({{$item->measure}})
                                     </option>
                                     @endforeach
@@ -328,18 +328,17 @@
                         if ($rowRounddosage) {
                             if ($qtyRawExp <= 0) {
                                 $exp = 0;
-                            } elseif ($qtyRawExp <= 0.05) {
-                                $exp = 0.05;
                             } else {
+                                $qtyRawExp = floor($qtyRawExp * 100) / 100;
                                 $exp = round($qtyRawExp / 0.05) * 0.05;
+                                if ($exp == 0) $exp = 0.05;
                             }
                         } else {
                             if ($qtyRawExp <= 0) {
                                 $exp = 0;
-                            } elseif ($qtyRawExp <= 0.01) {
-                                $exp = 0.01;
                             } else {
-                                $exp = round($qtyRawExp / 0.01) * 0.01;
+                                $exp = round($qtyRawExp, 2);
+                                if ($exp == 0) $exp = 0.01;
                             }
                         }
 
@@ -614,11 +613,14 @@
 
             const roundto1 = (num) => {
                 num = parseFloat(num) || 0;
-
+                console.log('roundto1 input', num, 'x100=', num * 100);
                 if (num <= 0) return 0;
-                if (num <= 0.01) return 0.01;
 
-                return Math.round(num / 0.01) * 0.01;
+                let qty = Math.round((num + Number.EPSILON) * 100) / 100;
+                console.log('roundto1 output', qty);
+                if (qty === 0) return 0.01;
+
+                return qty;
             };
             
     
@@ -720,17 +722,35 @@
             }
             
             function recalcRowQty(row){
+                if (`{{ !empty($details[0]->nouse) ? 1 : 0 }}` == 1) {
+                    return;
+                }
                 const dosage = parseFloat(String(row.find('.selected-dosage').val()).replace(/,/g,'')) || 0;
                 const luas   = parseFloat(row.find('.selected-luas').val()) || 0;
-                const qtyRaw = dosage * luas;
+                let qtyRaw = dosage * luas;
                 const opt = row.find('.item-select option:selected');
                 const rounddosage = parseInt(opt.data('rounddosage')) || 0;
 
                 let qty;
+                console.log('DEBUG QTY', {
+                    dosage: dosage,
+                    luas: luas,
+                    qtyRaw: qtyRaw,
+                    rounddosage: rounddosage
+                });
                 if (rounddosage) {
+                    qtyRaw = Math.floor(qtyRaw * 100) / 100;
                     qty = roundto5(qtyRaw);
+                    console.log('DEBUG ROUND 0.05', {
+                        qtyRawAfterTruncate: qtyRaw,
+                        finalQty: qty
+                    });
                 } else {
                     qty = roundto1(qtyRaw);
+                    console.log('DEBUG ROUND 0.01', {
+                        qtyRawBeforeRound: qtyRaw,
+                        finalQty: qty
+                    });
                 }
 
                 row.find('.labelqty').text(qty.toFixed(2));

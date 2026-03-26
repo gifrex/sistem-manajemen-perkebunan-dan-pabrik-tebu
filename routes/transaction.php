@@ -117,9 +117,7 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
                 Route::put('/{rkhno}', 'update')->name('update');
                 Route::delete('/{rkhno}', 'destroy')->name('destroy');
 
-                
-
-                // Cancel
+                Route::get('/{rkhno}/print', 'printView')->name('print');
                 Route::post('/{rkhno}/cancel', 'cancel')->name('cancel');
                 Route::get('/{rkhno}/batal-detail', 'getBatalDetail')->name('batalDetail');
             });
@@ -147,6 +145,7 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
                 Route::post('/lkh/submit', 'submitLKH')->name('submitLKH');
                 Route::post('/{rkhno}/generate-lkh', 'manualGenerateLkh')->name('manualGenerateLkh');
                 Route::post('/lkh/recalculate-wages', 'recalculateWages')->name('recalculateWages');
+                Route::get('/lkh/{lkhno}/print', 'printLKH')->name('printLKH');
             });
 
             // ============================================================

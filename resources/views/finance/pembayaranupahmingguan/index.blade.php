@@ -25,7 +25,7 @@
                 </div>
 
                 <div class="flex gap-2 flex-wrap">
-                    @if (session('tenagakerjarum') != null)
+                    @if (session('tenagakerjarum') != null && Auth::user()->idjabatan == 21)
                         <button type="button" onclick="confirmGenerate()"
                             class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -36,14 +36,21 @@
                         </button>
                     @endif
 
-                    <button type="button" onclick="exportToExcel()"
+                    <button type="button" id="exportBtn" onclick="exportToExcel()"
                         class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <svg id="exportIcon" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                             <path fill-rule="evenodd"
                                 d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Zm2 0V2h7a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9h5a2 2 0 0 0 2-2Zm2-2a1 1 0 1 0 0 2h3a1 1 0 1 0 0-2h-3Zm0 3a1 1 0 1 0 0 2h3a1 1 0 1 0 0-2h-3Zm-6 4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-6Zm8 1v1h-2v-1h2Zm0 3h-2v1h2v-1Zm-4-3v1H9v-1h2Zm0 3H9v1h2v-1Z"
                                 clip-rule="evenodd" />
                         </svg>
-                        Export
+                        <svg id="exportSpinner" class="w-5 h-5 hidden animate-spin" xmlns="http://www.w3.org/2000/svg"
+                            fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        <span id="exportText">Export</span>
                     </button>
                 </div>
             </div>
@@ -723,7 +730,7 @@
         }
 
         const isHarian = {{ session('tenagakerjarum') == 'Harian' ? 'true' : 'false' }};
-        const colCount = isHarian ? 5 : 7;
+        const colCount = isHarian ? 6 : 7;
 
         function buildSkeletonRows(n = 5) {
             const widths = ['w-6', 'w-28', 'w-36', 'w-24', 'w-20', 'w-24', 'w-20'];
@@ -804,8 +811,16 @@
                     }
                     const data = res.data || [];
                     if (!data.length) {
-                        tbody.innerHTML =
-                            `<tr><td colspan="${colCount}" class="text-center py-8 text-gray-500">Tidak ada data</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="${colCount}" class="py-14 text-center">
+                            <div class="flex flex-col items-center gap-3">
+                                <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                </svg>
+                                <p class="text-sm font-semibold text-gray-500">Data tidak ditemukan</p>
+                                <p class="text-xs text-gray-400">Tidak ada detail pembayaran untuk transaksi ini.</p>
+                            </div>
+                        </td></tr>`;
                         return;
                     }
 
@@ -825,12 +840,14 @@
                         const gMap = new Map();
                         data.forEach(item => {
                             const k = item.tenagakerjaid || '',
-                                tot = parseIDR(item.total);
+                                tot = parseIDR(item.total),
+                                lembur = parseIDR(item.upahlembur);
                             if (!gMap.has(k)) gMap.set(k, {
                                 namatenagakerja: item.namatenagakerja || '-',
                                 tanggal_min: item.tanggal || '',
                                 tanggal_max: item.tanggal || '',
                                 biaya_per_hari: parseIDR(item.upah),
+                                upahlembur: lembur,
                                 total: tot
                             });
                             else {
@@ -841,6 +858,7 @@
                                     if (!g.tanggal_max || item.tanggal > g.tanggal_max) g.tanggal_max = item
                                         .tanggal;
                                 }
+                                g.upahlembur += lembur;
                                 g.total += tot;
                             }
                         });
@@ -858,11 +876,12 @@
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-700">${g.namatenagakerja}</td>
                                 <td class="px-4 py-3 text-sm text-right text-gray-700">${fmtIDR(g.biaya_per_hari)}</td>
+                                <td class="px-4 py-3 text-sm text-right text-gray-700">${fmtIDR(g.upahlembur)}</td>
                                 <td class="px-4 py-3 text-sm text-right font-semibold text-indigo-700">${fmtIDR(g.total)}</td>
                             </tr>`;
                         });
                         tbody.innerHTML += `<tr class="font-bold bg-indigo-50">
-                            <td colspan="4" class="px-4 py-3 text-right border-t-2 border-indigo-400 text-gray-900">Grand Total:</td>
+                            <td colspan="5" class="px-4 py-3 text-right border-t-2 border-indigo-400 text-gray-900">Grand Total:</td>
                             <td class="px-4 py-3 border-t-2 border-indigo-400 text-right text-indigo-700">${fmtIDR(gt)}</td>
                         </tr>`;
                     @else
@@ -908,8 +927,48 @@
             const sd = document.getElementById('start_date').value;
             const ed = document.getElementById('end_date').value;
             if (!sd || !ed) return alert('Harap pilih range tanggal terlebih dahulu');
-            window.location.href =
-                `{{ route('finance.pembayaran-upah-mingguan.export-excel') }}?start_date=${sd}&end_date=${ed}`;
+
+            const url = `{{ route('finance.pembayaran-upah-mingguan.export-excel') }}?start_date=${sd}&end_date=${ed}`;
+
+            const btn = document.getElementById('exportBtn');
+            const icon = document.getElementById('exportIcon');
+            const spinner = document.getElementById('exportSpinner');
+            const text = document.getElementById('exportText');
+
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+            icon.classList.add('hidden');
+            spinner.classList.remove('hidden');
+            text.textContent = 'Mengekspor...';
+
+            fetch(url)
+                .then(response => {
+                    const contentType = response.headers.get('Content-Type') || '';
+                    if (contentType.includes('application/json')) {
+                        return response.json().then(json => {
+                            showToast('error', json.error || 'Tidak ada data untuk diekspor.');
+                        });
+                    }
+                    return response.blob().then(blob => {
+                        const disposition = response.headers.get('Content-Disposition') || '';
+                        const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                        const filename = match ? match[1].replace(/['"]/g, '') :
+                            'Pembayaran_Upah_Mingguan.xlsx';
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = filename;
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                    });
+                })
+                .catch(() => showToast('error', 'Gagal mengekspor data. Silakan coba lagi.'))
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                    icon.classList.remove('hidden');
+                    spinner.classList.add('hidden');
+                    text.textContent = 'Export';
+                });
         }
     </script>
 </x-layout>
