@@ -1,11 +1,14 @@
 <?php
 namespace App\Http\Controllers\Report;
+
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Auth;
 use App\Models\PanenTebuHistory;
+use App\Models\RekapPremiHistory;
 
 class RekapPremiTargetKontraktorController extends Controller
 {
@@ -22,11 +25,15 @@ class RekapPremiTargetKontraktorController extends Controller
         $nav         = "Rekapitulasi Premi Target Kontraktor";
         $kontraktor  = DB::table('kontraktor')->where('companycode', session('companycode'))->get();
         $tabel_harga = DB::table('hargapanentebu')->where('companycode', session('companycode'))->get();
-        $history     = PanenTebuHistory::where('companycode', session('companycode'))->orderBy('createdat', 'desc')->get();
 
-        $searchResults  = null;
-        $searchParams   = null;
-        $missingDates   = [];   // tanggal yang tidak ada data di dokumen
+        // History sekarang menggunakan tabel rekappremikontraktorhistory
+        $history = RekapPremiHistory::where('companycode', session('companycode'))
+                    ->orderBy('createdat', 'desc')
+                    ->get();
+
+        $searchResults   = null;
+        $searchParams    = null;
+        $missingDates    = [];
         $jumlahHariBulan = 0;
 
         return view('report.rekapitulasi-premi.index', compact(
@@ -50,6 +57,7 @@ class RekapPremiTargetKontraktorController extends Controller
         $startOfMonth = Carbon::createFromDate($tahun, $bulan, 1)->startOfMonth()->toDateString();
         $endOfMonth   = Carbon::createFromDate($tahun, $bulan, 1)->endOfMonth()->toDateString();
 
+        // Cari dari PanenTebuHistory (sumber data mentah)
         $searchResults = PanenTebuHistory::where('companycode', session('companycode'))
             ->where('idkontraktor', $idkontraktor)
             ->where(function ($query) use ($startOfMonth, $endOfMonth) {
@@ -70,14 +78,11 @@ class RekapPremiTargetKontraktorController extends Controller
             'namakontraktor' => $searchResults->first()?->namakontraktor ?? '',
         ];
 
-        // -------------------------------------------------------
-        // Hitung tanggal yang TIDAK ADA data di seluruh dokumen
-        // -------------------------------------------------------
+        // Hitung tanggal yang tidak ada data
         $missingDates    = [];
         $jumlahHariBulan = 0;
 
         if ($searchResults->isNotEmpty()) {
-            // Kumpulkan semua tanggal yang ada di dataresult seluruh dokumen
             $tanggalAda = collect();
             foreach ($searchResults as $doc) {
                 $rows = is_array($doc->dataresult)
@@ -95,7 +100,6 @@ class RekapPremiTargetKontraktorController extends Controller
             }
             $tanggalAda = $tanggalAda->unique()->values();
 
-            // Generate semua hari dalam bulan yang dipilih
             $jumlahHariBulan = Carbon::createFromDate($tahun, $bulan, 1)->daysInMonth;
             for ($day = 1; $day <= $jumlahHariBulan; $day++) {
                 $tglCheck = Carbon::createFromDate($tahun, $bulan, $day)->format('Y-m-d');
@@ -109,7 +113,11 @@ class RekapPremiTargetKontraktorController extends Controller
         $nav         = "Rekapitulasi Premi Target Kontraktor";
         $kontraktor  = DB::table('kontraktor')->where('companycode', session('companycode'))->get();
         $tabel_harga = DB::table('hargapanentebu')->where('companycode', session('companycode'))->get();
-        $history     = PanenTebuHistory::where('companycode', session('companycode'))->orderBy('createdat', 'desc')->get();
+
+        // History dari tabel rekappremikontraktorhistory
+        $history = RekapPremiHistory::where('companycode', session('companycode'))
+                    ->orderBy('createdat', 'desc')
+                    ->get();
 
         return view('report.rekapitulasi-premi.index', compact(
             'title', 'nav', 'kontraktor', 'tabel_harga', 'history',
@@ -125,11 +133,9 @@ class RekapPremiTargetKontraktorController extends Controller
             'tahun'        => 'required|string|size:4',
         ]);
 
-        $idkontraktor = $request->idkontraktor;
-        $bulan        = $request->bulan;
-        $tahun        = $request->tahun;
-
-        // Ambil alasan tanggal kosong dari form (array: ['2025-11-30' => 'Libur nasional', ...])
+        $idkontraktor  = $request->idkontraktor;
+        $bulan         = $request->bulan;
+        $tahun         = $request->tahun;
         $alasanTanggal = $request->input('alasan', []);
 
         $startOfMonth = Carbon::createFromDate($tahun, $bulan, 1)->startOfMonth()->toDateString();
@@ -180,7 +186,7 @@ class RekapPremiTargetKontraktorController extends Controller
 
         $namaKontraktor = $firstDoc->namakontraktor;
 
-        // Ambil target dari tabel targetkontraktor (companycode + idkontraktor + bulan + tahun)
+        // Target per hari
         $targetRow = DB::table('targetkontraktor')
             ->where('companycode', session('companycode'))
             ->where('idkontraktor', $idkontraktor)
@@ -199,8 +205,7 @@ class RekapPremiTargetKontraktorController extends Controller
 
         $data = $allData->sortBy('tanggalangkut')->values();
 
-        // Bangun array alasan yang bersih untuk dikirim ke view
-        // Format: [ ['tanggal' => '2025-11-30', 'alasan' => 'Libur nasional'], ... ]
+        // Bangun alasanList
         $alasanList = [];
         foreach ($alasanTanggal as $tgl => $alasan) {
             $alasan = trim($alasan);
@@ -211,8 +216,32 @@ class RekapPremiTargetKontraktorController extends Controller
                 ];
             }
         }
-        // Sort by tanggal ascending
         usort($alasanList, fn($a, $b) => strcmp($a['tanggal'], $b['tanggal']));
+
+        // -------------------------------------------------------
+        // Hitung grandtotal untuk disimpan ke history
+        // Contoh: jumlah grandtotal dari semua dokumen yang dipakai
+        // -------------------------------------------------------
+        $grandTotal = $documents->sum('grandtotal');
+
+        // Kumpulkan nodoc referensi dari PanenTebuHistory yang dipakai
+        $nodocReferences = $documents->pluck('nodoc')->toArray();
+
+        // Simpan ke rekappremikontraktorhistory
+        $historyRecord = RekapPremiHistory::create([
+            'companycode'      => session('companycode'),
+            'userid'           => Auth::user()->name ?? 'System',
+            'idkontraktor'     => $idkontraktor,
+            'namakontraktor'   => $namaKontraktor,
+            'bulan'            => $bulan,
+            'tahun'            => $tahun,
+            'target_per_hari'  => $targetPerHari,
+            'grandtotal'       => $grandTotal,
+            'dataresult'       => $data->toArray(),
+            'hargasnapshot'    => $tabelharga->toArray(),
+            'alasanlist'       => $alasanList,
+            'nodoc_references' => $nodocReferences,
+        ]);
 
         return view('report.rekapitulasi-premi.result', compact(
             'data',
@@ -226,5 +255,83 @@ class RekapPremiTargetKontraktorController extends Controller
             'alasanList',
             'targetPerHari'
         ));
+    }
+
+    // -------------------------------------------------------
+    // Tampilkan hasil dari history
+    // -------------------------------------------------------
+    public function show($nodoc)
+    {
+        $companycode = session('companycode');
+        $history     = RekapPremiHistory::where('companycode', $companycode)->findOrFail($nodoc);
+
+        $data = collect($history->dataresult)->map(function ($item) {
+            return is_array($item) ? (object) $item : $item;
+        });
+
+        $tabelharga = collect($history->hargasnapshot)->map(function ($item) {
+            return is_array($item) ? (object) $item : $item;
+        });
+
+        $namaBulan = [
+            '01' => 'Januari',  '02' => 'Februari', '03' => 'Maret',
+            '04' => 'April',    '05' => 'Mei',       '06' => 'Juni',
+            '07' => 'Juli',     '08' => 'Agustus',   '09' => 'September',
+            '10' => 'Oktober',  '11' => 'November',  '12' => 'Desember',
+        ];
+        $periodeLabel   = ($namaBulan[$history->bulan] ?? $history->bulan) . ' ' . $history->tahun;
+        $namaKontraktor = $history->namakontraktor;
+        $idkontraktor   = $history->idkontraktor;
+        $bulan          = $history->bulan;
+        $tahun          = $history->tahun;
+        $alasanList     = $history->alasanlist ?? [];
+        $targetPerHari  = (float) $history->target_per_hari;
+
+        // Ambil dokumen referensi agar konsisten dengan view result yang butuh $documents
+        $documents = PanenTebuHistory::whereIn('nodoc', $history->nodoc_references ?? [])
+                        ->orderBy('startdate', 'asc')
+                        ->get();
+
+        return view('report.rekapitulasi-premi.result', compact(
+            'data',
+            'tabelharga',
+            'idkontraktor',
+            'namaKontraktor',
+            'periodeLabel',
+            'bulan',
+            'tahun',
+            'documents',
+            'alasanList',
+            'targetPerHari'
+        ));
+    }
+
+    // -------------------------------------------------------
+    // Hapus history
+    // -------------------------------------------------------
+    public function destroy($nodoc)
+    {
+        try {
+            $companycode = session('companycode');
+            $history     = RekapPremiHistory::where('companycode', $companycode)->findOrFail($nodoc);
+
+            $namaBulan = [
+                '01' => 'Januari',  '02' => 'Februari', '03' => 'Maret',
+                '04' => 'April',    '05' => 'Mei',       '06' => 'Juni',
+                '07' => 'Juli',     '08' => 'Agustus',   '09' => 'September',
+                '10' => 'Oktober',  '11' => 'November',  '12' => 'Desember',
+            ];
+            $periodeLabel = ($namaBulan[$history->bulan] ?? $history->bulan) . ' ' . $history->tahun;
+
+            $historyInfo = "No Doc: {$history->nodoc} ({$history->namakontraktor} - {$periodeLabel})";
+
+            $history->delete();
+
+            return redirect()->route('report.rekapitulasi-premi-report.index')
+                             ->with('success', 'History report berhasil dihapus: ' . $historyInfo);
+        } catch (\Exception $e) {
+            return redirect()->route('report.rekapitulasi-premi-report.index')
+                             ->with('error', 'Gagal menghapus history report: ' . $e->getMessage());
+        }
     }
 }

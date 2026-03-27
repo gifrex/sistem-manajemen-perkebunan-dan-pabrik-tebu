@@ -86,8 +86,10 @@ Route::middleware('auth')->prefix('report')->name('report.')->group(function () 
     // ============================================================================
     Route::middleware('permission:report.rekapitulasipremi.view')->group(function () {
         Route::match(['GET', 'POST'], 'rekapitulasi-premi-report', [RekapPremiTargetKontraktorController::class, 'index'])->name('rekapitulasi-premi-report.index');
-        Route::post('rekapitulasi-premi-report/search', [RekapPremiTargetKontraktorController::class, 'search'])->name('rekapitulasi-premi-report.search');
-        Route::post('rekapitulasi-premi-report/proses', [RekapPremiTargetKontraktorController::class, 'proses'])->name('rekapitulasi-premi-report.proses');
+        Route::post('rekapitulasi-premi-report/search',  [RekapPremiTargetKontraktorController::class, 'search']) ->name('rekapitulasi-premi-report.search');
+        Route::post('rekapitulasi-premi-report/proses',  [RekapPremiTargetKontraktorController::class, 'proses']) ->name('rekapitulasi-premi-report.proses');
+        Route::get( 'rekapitulasi-premi-report/{nodoc}', [RekapPremiTargetKontraktorController::class, 'show'])   ->name('rekapitulasi-premi-report.show');
+        Route::delete('rekapitulasi-premi-report/{nodoc}',[RekapPremiTargetKontraktorController::class, 'destroy'])->name('rekapitulasi-premi-report.destroy');
     });
 
     // ============================================================================

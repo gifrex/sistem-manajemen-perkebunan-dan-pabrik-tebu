@@ -87,7 +87,7 @@
                 return \Carbon\Carbon::parse($tgl)->format('Y-m-d');
             })->sortKeys();
 
-            $grandBruto = $grandBrkend = $grandNetto = $grandPotKg = $grandBeratBersih = $grandBiaya = 0;
+            $grandBruto = $grandBrkend = $grandNetto = $grandPotKg = $grandBeratBersih = $grandBiaya = $grandRetensi = 0;
             $cost = $h('manualfeekont');
             $tanggalEfektif = $data->map(function($item) {
                 $tgl = is_array($item) ? ($item["tanggalangkut"] ?? null) : ($item->tanggalangkut ?? null);
@@ -99,7 +99,7 @@
         {{-- DETAIL PER TANGGAL --}}
         @foreach ($groupedData as $tanggal => $dataPerTanggal)
             @php
-                $totalBruto = $totalBrkend = $totalNetto = $totalPotKg = $totalBeratBersih = $totalBiaya = 0;
+                $totalBruto = $totalBrkend = $totalNetto = $totalPotKg = $totalBeratBersih = $totalBiaya = $totalRetensi = 0;
             @endphp
 
             <div class="mb-8 @if(!$loop->last) print-break @endif">
@@ -123,6 +123,7 @@
                                 <th>Trash Kebun %</th>
                                 <th>Pot (KG)</th>
                                 <th>Berat Bersih (KG)</th>
+                                <th>Retensi (Rp 1/KG)</th>
                                 <th>Cost (Rp/KG)</th>
                                 <th>Biaya (Rp)</th>
                             </tr>
@@ -138,6 +139,7 @@
                                     $trashKebun  = ($trashPct > 3) ? $trashPct - 3 : 0;
                                     $potKg       = ($trashKebun > 0) ? round($netto * $trashKebun / 100, 0, PHP_ROUND_HALF_UP) : 0;
                                     $beratBersih = $netto - $potKg;
+                                    $retensi     = $beratBersih * 1;
                                     $biaya       = $beratBersih * $cost;
 
                                     $totalBruto       += $bruto;
@@ -145,6 +147,7 @@
                                     $totalNetto       += $netto;
                                     $totalPotKg       += $potKg;
                                     $totalBeratBersih += $beratBersih;
+                                    $totalRetensi     += $retensi;
                                     $totalBiaya       += $biaya;
                                 @endphp
                                 <tr>
@@ -161,6 +164,7 @@
                                     <td class="text-center">{{ $trashKebun > 0 ? number_format($trashKebun, 3) : '' }}</td>
                                     <td class="text-right">{{ $potKg > 0 ? number_format($potKg) : '' }}</td>
                                     <td class="text-right font-semibold">{{ number_format($beratBersih) }}</td>
+                                    <td class="text-right">{{ number_format($retensi) }}</td>
                                     <td class="text-right">{{ number_format($cost) }}</td>
                                     <td class="text-right font-semibold">{{ number_format($biaya) }}</td>
                                 </tr>
@@ -175,6 +179,7 @@
                                 <td>-</td>
                                 <td class="text-right">{{ number_format($totalPotKg) }}</td>
                                 <td class="text-right">{{ number_format($totalBeratBersih) }}</td>
+                                <td class="text-right">{{ number_format($totalRetensi) }}</td>
                                 <td>-</td>
                                 <td class="text-right">{{ number_format($totalBiaya) }}</td>
                             </tr>
@@ -189,6 +194,7 @@
                 $grandNetto       += $totalNetto;
                 $grandPotKg       += $totalPotKg;
                 $grandBeratBersih += $totalBeratBersih;
+                $grandRetensi     += $totalRetensi;
                 $grandBiaya       += $totalBiaya;
             @endphp
         @endforeach
@@ -245,11 +251,15 @@
                             </td>
                         </tr>
                         <tr class="bg-white border-b border-gray-200">
+                            <td class="py-3 px-6 text-left font-medium">Total Retensi</td>
+                            <td class="py-3 px-6 text-right font-semibold">{{ number_format($grandRetensi) }}</td>
+                        </tr>
+                        <tr class="bg-gray-50 border-b border-gray-200">
                             <td class="py-3 px-6 text-left font-medium">
-                                Hasil
-                                <span class="ml-2 text-sm text-gray-600 font-medium">(Berat Bersih × Cost)</span>
+                                Total Biaya
+                                <span class="ml-2 text-sm text-gray-600 font-medium">(Berat Bersih × Cost - Total Retensi)</span>
                             </td>
-                            <td class="py-3 px-6 text-right font-semibold">{{ number_format($grandBeratBersih * $cost) }}</td>
+                            <td class="py-3 px-6 text-right font-semibold">{{ number_format(($grandBeratBersih * $cost) - $grandRetensi) }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -263,7 +273,7 @@
         @if(!empty($alasanList))
         <div class="mt-8 mb-8 print-break">
             <h2 class="text-lg font-bold text-gray-900 mb-4 text-center uppercase border-b-2 border-gray-300 pb-3">
-                KETERANGAN TANGGAL TIDAK ADA DATA PANEN
+                KETERANGAN TANGGAL TIDAK EFEKTIF
             </h2>
             <div class="overflow-x-auto">
                 <table class="report-table min-w-full border-2 border-gray-300 text-sm">
