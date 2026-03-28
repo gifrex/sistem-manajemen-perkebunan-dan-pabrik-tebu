@@ -98,6 +98,9 @@ class ReportController extends Controller
             $item->umur_tanam = Carbon::parse($item->tanggaltanam)->diffInMonths(Carbon::now());
             $dateInput = Carbon::parse($item->tanggalpengamatan);
             $item->bulanPengamatan = $dateInput->format('F');
+            $item->tanggaltanam_fmt = Carbon::parse($item->tanggaltanam)->format('d-M-Y');
+            $item->tanggalpengamatan_fmt = $dateInput->format('d-M-Y');
+            $item->tanggalzpk_fmt = $item->tanggalzpk ? Carbon::parse($item->tanggalzpk)->format('d-M-Y') : '-';
         }
 
         foreach ($agronomi as $index => $item) {
@@ -182,6 +185,8 @@ class ReportController extends Controller
             $item->umur_tanam = Carbon::parse($item->tanggaltanam)->diffInMonths(Carbon::now());
             $dateInput = Carbon::parse($item->tanggalpengamatan);
             $item->bulanPengamatan = $dateInput->format('F');
+            $item->tanggaltanam_fmt = Carbon::parse($item->tanggaltanam)->format('d-M-Y');
+            $item->tanggalpengamatan_fmt = $dateInput->format('d-M-Y');
         }
 
         foreach ($hpt as $index => $item) {

@@ -133,6 +133,8 @@ class HPTController extends Controller
 
         foreach ($hpt as $index => $item) {
             $item->no = ($hpt->currentPage() - 1) * $hpt->perPage() + $index + 1;
+            $item->tanggaltanam_fmt = Carbon::parse($item->tanggaltanam)->format('d-M-Y');
+            $item->tanggalpengamatan_fmt = Carbon::parse($item->tanggalpengamatan)->format('d-M-Y');
         }
 
         if ($request->ajax()) {
@@ -399,6 +401,8 @@ class HPTController extends Controller
         $hptLists = $hptLists->map(function ($item) use ($now) {
             $tgl_tanam = Carbon::parse($item->tanggaltanam);
             $item->umur_tanam = round($tgl_tanam->diffInMonths($now));
+            $item->tanggaltanam_fmt = $tgl_tanam->format('d-M-Y');
+            $item->tanggalpengamatan_fmt = Carbon::parse($item->tanggalpengamatan)->format('d-M-Y');
             return $item;
         });
 
@@ -585,6 +589,7 @@ class HPTController extends Controller
     {
         $startDate = $request->input('start_date', now()->toDateString());
         $endDate = $request->input('end_date', now()->toDateString());
+        $companycode = session('companycode');
         $search = $request->input('search');
 
         $request->validate([
@@ -645,10 +650,12 @@ class HPTController extends Controller
         $now = Carbon::now();
 
         // Tentukan nama file
+        $startDateFmt = Carbon::parse($startDate)->format('d-M-Y');
+        $endDateFmt = Carbon::parse($endDate)->format('d-M-Y');
         if ($startDate && $endDate) {
-            $filename = "HPTReport_{$startDate}_sd_{$endDate}.xlsx";
+            $filename = "HPTReport_{$companycode}_{$startDateFmt}_sd_{$endDateFmt}.xlsx";
         } else {
-            $filename = "HPTReport.xlsx";
+            $filename = "HPTReport_{$companycode}.xlsx";
         }
 
         // Buat direktori temp jika belum ada
@@ -746,13 +753,6 @@ class HPTController extends Controller
                 $tanggalpengamatan = Carbon::parse($list->tanggalpengamatan);
                 $bulanPengamatan = $tanggalpengamatan->format('F');
 
-                // // Format persentase (konversi ke desimal untuk Excel)
-                // $perPpt = is_numeric($list->per_ppt) ? $list->per_ppt / 100 : $list->per_ppt;
-                // $perPptAktif = is_numeric($list->per_ppt_aktif) ? $list->per_ppt_aktif / 100 : $list->per_ppt_aktif;
-                // $perPbt = is_numeric($list->per_pbt) ? $list->per_pbt / 100 : $list->per_pbt;
-                // $perPbtAktif = is_numeric($list->per_pbt_aktif) ? $list->per_pbt_aktif / 100 : $list->per_pbt_aktif;
-                // $intRusak = is_numeric($list->int_rusak) ? $list->int_rusak / 100 : $list->int_rusak;
-
                 $decimalStyle = (new StyleBuilder())
                     ->setFormat('0.000000000')
                     ->build();
@@ -763,11 +763,11 @@ class HPTController extends Controller
                     WriterEntityFactory::createCell($list->blokName),
                     WriterEntityFactory::createCell($list->plotName),
                     WriterEntityFactory::createCell(round((float) $list->luasarea, 10)),
-                    WriterEntityFactory::createCell($tanggaltanam->format('Y-m-d')),
+                    WriterEntityFactory::createCell($tanggaltanam->format('d-M-Y')),
                     WriterEntityFactory::createCell(round($umurTanam) . ' Bulan'),
                     WriterEntityFactory::createCell($list->varietas),
                     WriterEntityFactory::createCell($list->kat),
-                    WriterEntityFactory::createCell($list->tanggalpengamatan),
+                    WriterEntityFactory::createCell($tanggalpengamatan->format('d-M-Y')),
                     WriterEntityFactory::createCell($bulanPengamatan),
                     WriterEntityFactory::createCell($list->nourut),
                     WriterEntityFactory::createCell($list->jumlahbatang),
