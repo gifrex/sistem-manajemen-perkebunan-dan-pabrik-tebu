@@ -66,7 +66,8 @@
                                     clip-rule="evenodd" />
                             </svg>
                             <span id="date-label">
-                                {{ $startDate }} s/d {{ $endDate }}
+                                {{ \Carbon\Carbon::parse($startDate)->format('d-M-Y') }} s/d
+                                {{ \Carbon\Carbon::parse($endDate)->format('d-M-Y') }}
                             </span>
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -94,8 +95,8 @@
                                     onclick="
                                                 document.getElementById('menu-dropdown').classList.add('hidden');
                                                 document.getElementById('date-label').textContent =
-                                                    document.getElementById('start_date').value + ' s/d ' +
-                                                    document.getElementById('end_date').value;
+                                                    fmtDate(document.getElementById('start_date').value) + ' s/d ' +
+                                                    fmtDate(document.getElementById('end_date').value);
                                             "
                                     class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-all duration-200">
                                     Terapkan
@@ -175,8 +176,8 @@
                                 <td class="py-3 px-4 text-left text-gray-700">{{ $item->plot }}</td>
                                 <td class="py-3 px-4 text-left text-gray-700">{{ $item->varietas }}</td>
                                 <td class="py-3 px-4 text-left text-gray-700">{{ $item->kat }}</td>
-                                <td class="py-3 px-4 text-left text-gray-700">{{ $item->tanggaltanam }}</td>
-                                <td class="py-3 px-4 text-left text-gray-700">{{ $item->tanggalpengamatan }}</td>
+                                <td class="py-3 px-4 text-left text-gray-700">{{ $item->tanggaltanam_fmt }}</td>
+                                <td class="py-3 px-4 text-left text-gray-700">{{ $item->tanggalpengamatan_fmt }}</td>
                                 <td class="py-3 px-4 text-center">
                                     <span
                                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
@@ -505,6 +506,13 @@
 
     <script>
         /* ── Dropdown ── */
+        function fmtDate(d) {
+            if (!d) return '';
+            const [y, m, day] = d.split('-');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${day}-${months[+m - 1]}-${y}`;
+        }
+
         function toggleDropdown() {
             document.getElementById('menu-dropdown').classList.toggle('hidden');
         }
@@ -570,11 +578,11 @@
                                 <td class="py-3 px-4 text-gray-700">${item.blokName}</td>
                                 <td class="py-3 px-4 text-gray-700">${item.plotName}</td>
                                 <td class="py-3 px-4 text-gray-700">${item.luasarea}</td>
-                                <td class="py-3 px-4 text-gray-700">${item.tanggaltanam}</td>
+                                <td class="py-3 px-4 text-gray-700">${item.tanggaltanam_fmt}</td>
                                 <td class="py-3 px-4 text-gray-700">${item.umur_tanam} Bulan</td>
                                 <td class="py-3 px-4 text-gray-700">${item.varietas}</td>
                                 <td class="py-3 px-4 text-gray-700">${item.kat}</td>
-                                <td class="py-3 px-4 text-gray-700">${item.tanggalpengamatan}</td>
+                                <td class="py-3 px-4 text-gray-700">${item.tanggalpengamatan_fmt}</td>
                                 <td class="py-3 px-4 text-gray-700">${month}</td>
                                 <td class="py-3 px-4 text-gray-700">${item.nourut}</td>
                                 <td class="py-3 px-4 text-gray-700">${item.jumlahbatang}</td>

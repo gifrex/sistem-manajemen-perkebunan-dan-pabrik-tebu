@@ -122,6 +122,9 @@ class AgronomiController extends Controller
         foreach ($agronomi as $index => $item) {
             $item->umur_tanam = Carbon::parse($item->tanggaltanam)->diffInMonths(Carbon::now());
             $item->no = ($agronomi->currentPage() - 1) * $agronomi->perPage() + $index + 1;
+            $item->tanggaltanam_fmt = Carbon::parse($item->tanggaltanam)->format('d-M-Y');
+            $item->tanggalpengamatan_fmt = Carbon::parse($item->tanggalpengamatan)->format('d-M-Y');
+            $item->tanggalzpk_fmt = $item->tanggalzpk ? Carbon::parse($item->tanggalzpk)->format('d-M-Y') : '-';
         }
 
         return view(
@@ -348,6 +351,7 @@ class AgronomiController extends Controller
                 'h.kat',
                 'h.tanggaltanam',
                 'h.pkp as jaraktanam',
+                'h.tanggalzpk as tanggalzpk',
                 'c.name as compName',
                 'b.blok as blokName',
                 'bt.plot as plotName',
@@ -360,6 +364,9 @@ class AgronomiController extends Controller
         $agronomiLists->transform(function ($item, $i) use ($now) {
             $item->no = $i + 1;
             $item->umur_tanam = round(Carbon::parse($item->tanggaltanam)->diffInMonths($now));
+            $item->tanggaltanam_fmt = Carbon::parse($item->tanggaltanam)->format('d-M-Y');
+            $item->tanggalpengamatan_fmt = Carbon::parse($item->tanggalpengamatan)->format('d-M-Y');
+            $item->tanggalzpk_fmt = $item->tanggalzpk ? Carbon::parse($item->tanggalzpk)->format('d-M-Y') : '-';
             return $item;
         });
 
@@ -517,6 +524,7 @@ class AgronomiController extends Controller
     {
         $startDate = $request->input('start_date', now()->toDateString());
         $endDate = $request->input('end_date', now()->toDateString());
+        $companycode = session('companycode');
         $search = $request->input('search');
 
         $request->validate([
@@ -570,9 +578,11 @@ class AgronomiController extends Controller
             );
         }
 
+        $startDateFmt = Carbon::parse($startDate)->format('d-M-Y');
+        $endDateFmt = Carbon::parse($endDate)->format('d-M-Y');
         $filename = $startDate && $endDate
-            ? "AgronomiReport_{$startDate}_sd_{$endDate}.xlsx"
-            : "AgronomiReport.xlsx";
+            ? "AgronomiReport_{$companycode}_{$startDateFmt}_sd_{$endDateFmt}.xlsx"
+            : "AgronomiReport_{$companycode}.xlsx";
 
         $tempDir = storage_path('app/temp');
         if (!file_exists($tempDir))
@@ -608,6 +618,7 @@ class AgronomiController extends Controller
                 'Jumlah Batang Primer',
                 'Jumlah Batang Sekunder',
                 'Jumlah Batang Tersier',
+                'Jumlah Batang Kuarter',
                 'Panjang GAP',
                 '%GAP',
                 '%Germinasi',
@@ -652,14 +663,14 @@ class AgronomiController extends Controller
                     WriterEntityFactory::createCell(round((float) $list->luasarea, 10)),
                     WriterEntityFactory::createCell($list->varietas),
                     WriterEntityFactory::createCell($list->kat),
-                    WriterEntityFactory::createCell($tglTanam->format('Y-m-d')),
+                    WriterEntityFactory::createCell($tglTanam->format('d-M-Y')),
                     WriterEntityFactory::createCell(round($umurTanam) . ' Bulan'),
                     WriterEntityFactory::createCell(round((float) $list->jaraktanam, 10)),
-                    WriterEntityFactory::createCell($list->tanggalpengamatan),
+                    WriterEntityFactory::createCell(Carbon::parse($list->tanggalpengamatan)->format('d-M-Y')),
                     WriterEntityFactory::createCell($bulanPengamatan),
                     WriterEntityFactory::createCell($list->bulanpanen),
                     WriterEntityFactory::createCell($list->umurpanen),
-                    WriterEntityFactory::createCell($list->tanggalzpk),
+                    WriterEntityFactory::createCell($list->tanggalzpk ? Carbon::parse($list->tanggalzpk)->format('d-M-Y') : '-'),
                     WriterEntityFactory::createCell($list->nourut),
                     WriterEntityFactory::createCell($list->jumlahbatang),
                     WriterEntityFactory::createCell($list->bat_primer),
