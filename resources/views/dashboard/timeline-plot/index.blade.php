@@ -75,7 +75,7 @@
   
 
     <label class="text-sm font-medium text-gray-700">Filter Activity:</label>
-    <select onchange="window.location.href='{{ url()->current() }}?activity=' + this.value + '&tab={{ request('tab','table') }}' + '{{ $cropType === 'p' ? '&crop=p' : '' }}'"
+    <select onchange="window.location.href='{{ url()->current() }}?activity=' + this.value + '&tab=map' + '{{ $cropType === 'p' ? '&crop=p' : '' }}'"
 
         class="py-1 px-3 rounded border border-gray-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
         <option value="all" {{$activityFilter==='all'?'selected':''}}>📋 Semua Activity</option>
@@ -92,11 +92,6 @@
     </span>
 </div>
             </nav>
-        </div>
-
-        <div class="mb-3 flex gap-3 text-xs">
-            <div class="px-2 py-1 rounded text-white" style="background:#166534;">PC</div>
-            <div class="px-2 py-1 rounded text-white" style="background:#1d4ed8;">RC tambahan</div>
         </div>
         
         <div x-show="activeTab==='table'" x-transition>
@@ -156,8 +151,6 @@
                                 $totalPercentage = 0;
                                 $plotCount = 0;
                                 $allDates = [];
-                                $isRcUnique = in_array($activitycode, ['3.2.1', '3.2.2', '3.2.4', '3.2.5', '3.2.6', '3.2.7']);
-                                $cellBg = $isRcUnique ? '#1d4ed8' : '#166534';
                                 
                                 foreach($activityData as $plot => $activities) {
                                     if($act = $activities->get($activitycode)) {
@@ -173,16 +166,16 @@
                                 $grandTotalRealisasi += $totalActivity;
                                 $latestDate = !empty($allDates) ? max($allDates) : null;
                                 
+                                // Calculate average percentage for total
                                 $avgPercentage = $plotCount > 0 ? $totalPercentage / $plotCount : 0;
+                                $percentageColor = $avgPercentage >= 100 ? '#22c55e' : ($avgPercentage > 0 ? '#dc2626' : '#6b7280');
                             @endphp
-
-                                <td style="text-align:right; background: {{ $cellBg }}; color: white;">
-                                    {{ $totalActivity > 0 ? number_format($totalActivity, 2) : '-' }}
-                                </td>
-                                <td style="text-align:right; font-weight:bold; background: {{ $cellBg }}; color: white;">
+                        
+                                <td style="text-align:right;">{{ $totalActivity > 0 ? number_format($totalActivity, 2) : '-' }}</td>
+                                <td style="text-align:right; font-weight:bold; color: {{ $percentageColor }};">
                                     {{ $avgPercentage > 0 ? number_format($avgPercentage, 2) . '%' : '-' }}
                                 </td>
-                                <td style="text-align:center;font-size:11px; background: {{ $cellBg }}; color: white;">
+                                <td style="text-align:center;font-size:11px;">
                                     {{ $latestDate ? \Carbon\Carbon::parse($latestDate)->format('d M y') : '-' }}
                                 </td>
                             @endforeach
