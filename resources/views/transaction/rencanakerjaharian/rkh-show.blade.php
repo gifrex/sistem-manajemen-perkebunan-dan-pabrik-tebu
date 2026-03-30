@@ -483,6 +483,7 @@
               itemcode:    ic,
               itemname:    r.itemname    || '-',
               dosageperha: parseFloat(r.dosageperha) || 0,
+              luasarea:    parseFloat(r.luasarea)    || 0,
               qty:         0,
               unit:        r.unit        || '-',
             };
@@ -514,6 +515,14 @@
               &nbsp;·&nbsp; Luas: <span class="font-semibold text-gray-700" x-text="info.luasarea + ' Ha'"></span>
               &nbsp;·&nbsp; Grup: <span class="font-semibold text-green-700" x-text="info.herbisidagroupname"></span>
             </p>
+            <template x-if="info.herbisidagroupid !== null">
+              <p class="text-[10px] text-gray-500 mt-0.5">
+                Pembulatan:
+                <span class="font-semibold"
+                      :class="window.rounddosageMap[info.herbisidagroupid] == 1 ? 'text-orange-600' : 'text-blue-600'"
+                      x-text="window.rounddosageMap[info.herbisidagroupid] == 1 ? 'Step 0.05' : 'Step 0.01'"></span>
+              </p>
+            </template>
             <template x-if="window.isMaterialEstimated">
               <p class="text-[10px] text-yellow-700 font-semibold mt-1">
                 ⚠ Data estimasi — belum di-generate (material belum final)
@@ -539,7 +548,7 @@
                   <th class="px-3 py-2 text-right font-semibold uppercase">Dosis/Ha</th>
                   <th class="px-3 py-2 text-center font-semibold uppercase">Sat</th>
                   <th class="px-3 py-2 text-right font-semibold uppercase">Luas</th>
-                  <th class="px-3 py-2 text-right font-semibold uppercase">Hasil</th>
+                  <th class="px-3 py-2 text-right font-semibold uppercase">Hasil Asli</th>
                   <th class="px-3 py-2 text-right font-semibold uppercase">Pembulatan</th>
                 </tr>
               </thead>
@@ -554,7 +563,7 @@
                     <td class="px-3 py-2 text-center text-gray-600" x-text="item.unit"></td>
                     <td class="px-3 py-2 text-right text-gray-600" x-text="info.luasarea.toFixed(2)"></td>
                     <td class="px-3 py-2 text-right text-gray-500 italic"
-                        x-text="(item.dosageperha * info.luasarea).toFixed(2)"></td>
+                        x-text="(item.dosageperha * item.luasarea).toFixed(3)"></td>
                     <td class="px-3 py-2 text-right font-bold text-green-700" x-text="item.qty.toFixed(3)"></td>
                   </tr>
                 </template>
@@ -628,9 +637,14 @@
             <div class="border border-gray-200 rounded-lg overflow-hidden">
 
               {{-- Aktivitas Header --}}
-              <div class="bg-gray-800 text-white px-4 py-2.5">
+              <div class="bg-gray-800 text-white px-4 py-2.5 flex items-center justify-between">
                 <span class="text-xs font-bold uppercase tracking-wide"
                       x-text="act.activitycode + ' — ' + act.activityname"></span>
+                <template x-if="act.rounddosage !== null">
+                  <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded ml-2 flex-shrink-0"
+                        :class="act.rounddosage == 1 ? 'bg-orange-500 text-white' : 'bg-blue-500 text-white'"
+                        x-text="act.rounddosage == 1 ? 'Step 0.05' : 'Step 0.01'"></span>
+                </template>
               </div>
 
               {{-- Items --}}
@@ -675,7 +689,7 @@
                         <div class="col-span-2 text-right text-gray-500" x-text="p.luasarea.toFixed(2)"></div>
                         <div class="col-span-2 text-right text-gray-500" x-text="p.dosageperha.toFixed(3)"></div>
                         <div class="col-span-3 text-right text-gray-400 italic"
-                             x-text="(p.dosageperha * p.luasarea).toFixed(2)"></div>
+                             x-text="(p.dosageperha * p.luasarea).toFixed(3)"></div>
                         <div class="col-span-3 text-right font-semibold text-green-700"
                              x-text="p.qty.toFixed(3)"></div>
                       </div>
@@ -715,6 +729,14 @@
     window.materialData         = @json($materialData ?? []);
     window.isMaterialEstimated  = @json($isMaterialEstimated ?? false);
 
+    // Lookup: herbisidagroupid → rounddosage
+    window.rounddosageMap = {};
+    (window.herbisidaData || []).forEach(h => {
+      if (h.herbisidagroupid != null) {
+        window.rounddosageMap[h.herbisidagroupid] = h.rounddosage;
+      }
+    });
+
     function openMaterialModal(data) {
       window.dispatchEvent(new CustomEvent('open-material-modal', { detail: data }));
     }
@@ -737,7 +759,13 @@
         const activityname = rows[0].activityname || activitycode;
 
         if (!byActivity[activitycode]) {
-          byActivity[activitycode] = { activitycode, activityname, items: {} };
+          const hgid = rows[0].herbisidagroupid ?? null;
+          byActivity[activitycode] = {
+            activitycode,
+            activityname,
+            rounddosage: hgid != null ? (window.rounddosageMap[hgid] ?? null) : null,
+            items: {}
+          };
         }
 
         rows.forEach(r => {
