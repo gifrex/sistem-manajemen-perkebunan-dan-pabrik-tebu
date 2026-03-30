@@ -2,27 +2,27 @@
 
 // routes\transaction.php
 
-use App\Http\Controllers\Transaction\HPTController;
-use App\Http\Controllers\Transaction\PiasController;
-use App\Http\Controllers\Transaction\GudangController;
 use App\Http\Controllers\Transaction\AgronomiController;
 use App\Http\Controllers\Transaction\GudangBbmController;
+use App\Http\Controllers\Transaction\GudangController;
+use App\Http\Controllers\Transaction\HPTController;
 use App\Http\Controllers\Transaction\KendaraanController;
-use App\Http\Controllers\Transaction\RencanaKerjaMingguanController;
+use App\Http\Controllers\Transaction\KendaraanSupplyController;
 use App\Http\Controllers\Transaction\MappingBsmController;
 use App\Http\Controllers\Transaction\NfcController;
-
-use App\Http\Controllers\Transaction\RencanaKerjaHarian\RkhController;
-use App\Http\Controllers\Transaction\RencanaKerjaHarian\LkhController;
+use App\Http\Controllers\Transaction\OrderBbmController;
+use App\Http\Controllers\Transaction\PiasController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\ApprovalInfoController;
+use App\Http\Controllers\Transaction\RencanaKerjaHarian\Domain\MaterialUsageController;
+use App\Http\Controllers\Transaction\RencanaKerjaHarian\LkhController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\DthReportController;
-use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\RekapLkhReportController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\OperatorRekapReportController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\OperatorReportController;
+use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\RekapLkhReportController;
+use App\Http\Controllers\Transaction\RencanaKerjaHarian\RkhController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Utility\RkhUtilityController;
-use App\Http\Controllers\Transaction\RencanaKerjaHarian\Domain\MaterialUsageController;
-use App\Http\Controllers\Transaction\KendaraanSupplyController;
-use App\Http\Controllers\Transaction\OrderBbmController;
+use App\Http\Controllers\Transaction\RencanaKerjaMingguanController;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(function () {
 
@@ -85,17 +85,29 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
     // ============================================================================
     // RENCANA KERJA MINGGUAN
     // ============================================================================
-    Route::middleware('permission:transaction.rencanakerjamingguan.view')->group(function () {
-        Route::match(['GET', 'POST'], 'rencana-kerja-mingguan', [RencanaKerjaMingguanController::class, 'index'])->name('rencana-kerja-mingguan.index');
-        Route::get('rencana-kerja-mingguan/show/{rkmno}', [RencanaKerjaMingguanController::class, 'show'])->name('rencana-kerja-mingguan.show');
-        Route::get('rencana-kerja-mingguan/create', [RencanaKerjaMingguanController::class, 'create'])->name('rencana-kerja-mingguan.create');
-        Route::post('rencana-kerja-mingguan/store', [RencanaKerjaMingguanController::class, 'store'])->name('rencana-kerja-mingguan.store');
-        Route::get('rencana-kerja-mingguan/{rkmno}/edit', [RencanaKerjaMingguanController::class, 'edit'])->name('rencana-kerja-mingguan.edit');
-        Route::put('rencana-kerja-mingguan/{rkmno}', [RencanaKerjaMingguanController::class, 'update'])->name('rencana-kerja-mingguan.update');
-        Route::delete('rencana-kerja-mingguan/{rkmno}', [RencanaKerjaMingguanController::class, 'destroy'])->name('rencana-kerja-mingguan.destroy');
-        Route::get('rencana-kerja-mingguan/excel', [RencanaKerjaMingguanController::class, 'excel'])->name('rencana-kerja-mingguan.exportExcel');
-        Route::get('/getplot/{blok}', [RencanaKerjaMingguanController::class, 'getPlot'])->name('rkm.getPlot');
-        Route::post('/getdata', [RencanaKerjaMingguanController::class, 'getData'])->name('rkm.getData');
+    Route::prefix('rencana-kerja-mingguan')->name('rencana-kerja-mingguan.')->controller(RencanaKerjaMingguanController::class)->group(function () {
+
+        Route::middleware('permission:transaction.rencanakerjamingguan.view')->group(function () {
+            Route::match(['GET', 'POST'], '/', 'index')->name('index');
+            Route::get('/show/{rkmno}', 'show')->name('show');
+            Route::get('/excel', 'excel')->name('exportExcel');
+            Route::get('/getplot/{blok}', 'getPlot')->name('getPlot');
+            Route::post('/getdata', 'getData')->name('getData');
+        });
+
+        Route::middleware('permission:transaction.rencanakerjamingguan.create')->group(function () {
+            Route::get('/create', 'create')->name('create');
+            Route::post('/store', 'store')->name('store');
+        });
+
+        Route::middleware('permission:transaction.rencanakerjamingguan.edit')->group(function () {
+            Route::get('/{rkmno}/edit', 'edit')->name('edit');
+            Route::put('/{rkmno}', 'update')->name('update');
+        });
+
+        Route::delete('/{rkmno}', 'destroy')
+            ->middleware('permission:transaction.rencanakerjamingguan.delete')
+            ->name('destroy');
     });
 
     // ============================================================================
@@ -129,7 +141,7 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
                 // RKH Approval Info
                 Route::get('/{rkhno}/approval-detail', 'getRkhApprovalDetail')->name('getApprovalDetail');
                 Route::post('/update-status', 'updateRkhStatus')->name('updateStatus');
-                
+
                 // LKH Approval Info
                 Route::get('/lkh/{lkhno}/approval-detail', 'getLkhApprovalDetail')->name('getLkhApprovalDetail');
             });
@@ -212,9 +224,9 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
         Route::get('gudang/report', [GudangController::class, 'report'])->name('gudang.report');
         Route::get('gudang/koreksi-insert', [GudangController::class, 'koreksi_insert'])->name('gudang.koreksi');
         Route::post('gudang/koreksi-submit', [GudangController::class, 'koreksi_submit'])->name('gudang.koreksi.submit');
-        
+
         Route::post('gudang/get-items-by-rkh', [GudangController::class, 'getItemsByRkh'])->name('gudang.getItemsByRkh');
-        Route::post('gudang/get-item-detail', [GudangController::class, 'getItemDetail'])->name('gudang.getItemDetail');   
+        Route::post('gudang/get-item-detail', [GudangController::class, 'getItemDetail'])->name('gudang.getItemDetail');
     });
 
     // ============================================================================
@@ -232,16 +244,16 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
     // ============================================================================
     Route::middleware('permission:transaction.kendaraansupply.view')->group(function () {
         Route::prefix('kendaraan-supply')->name('kendaraan-supply.')->group(function () {
-            Route::get('/',                              [KendaraanSupplyController::class, 'index'])->name('index');
-            Route::post('/store',                        [KendaraanSupplyController::class, 'store'])->name('store');
-            Route::put('/{id}',                          [KendaraanSupplyController::class, 'update'])->name('update');
-            Route::delete('/{id}',                       [KendaraanSupplyController::class, 'destroy'])->name('destroy');
-            Route::post('/{id}/submit',                  [KendaraanSupplyController::class, 'submit'])->name('submit');
+            Route::get('/', [KendaraanSupplyController::class, 'index'])->name('index');
+            Route::post('/store', [KendaraanSupplyController::class, 'store'])->name('store');
+            Route::put('/{id}', [KendaraanSupplyController::class, 'update'])->name('update');
+            Route::delete('/{id}', [KendaraanSupplyController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/submit', [KendaraanSupplyController::class, 'submit'])->name('submit');
 
             // API
-            Route::get('/kendaraan-list',                [KendaraanSupplyController::class, 'getKendaraanList'])->name('kendaraan-list');
-            Route::get('/operator-list',                 [KendaraanSupplyController::class, 'getOperatorList'])->name('operator-list');
-            Route::get('/pending-for-order',             [KendaraanSupplyController::class, 'getPendingForOrder'])->name('pending-for-order');
+            Route::get('/kendaraan-list', [KendaraanSupplyController::class, 'getKendaraanList'])->name('kendaraan-list');
+            Route::get('/operator-list', [KendaraanSupplyController::class, 'getOperatorList'])->name('operator-list');
+            Route::get('/pending-for-order', [KendaraanSupplyController::class, 'getPendingForOrder'])->name('pending-for-order');
         });
     });
 
@@ -250,12 +262,12 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
     // ============================================================================
     Route::middleware('permission:transaction.orderbbm.view')->group(function () {
         Route::prefix('order-bbm')->name('order-bbm.')->group(function () {
-            Route::get('/',                          [OrderBbmController::class, 'index'])->name('index');
-            Route::post('/',                         [OrderBbmController::class, 'store'])->name('store');
-            Route::get('/{orderno}',                 [OrderBbmController::class, 'show'])->name('show');
-            Route::put('/{orderno}',                 [OrderBbmController::class, 'update'])->name('update');
-            Route::post('/{orderno}/submit',         [OrderBbmController::class, 'submit'])->name('submit');
-            Route::get('/lkh/{lkhno}/kendaraan',     [OrderBbmController::class, 'getKendaraanFromLkh'])->name('lkh-kendaraan');
+            Route::get('/', [OrderBbmController::class, 'index'])->name('index');
+            Route::post('/', [OrderBbmController::class, 'store'])->name('store');
+            Route::get('/{orderno}', [OrderBbmController::class, 'show'])->name('show');
+            Route::put('/{orderno}', [OrderBbmController::class, 'update'])->name('update');
+            Route::post('/{orderno}/submit', [OrderBbmController::class, 'submit'])->name('submit');
+            Route::get('/lkh/{lkhno}/kendaraan', [OrderBbmController::class, 'getKendaraanFromLkh'])->name('lkh-kendaraan');
             Route::get('/{orderno}/items', [OrderBbmController::class, 'getItems'])->name('items');
         });
     });
@@ -265,14 +277,14 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
     // ============================================================================
     Route::middleware('permission:transaction.gudangbbm.view')->group(function () {
         Route::prefix('gudang-bbm')->name('gudang-bbm.')->group(function () {
-            Route::get('/',                          [GudangBbmController::class, 'index'])->name('index');
-            Route::get('/{orderno}',                 [GudangBbmController::class, 'show'])->name('show');
-            Route::post('/{orderno}/confirm-item',   [GudangBbmController::class, 'confirmItem'])->name('confirm-item');
-            Route::post('/{orderno}/finalize',       [GudangBbmController::class, 'finalizeAll'])->name('finalize');
-            Route::post('/{orderno}/sync-citrix',    [GudangBbmController::class, 'syncCitrix'])->name('sync-citrix');
+            Route::get('/', [GudangBbmController::class, 'index'])->name('index');
+            Route::get('/{orderno}', [GudangBbmController::class, 'show'])->name('show');
+            Route::post('/{orderno}/confirm-item', [GudangBbmController::class, 'confirmItem'])->name('confirm-item');
+            Route::post('/{orderno}/finalize', [GudangBbmController::class, 'finalizeAll'])->name('finalize');
+            Route::post('/{orderno}/sync-citrix', [GudangBbmController::class, 'syncCitrix'])->name('sync-citrix');
         });
     });
-    
+
     // ============================================================================
     // NFC CARD MANAGEMENT
     // ============================================================================
@@ -299,5 +311,5 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
         Route::post('copy-bsm', [MappingBsmController::class, 'copyBsm'])->name('mapping-bsm.copy-bsm');
     });
 
-    
+
 });

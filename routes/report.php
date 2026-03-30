@@ -86,10 +86,10 @@ Route::middleware('auth')->prefix('report')->name('report.')->group(function () 
     // ============================================================================
     Route::middleware('permission:report.rekapitulasipremi.view')->group(function () {
         Route::match(['GET', 'POST'], 'rekapitulasi-premi-report', [RekapPremiTargetKontraktorController::class, 'index'])->name('rekapitulasi-premi-report.index');
-        Route::post('rekapitulasi-premi-report/search',  [RekapPremiTargetKontraktorController::class, 'search']) ->name('rekapitulasi-premi-report.search');
-        Route::post('rekapitulasi-premi-report/proses',  [RekapPremiTargetKontraktorController::class, 'proses']) ->name('rekapitulasi-premi-report.proses');
-        Route::get( 'rekapitulasi-premi-report/{nodoc}', [RekapPremiTargetKontraktorController::class, 'show'])   ->name('rekapitulasi-premi-report.show');
-        Route::delete('rekapitulasi-premi-report/{nodoc}',[RekapPremiTargetKontraktorController::class, 'destroy'])->name('rekapitulasi-premi-report.destroy');
+        Route::post('rekapitulasi-premi-report/search', [RekapPremiTargetKontraktorController::class, 'search'])->name('rekapitulasi-premi-report.search');
+        Route::post('rekapitulasi-premi-report/proses', [RekapPremiTargetKontraktorController::class, 'proses'])->name('rekapitulasi-premi-report.proses');
+        Route::get('rekapitulasi-premi-report/{nodoc}', [RekapPremiTargetKontraktorController::class, 'show'])->name('rekapitulasi-premi-report.show');
+        Route::delete('rekapitulasi-premi-report/{nodoc}', [RekapPremiTargetKontraktorController::class, 'destroy'])->name('rekapitulasi-premi-report.destroy');
     });
 
     // ============================================================================
@@ -130,17 +130,24 @@ Route::middleware('auth')->prefix('report')->name('report.')->group(function () 
     // ============================================================================
     // REKAP UPAH MINGGUAN
     // ============================================================================
-    Route::middleware('permission:report.rekapupahminggu.view')->group(function () {
-        Route::prefix('rekap-upah-mingguan')->name('rekap-upah-mingguan.')->group(function () {
-            Route::controller(RekapUpahMingguanController::class)->group(function () {
-                Route::match(['GET', 'POST'], '/', 'index')->name('index');
-                Route::get('/show/{lkhno}', 'show')->name('show');
+    Route::prefix('rekap-upah-mingguan')->name('rekap-upah-mingguan.')->controller(RekapUpahMingguanController::class)->group(function () {
 
-                Route::match(['GET', 'POST'], '/preview', 'previewReport')->name('preview');
-                Route::get('/export-excel', 'exportExcel')->name('export-excel');
-                Route::get('/print-bp', 'printBp')->name('print-bp');
-            });
+        Route::middleware('permission:report.rekapupahminggu.view')->group(function () {
+            Route::match(['GET', 'POST'], '/', 'index')->name('index');
+            Route::get('/show/{lkhno}', 'show')->name('show');
         });
+
+        Route::match(['GET', 'POST'], '/preview', 'previewReport')
+            ->middleware('permission:report.rekapupahminggu.preview')
+            ->name('preview');
+
+        Route::get('/export-excel', 'exportExcel')
+            ->middleware('permission:report.rekapupahminggu.export')
+            ->name('export-excel');
+
+        Route::get('/print-bp', 'printBp')
+            ->middleware('permission:report.rekapupahminggu.print')
+            ->name('print-bp');
     });
 
     // ============================================================================
