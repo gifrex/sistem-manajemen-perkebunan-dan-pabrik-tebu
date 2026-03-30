@@ -39,7 +39,7 @@
         .total-row .sticky-h{z-index:19;}
         .total-row .sticky-h.blok{background:#0f766e;}
         
-        tbody td{background:#fff;}
+        tbody td{background:#fff;} 
         #map{height:720px;width:100%;}
         @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
     </style>
@@ -48,14 +48,9 @@
         
         <div class="mb-6 border-b border-gray-200">
             <nav class="flex space-x-4">
-                <a href="?crop=pc&activity={{$activityFilter}}&tab={{ request('tab','table') }}" 
-                class="py-2 px-4 border-b-2 font-medium text-sm {{$cropType==='pc'?'border-blue-600 text-blue-600':'border-transparent text-gray-500 hover:text-gray-700'}}">
-                 📊 PC
-                </a>
-                
-                <a href="?crop=rc&activity={{$activityFilter}}&tab={{ request('tab','table') }}" 
-                class="py-2 px-4 border-b-2 font-medium text-sm {{$cropType==='rc'?'border-blue-600 text-blue-600':'border-transparent text-gray-500 hover:text-gray-700'}}">
-                 📊 RC
+                <a href="?activity={{$activityFilter}}&tab={{ request('tab','table') }}" 
+                class="py-2 px-4 border-b-2 font-medium text-sm {{$cropType!=='p'?'border-blue-600 text-blue-600':'border-transparent text-gray-500 hover:text-gray-700'}}">
+                📊 Timeline
                 </a>
                 
                 <a href="?crop=p&activity={{$activityFilter}}&tab={{ request('tab','table') }}"
@@ -73,14 +68,14 @@
                 
 <div class="ml-auto flex items-center gap-3">
     <button type="button"
-    @click="window.location.href='{{ url()->current() }}?crop={{ $cropType }}&activity={{ $activityFilter }}&fill={{ $fillFilter ?? 'all' }}&export=excel&tab=' + activeTab"
+    @click="window.location.href='{{ url()->current() }}?activity={{ $activityFilter }}&fill={{ $fillFilter ?? 'all' }}&export=excel&tab=' + activeTab + '{{ $cropType === 'p' ? '&crop=p' : '' }}'"
     class="py-2 px-4 bg-green-600 hover:bg-green-700 text-white rounded font-medium text-sm flex items-center gap-2">
     📊 Export Excel
-  </button>
+    </button>
   
 
     <label class="text-sm font-medium text-gray-700">Filter Activity:</label>
-    <select onchange="window.location.href='{{ url()->current() }}?crop={{ $cropType }}&activity=' + this.value + '&tab=map'"
+    <select onchange="window.location.href='{{ url()->current() }}?activity=' + this.value + '&tab={{ request('tab','table') }}' + '{{ $cropType === 'p' ? '&crop=p' : '' }}'"
 
         class="py-1 px-3 rounded border border-gray-300 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
         <option value="all" {{$activityFilter==='all'?'selected':''}}>📋 Semua Activity</option>
@@ -98,6 +93,11 @@
 </div>
             </nav>
         </div>
+
+        <div class="mb-3 flex gap-3 text-xs">
+            <div class="px-2 py-1 rounded text-white" style="background:#166534;">PC</div>
+            <div class="px-2 py-1 rounded text-white" style="background:#1d4ed8;">RC tambahan</div>
+        </div>
         
         <div x-show="activeTab==='table'" x-transition>
             <div style="height: calc(100vh - 220px); overflow: auto;">
@@ -112,8 +112,10 @@
                             @foreach($activityMap as $activitycode => $label)
                                 @php
                                     $isGrouped = isset($activityGrouping[$activitycode]);
+                                    $isRcUnique = in_array($activitycode, ['3.2.1', '3.2.2', '3.2.4', '3.2.5', '3.2.6', '3.2.7']);
+                                    $headerBg = $isRcUnique ? '#1d4ed8' : '#166534';
                                 @endphp
-                                <th class="sticky-v" colspan="3" style="text-align:center;">
+                                <th class="sticky-v" colspan="3" style="text-align:center; background: {{ $headerBg }}; color: white;">
                                     <span style="{{ $isGrouped ? 'text-decoration: underline; text-decoration-color: #fbbf24; text-decoration-thickness: 2px; text-underline-offset: 3px;' : '' }}">
                                         {{ $activitycode }}
                                     </span>
@@ -154,6 +156,8 @@
                                 $totalPercentage = 0;
                                 $plotCount = 0;
                                 $allDates = [];
+                                $isRcUnique = in_array($activitycode, ['3.2.1', '3.2.2', '3.2.4', '3.2.5', '3.2.6', '3.2.7']);
+                                $cellBg = $isRcUnique ? '#1d4ed8' : '#166534';
                                 
                                 foreach($activityData as $plot => $activities) {
                                     if($act = $activities->get($activitycode)) {
@@ -169,16 +173,16 @@
                                 $grandTotalRealisasi += $totalActivity;
                                 $latestDate = !empty($allDates) ? max($allDates) : null;
                                 
-                                // Calculate average percentage for total
                                 $avgPercentage = $plotCount > 0 ? $totalPercentage / $plotCount : 0;
-                                $percentageColor = $avgPercentage >= 100 ? '#22c55e' : ($avgPercentage > 0 ? '#dc2626' : '#6b7280');
                             @endphp
-                        
-                                <td style="text-align:right;">{{ $totalActivity > 0 ? number_format($totalActivity, 2) : '-' }}</td>
-                                <td style="text-align:right; font-weight:bold; color: {{ $percentageColor }};">
+
+                                <td style="text-align:right; background: {{ $cellBg }}; color: white;">
+                                    {{ $totalActivity > 0 ? number_format($totalActivity, 2) : '-' }}
+                                </td>
+                                <td style="text-align:right; font-weight:bold; background: {{ $cellBg }}; color: white;">
                                     {{ $avgPercentage > 0 ? number_format($avgPercentage, 2) . '%' : '-' }}
                                 </td>
-                                <td style="text-align:center;font-size:11px;">
+                                <td style="text-align:center;font-size:11px; background: {{ $cellBg }}; color: white;">
                                     {{ $latestDate ? \Carbon\Carbon::parse($latestDate)->format('d M y') : '-' }}
                                 </td>
                             @endforeach
@@ -213,21 +217,24 @@
                                 @endphp
                                 
                                 @foreach($activityMap as $activitycode => $label)
-                                    @php 
-                                        $activity = $activityData->get($plot->plot)?->get($activitycode);
-                                        $value = $activity->total_luas ?? 0;
-                                        $percentage = $activity->avg_percentage ?? 0;
-                                        $tanggal = $activity->tanggal_terbaru ?? null;
-                                        $totalRealisasiPlot += $value;
-                                        
-                                        $percentageColor = $percentage >= 100 ? '#22c55e' : ($percentage > 0 ? '#dc2626' : '#6b7280');
-                                    @endphp
+                                @php 
+                                    $activity = $activityData->get($plot->plot)?->get($activitycode);
+                                    $value = $activity->total_luas ?? 0;
+                                    $percentage = $activity->avg_percentage ?? 0;
+                                    $tanggal = $activity->tanggal_terbaru ?? null;
+                                    $totalRealisasiPlot += $value;
+
+                                    $isRcUnique = in_array($activitycode, ['3.2.1', '3.2.2', '3.2.4', '3.2.5', '3.2.6', '3.2.7']);
+                                    $cellBg = $isRcUnique ? '#eff6ff' : '#f0fdf4';
+
+                                    $percentageColor = $percentage >= 100 ? '#22c55e' : ($percentage > 0 ? '#dc2626' : '#6b7280');
+                                @endphp
                                     
-                                    <td style="text-align:right;">{{ $value > 0 ? number_format($value, 2) : '-' }}</td>
-                                    <td style="text-align:right; font-weight:600; color: {{ $percentageColor }};">
+                                    <td style="text-align:right; background: {{ $cellBg }};">{{ $value > 0 ? number_format($value, 2) : '-' }}</td>
+                                    <td style="text-align:right; font-weight:600; color: {{ $percentageColor }}; background: {{ $cellBg }};">
                                         {{ $value > 0 ? number_format($percentage, 2) . '%' : '-' }}
                                     </td>
-                                    <td style="text-align:center;font-size:11px;">
+                                    <td style="text-align:center;font-size:11px; background: {{ $cellBg }};">
                                         {{ $tanggal ? \Carbon\Carbon::parse($tanggal)->format('d M y') : '-' }}
                                     </td>
                                 @endforeach
