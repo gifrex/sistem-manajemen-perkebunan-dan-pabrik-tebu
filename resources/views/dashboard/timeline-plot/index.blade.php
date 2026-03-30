@@ -211,7 +211,7 @@
 
                             <tr style="background: {{ $rowBg }};">
                                 @if($index===0)<td rowspan="{{count($plots)}}" class="sticky-h blok" style="left:0;">{{$blok}}</td>@endif
-                                <td class="sticky-h" style="left:60px;">{{$plot->plot}}</td>
+                                <td class="sticky-h" style="left:60px;">{{$plot->plot}} ({{$status}})</td>
                                 <td class="sticky-h" style="left:120px;text-align:right;">{{$plot->batcharea?number_format($plot->batcharea,2):'-'}}</td>
                                 
                                 @php
