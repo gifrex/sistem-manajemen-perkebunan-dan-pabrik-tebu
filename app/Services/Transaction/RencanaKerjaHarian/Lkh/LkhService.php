@@ -75,7 +75,7 @@ class LkhService
 
         $this->authorizeActivityGroup($lkhno, $companycode);
 
-        $panenActivities = ['4.3.3', '4.4.3', '4.5.2'];
+        $panenActivities = ['4.3.3', '4.4.3', '4.5.2', '2.2.2a', '2.2.2b'];
         $bsmActivity     = '4.7';
 
         $isPanenActivity = in_array($lkhData->activitycode, $panenActivities);
@@ -335,6 +335,12 @@ class LkhService
 
             if ($lkh->status !== 'DRAFT') {
                 return ['success' => false, 'message' => 'LKH harus berstatus DRAFT untuk bisa disubmit'];
+            }
+
+            // Validate luas does not exceed batch saldo
+            $luasCheck = $this->validateLuasNotExceeded($lkhno, $companycode, $lkh->activitycode);
+            if (!$luasCheck['valid']) {
+                return ['success' => false, 'message' => $luasCheck['message']];
             }
 
             $approvalSetting = null;
@@ -853,5 +859,53 @@ class LkhService
                 "User {$userid} tidak memiliki akses ke activity group {$activitygroup}"
             );
         }
+    }
+
+    /**
+     * Validate that this LKH's luashasil per plot does not exceed remaining batch saldo.
+     * Panen activities share a single saldo across all panen activity codes.
+     * PIAS activities are excluded (they can be repeated without saldo deduction).
+     */
+    private function validateLuasNotExceeded($lkhno, $companycode, $activitycode): array
+    {
+        $panenActivities = ['4.3.3', '4.4.3', '4.5.2', '2.2.2a', '2.2.2b'];
+        $piasActivities  = ['5.2.1', '5.2.3a'];
+
+        if (in_array($activitycode, $piasActivities)) {
+            return ['valid' => true];
+        }
+
+        $activityFilter = in_array($activitycode, $panenActivities)
+            ? $panenActivities
+            : $activitycode;
+
+        $plots = $this->lkhRepo->getPlotsWithBatchForValidation($companycode, $lkhno);
+
+        foreach ($plots as $plot) {
+            if (!$plot->batchno || !$plot->batcharea) continue;
+
+            $alreadyApproved = $this->batchRepo->getTotalApprovedWorkByPlotExcludingLkh(
+                $companycode,
+                $plot->plot,
+                $activityFilter,
+                $plot->batchno,
+                $lkhno
+            );
+
+            $total     = $alreadyApproved + (float) $plot->luashasil;
+            $batcharea = (float) $plot->batcharea;
+
+            if ($total > $batcharea) {
+                $excess = number_format($total - $batcharea, 2);
+                return [
+                    'valid'   => false,
+                    'message' => "Plot {$plot->plot}: total luas melebihi kapasitas batch "
+                        . "({$total} Ha > {$batcharea} Ha, kelebihan: {$excess} Ha). "
+                        . "Kemungkinan ada LKH lain untuk plot yang sama yang sudah disetujui."
+                ];
+            }
+        }
+
+        return ['valid' => true];
     }
 }

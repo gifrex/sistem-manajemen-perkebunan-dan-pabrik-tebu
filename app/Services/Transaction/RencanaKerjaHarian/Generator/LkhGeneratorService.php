@@ -11,7 +11,7 @@ class LkhGeneratorService
 {
     protected $wageCalculationService;
     
-    const PANEN_ACTIVITIES = ['4.3.3', '4.4.3', '4.5.2'];
+    const PANEN_ACTIVITIES = ['4.3.3', '4.4.3', '4.5.2', '2.2.2a', '2.2.2b'];
     const BSM_ACTIVITY = '4.7';
     const JENIS_HARIAN = 1;
     const JENIS_BORONGAN = 2;

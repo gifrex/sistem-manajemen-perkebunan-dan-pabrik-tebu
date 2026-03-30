@@ -58,7 +58,7 @@ class RkhUtilityService
      * @param string $activitycode
      * @return array
      */
-    public function getPlotInfo($companycode, $plot, $activitycode)
+    public function getPlotInfo($companycode, $plot, $activitycode, $rkhdate = null)
     {
         // Get plot with active batch
         $plotData = $this->batchRepo->getPlotWithActiveBatch($companycode, $plot);
@@ -71,19 +71,24 @@ class RkhUtilityService
         
         // Calculate work progress
         $luasPlot = (float) ($plotData->batcharea ?? 0);
-        
+
+        // Detect panen activities
+        $panenActivities = ['4.3.3', '4.4.3', '4.5.2', '2.2.2a', '2.2.2b'];
+        $isPanenActivity = in_array($activitycode, $panenActivities);
+
+        // Panen activities share a single saldo — sum across all panen activity codes
+        $queryActivitycode = $isPanenActivity ? $panenActivities : $activitycode;
+
+        $beforeDate = $rkhdate ?? now()->format('Y-m-d');
+
         $totalSudahDikerjakan = $this->batchRepo->getTotalApprovedWorkByPlotActivityBeforeDate(
             $companycode,
             $plot,
-            $activitycode,
-            now()->format('Y-m-d'),
+            $queryActivitycode,
+            $beforeDate,
             $plotData->activebatchno
         );
-        $luasSisa = $luasPlot - $totalSudahDikerjakan;
-        
-        // Detect panen activities
-        $panenActivities = ['4.3.3', '4.4.3', '4.5.2'];
-        $isPanenActivity = in_array($activitycode, $panenActivities);
+        $luasSisa = max(0, $luasPlot - $totalSudahDikerjakan);
         $batchInfo = null;
         
         // If panen, calculate batch progress (STC)

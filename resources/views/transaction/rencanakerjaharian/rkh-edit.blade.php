@@ -872,7 +872,7 @@ window.currentUser = {
   idjabatan: {{ Auth::user()->idjabatan ?? 'null' }}
 };
 
-window.PANEN_ACTIVITIES = ['4.3.3', '4.4.3', '4.5.2'];
+window.PANEN_ACTIVITIES = ['4.3.3', '4.4.3', '4.5.2', '2.2.2a', '2.2.2b'];
 window.PLOT_INFO_BASE_URL = "{{ url('transaction/kerjaharian/rencanakerjaharian/plot-info') }}";
 
 // ============================================================

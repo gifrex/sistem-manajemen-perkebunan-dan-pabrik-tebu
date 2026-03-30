@@ -3,6 +3,7 @@
 namespace App\Services\Approval;
 
 use App\Repositories\Approval\LkhApprovalRepository;
+use App\Repositories\Transaction\RencanaKerjaHarian\Shared\MasterlistBatchRepository;
 use App\Services\Transaction\RencanaKerjaHarian\Generator\GenerateNewBatchService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,10 +17,12 @@ use Illuminate\Support\Facades\Log;
 class LkhApprovalService
 {
     protected $repository;
+    protected $batchRepo;
 
-    public function __construct(LkhApprovalRepository $repository)
+    public function __construct(LkhApprovalRepository $repository, MasterlistBatchRepository $batchRepo)
     {
         $this->repository = $repository;
+        $this->batchRepo  = $batchRepo;
     }
 
     /**
@@ -65,7 +68,16 @@ class LkhApprovalService
                 return $validation;
             }
 
-            // Step 3: Process approval in database
+            // Step 3: Validate luas on approve (block if over batch saldo)
+            if ($action === 'approve') {
+                $luasCheck = $this->validateLuasNotExceeded($lkhno, $companycode, $lkh->activitycode);
+                if (!$luasCheck['valid']) {
+                    DB::rollBack();
+                    return ['success' => false, 'message' => $luasCheck['message']];
+                }
+            }
+
+            // Step 4: Process approval in database
             $processed = $this->repository->processApproval(
                 $companycode,
                 $lkhno,
@@ -238,6 +250,53 @@ class LkhApprovalService
                 'has_kendaraan' => $this->repository->hasKendaraan($companycode, $lkhno)
             ]
         ];
+    }
+
+    /**
+     * Validate that this LKH's luashasil per plot does not exceed remaining batch saldo.
+     * Panen activities share a single saldo. PIAS activities are excluded.
+     */
+    private function validateLuasNotExceeded(string $lkhno, string $companycode, string $activitycode): array
+    {
+        $panenActivities = ['4.3.3', '4.4.3', '4.5.2', '2.2.2a', '2.2.2b'];
+        $piasActivities  = ['5.2.1', '5.2.3a'];
+
+        if (in_array($activitycode, $piasActivities)) {
+            return ['valid' => true];
+        }
+
+        $activityFilter = in_array($activitycode, $panenActivities)
+            ? $panenActivities
+            : $activitycode;
+
+        $plots = $this->repository->getPlotsWithBatchForValidation($companycode, $lkhno);
+
+        foreach ($plots as $plot) {
+            if (!$plot->batchno || !$plot->batcharea) continue;
+
+            $alreadyApproved = $this->batchRepo->getTotalApprovedWorkByPlotExcludingLkh(
+                $companycode,
+                $plot->plot,
+                $activityFilter,
+                $plot->batchno,
+                $lkhno
+            );
+
+            $total     = $alreadyApproved + (float) $plot->luashasil;
+            $batcharea = (float) $plot->batcharea;
+
+            if ($total > $batcharea) {
+                $excess = number_format($total - $batcharea, 2);
+                return [
+                    'valid'   => false,
+                    'message' => "Plot {$plot->plot}: total luas melebihi kapasitas batch "
+                        . "({$total} Ha > {$batcharea} Ha, kelebihan: {$excess} Ha). "
+                        . "Kemungkinan ada LKH lain untuk plot yang sama yang sudah disetujui."
+                ];
+            }
+        }
+
+        return ['valid' => true];
     }
 
     /**

@@ -375,7 +375,7 @@
   window.absenData = @json($absenData ?? []);
   window.rkhDate = '{{ $selectedDate }}';
   window.mandorId = '{{ $selectedMandor->userid ?? '' }}';
-  window.PANEN_ACTIVITIES = ['4.3.3', '4.4.3', '4.5.2'];
+  window.PANEN_ACTIVITIES = ['4.3.3', '4.4.3', '4.5.2', '2.2.2a', '2.2.2b'];
   window.PIAS_ACTIVITIES = ['5.2.1','5.2.3a'];
   window.PLOT_INFO_BASE_URL = "{{ url('transaction/kerjaharian/rencanakerjaharian/plot-info') }}";
   window.RKH_SUBMISSION_LOCK = false;
