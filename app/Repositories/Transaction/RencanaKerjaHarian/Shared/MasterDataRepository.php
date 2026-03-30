@@ -204,6 +204,7 @@ class MasterDataRepository
                 'a.herbisidagroupid',
                 'c.herbisidagroupname',
                 'c.activitycode',
+                'c.rounddosage',
                 'a.itemcode',
                 'a.dosageperha',
                 'b.itemname',
