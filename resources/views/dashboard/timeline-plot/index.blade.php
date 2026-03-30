@@ -200,7 +200,16 @@
                         {{-- DATA PER PLOT --}}
                         @foreach($blokPlots as $blok=>$plots)
                         @foreach($plots as $index=>$plot)
-                            <tr>
+                        @php
+                            $status = strtoupper($plot->lifecyclestatus ?? '');
+                            $rowBg = ($status === 'PC') 
+                                ? '#dcfce7'   // hijau muda
+                                : (str_starts_with($status, 'RC') 
+                                    ? '#dbeafe' // biru muda
+                                    : '#ffffff');
+                        @endphp
+
+                            <tr style="background: {{ $rowBg }};">
                                 @if($index===0)<td rowspan="{{count($plots)}}" class="sticky-h blok" style="left:0;">{{$blok}}</td>@endif
                                 <td class="sticky-h" style="left:60px;">{{$plot->plot}}</td>
                                 <td class="sticky-h" style="left:120px;text-align:right;">{{$plot->batcharea?number_format($plot->batcharea,2):'-'}}</td>
