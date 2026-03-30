@@ -199,7 +199,10 @@ class MasterlistBatchRepository
             })
             ->where('ldp.companycode', $companycode)
             ->where('ldp.plot', $plot)
-            ->where('lh.activitycode', $activitycode)
+            ->when(is_array($activitycode),
+                fn($q) => $q->whereIn('lh.activitycode', $activitycode),
+                fn($q) => $q->where('lh.activitycode', $activitycode)
+            )
             ->where('lh.approvalstatus', '1')
             ->where('ldp.rework', 0)
             ->whereDate('lh.lkhdate', '<', $beforeDate);
@@ -212,7 +215,35 @@ class MasterlistBatchRepository
     }
 
     /**
-     * Calculate total harvest (luashasil) 
+     * Calculate total approved luashasil for a plot, excluding a specific LKH.
+     * Used for over-luas validation at submit/approval time.
+     */
+    public function getTotalApprovedWorkByPlotExcludingLkh(
+        $companycode,
+        $plot,
+        $activitycodes,
+        $batchno,
+        $excludeLkhno
+    ) {
+        return (float) DB::table('lkhdetailplot as ldp')
+            ->join('lkhhdr as lh', function ($join) {
+                $join->on('ldp.lkhno', '=', 'lh.lkhno')
+                    ->on('ldp.companycode', '=', 'lh.companycode');
+            })
+            ->where('ldp.companycode', $companycode)
+            ->where('ldp.plot', $plot)
+            ->where('ldp.batchno', $batchno)
+            ->when(is_array($activitycodes),
+                fn($q) => $q->whereIn('lh.activitycode', $activitycodes),
+                fn($q) => $q->where('lh.activitycode', $activitycodes)
+            )
+            ->where('lh.approvalstatus', '1')
+            ->where('lh.lkhno', '!=', $excludeLkhno)
+            ->sum('ldp.luashasil');
+    }
+
+    /**
+     * Calculate total harvest (luashasil)
      * for batch UNTIL specific date (STC calculation)
      * 
      * @param string $companycode

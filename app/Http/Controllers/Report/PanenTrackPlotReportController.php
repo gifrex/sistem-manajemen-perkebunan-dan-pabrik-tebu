@@ -132,22 +132,45 @@ class PanenTrackPlotReportController extends Controller
             $startDate = Carbon::parse($batchInfo->tanggalpanen);
             $endDate = Carbon::now();
 
-            // ✅ STEP 2: Get daily harvest data using surrogate ID
-            $harvestData = DB::table('lkhdetailplot as ldp')
-                ->join('lkhhdr as lh', 'ldp.lkhhdrid', '=', 'lh.id') // ✅ Use surrogate FK
+            $panenActivities = ['4.3.3', '4.4.3', '4.5.2', '2.2.2a', '2.2.2b'];
+
+            // STEP 2: Get daily harvest data — panen activities only, grouped by date
+            $harvestRows = DB::table('lkhdetailplot as ldp')
+                ->join('lkhhdr as lh', 'ldp.lkhhdrid', '=', 'lh.id')
+                ->leftJoin('user as u', 'lh.mandorid', '=', 'u.userid')
                 ->where('lh.companycode', $companycode)
-                ->where('ldp.batchid', $batchInfo->batch_id)          // ✅ Use surrogate FK
+                ->where('ldp.batchid', $batchInfo->batch_id)
                 ->where('lh.approvalstatus', '1')
+                ->whereIn('lh.activitycode', $panenActivities)
                 ->select([
                     'lh.lkhdate',
+                    'lh.lkhno',
+                    'lh.mandorid',
+                    'u.name as mandor_name',
+                    'lh.activitycode',
                     'ldp.luashasil as hc',
                     'ldp.fieldbalancerit',
                     'ldp.fieldbalanceton',
-                    'lh.lkhno'
                 ])
                 ->orderBy('lh.lkhdate')
-                ->get()
-                ->keyBy('lkhdate');
+                ->get();
+
+            // Group by date — sum HC, collect mandors & lkhnos per date
+            $harvestData = $harvestRows->groupBy('lkhdate')->map(function ($rows) {
+                return (object) [
+                    'lkhdate'          => $rows->first()->lkhdate,
+                    'hc'               => $rows->sum('hc'),
+                    'fieldbalancerit'  => $rows->sum('fieldbalancerit'),
+                    'fieldbalanceton'  => $rows->sum('fieldbalanceton'),
+                    'lkhno'            => $rows->pluck('lkhno')->unique()->implode(', '),
+                    'mandors'          => $rows->map(fn($r) => [
+                        'mandorid'    => $r->mandorid,
+                        'mandor_name' => $r->mandor_name,
+                        'activitycode'=> $r->activitycode,
+                        'hc'          => $r->hc,
+                    ])->values()->toArray(),
+                ];
+            });
 
             // Get surat jalan data grouped by date
             $suratJalanData = DB::table('suratjalanpos as sj')
@@ -205,19 +228,20 @@ class PanenTrackPlotReportController extends Controller
                 $remainingArea = $batchInfo->batcharea - $cumulativeHC;
 
                 $timeline[] = [
-                    'tanggal' => $dateStr,
-                    'hari_ke' => $dayNumber,
-                    'day_name' => $currentDate->locale('id')->isoFormat('dddd'),
-                    'has_harvest' => $harvest ? true : false,
-                    'hc' => $harvest ? $harvest->hc : 0,
-                    'cumulative_hc' => $cumulativeHC,
-                    'remaining_area' => max(0, $remainingArea),
+                    'tanggal'           => $dateStr,
+                    'hari_ke'           => $dayNumber,
+                    'day_name'          => $currentDate->locale('id')->isoFormat('dddd'),
+                    'has_harvest'       => $harvest ? true : false,
+                    'hc'                => $harvest ? $harvest->hc : 0,
+                    'cumulative_hc'     => $cumulativeHC,
+                    'remaining_area'    => max(0, $remainingArea),
                     'field_balance_rit' => $harvest ? $harvest->fieldbalancerit : null,
                     'field_balance_ton' => $harvest ? $harvest->fieldbalanceton : null,
-                    'jumlah_sj' => $sj ? $sj->jumlah_sj : 0,
-                    'netto_ton' => $sj && $sj->total_netto ? $sj->total_netto / 1000 : null,
-                    'list_sj' => $sj ? explode(',', $sj->list_sj) : [],
-                    'lkhno' => $harvest ? $harvest->lkhno : null
+                    'jumlah_sj'         => $sj ? $sj->jumlah_sj : 0,
+                    'netto_ton'         => $sj && $sj->total_netto ? $sj->total_netto / 1000 : null,
+                    'list_sj'           => $sj ? explode(',', $sj->list_sj) : [],
+                    'lkhno'             => $harvest ? $harvest->lkhno : null,
+                    'mandors'           => $harvest ? $harvest->mandors : [],
                 ];
 
                 $currentDate->addDay();

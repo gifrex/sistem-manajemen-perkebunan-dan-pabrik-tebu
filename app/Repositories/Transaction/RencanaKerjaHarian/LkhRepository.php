@@ -349,7 +349,9 @@ class LkhRepository
             ->where('companycode', $companycode)
             ->where('lkhno', $lkhno)
             ->value('lkhdate');
-        
+
+        $panenActivities = "'4.3.3', '4.4.3', '4.5.2', '2.2.2a', '2.2.2b'";
+
         return DB::table('lkhdetailplot as ldp')
             ->leftJoin('batch as b', 'ldp.batchid', '=', 'b.id')
             ->where('ldp.companycode', $companycode)
@@ -366,37 +368,39 @@ class LkhRepository
                 'b.batcharea',
                 'b.tanggalpanen',
                 'b.lifecyclestatus as kodestatus',
-                
-                // STC calculation
+
+                // STC calculation — only panen activities share the same saldo
                 DB::raw("(
-                    COALESCE(b.batcharea, 0) - 
+                    COALESCE(b.batcharea, 0) -
                     COALESCE((
                         SELECT SUM(ldp2.luashasil)
                         FROM lkhdetailplot ldp2
-                        JOIN lkhhdr lh2 ON ldp2.lkhno = lh2.lkhno 
+                        JOIN lkhhdr lh2 ON ldp2.lkhno = lh2.lkhno
                                         AND ldp2.companycode = lh2.companycode
                         WHERE ldp2.companycode = ldp.companycode
                         AND ldp2.batchno = ldp.batchno
                         AND ldp2.batchno IS NOT NULL
+                        AND lh2.activitycode IN ({$panenActivities})
                         AND lh2.approvalstatus = '1'
                         AND lh2.lkhdate < '{$lkhDate}'
                     ), 0)
                 ) as stc"),
-                
+
                 DB::raw('COALESCE(ldp.luashasil, 0) as hc'),
-                
-                // BC calculation
+
+                // BC calculation — same panen-only filter
                 DB::raw("(
                     (
-                        COALESCE(b.batcharea, 0) - 
+                        COALESCE(b.batcharea, 0) -
                         COALESCE((
                             SELECT SUM(ldp2.luashasil)
                             FROM lkhdetailplot ldp2
-                            JOIN lkhhdr lh2 ON ldp2.lkhno = lh2.lkhno 
+                            JOIN lkhhdr lh2 ON ldp2.lkhno = lh2.lkhno
                                             AND ldp2.companycode = lh2.companycode
                             WHERE ldp2.companycode = ldp.companycode
                             AND ldp2.batchno = ldp.batchno
                             AND ldp2.batchno IS NOT NULL
+                            AND lh2.activitycode IN ({$panenActivities})
                             AND lh2.approvalstatus = '1'
                             AND lh2.lkhdate < '{$lkhDate}'
                         ), 0)
@@ -587,6 +591,20 @@ class LkhRepository
             ->where('lkhno', $lkhno)
             ->orderBy('blok')
             ->orderBy('plot')
+            ->get();
+    }
+
+    /**
+     * Get plot rows with batcharea for luas over-limit validation.
+     */
+    public function getPlotsWithBatchForValidation($companycode, $lkhno)
+    {
+        return DB::table('lkhdetailplot as ldp')
+            ->leftJoin('batch as b', 'ldp.batchid', '=', 'b.id')
+            ->where('ldp.companycode', $companycode)
+            ->where('ldp.lkhno', $lkhno)
+            ->whereNotNull('ldp.plot')
+            ->select(['ldp.plot', 'ldp.batchno', 'ldp.luashasil', 'b.batcharea'])
             ->get();
     }
 

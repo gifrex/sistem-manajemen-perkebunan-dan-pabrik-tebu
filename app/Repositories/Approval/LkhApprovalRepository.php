@@ -297,4 +297,18 @@ class LkhApprovalRepository
             ->where('lkhno', $lkhno)
             ->exists();
     }
+
+    /**
+     * Get plot rows with batcharea for luas over-limit validation.
+     */
+    public function getPlotsWithBatchForValidation(string $companycode, string $lkhno)
+    {
+        return DB::table('lkhdetailplot as ldp')
+            ->leftJoin('batch as b', 'ldp.batchid', '=', 'b.id')
+            ->where('ldp.companycode', $companycode)
+            ->where('ldp.lkhno', $lkhno)
+            ->whereNotNull('ldp.plot')
+            ->select(['ldp.plot', 'ldp.batchno', 'ldp.luashasil', 'b.batcharea'])
+            ->get();
+    }
 }

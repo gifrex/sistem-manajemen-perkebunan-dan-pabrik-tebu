@@ -260,7 +260,7 @@ function plotDetailCard(actCode, plot) {
       this.isLoading = true;
       
       try {
-        const url = `${window.PLOT_INFO_BASE_URL}/${this.plot.plot}/${this.actCode}`;
+        const url = `${window.PLOT_INFO_BASE_URL}/${this.plot.plot}/${this.actCode}?rkhdate=${window.rkhDate}`;
         const response = await fetch(url);
         const data = await response.json();
 

@@ -55,12 +55,13 @@ class RkhUtilityController extends Controller
      * @param string $activitycode
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getPlotInfo($plot, $activitycode)
+    public function getPlotInfo(Request $request, $plot, $activitycode)
     {
         try {
             $companycode = Session::get('companycode');
-            
-            $result = $this->utilityService->getPlotInfo($companycode, $plot, $activitycode);
+            $rkhdate = $request->query('rkhdate');
+
+            $result = $this->utilityService->getPlotInfo($companycode, $plot, $activitycode, $rkhdate);
             
             return response()->json($result);
             
