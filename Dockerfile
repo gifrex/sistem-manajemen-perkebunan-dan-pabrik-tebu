@@ -36,7 +36,7 @@ RUN composer dump-autoload --optimize
 # ============================================
 # Stage 3: Production image (Nginx + PHP-FPM)
 # ============================================
-FROM php:8.2-fpm-alpine
+FROM php:8.3-fpm-alpine
 
 # Gunakan script ajaib ini untuk install extension PHP dengan bersih
 ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
