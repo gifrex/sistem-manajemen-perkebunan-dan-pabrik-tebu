@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Timbangan;
 use App\Http\Controllers\Api\Auth\SanctumAuthController;
 use App\Http\Controllers\Api\FileUpload\FotoAbsenController;
 use App\Http\Controllers\Api\FileUpload\LkhFotoLampiranController;
+use App\Http\Controllers\Api\ApiClientTokenController;
 
 use App\Http\Controllers\MobileController;
 use Illuminate\Support\Facades\Route;
@@ -37,7 +38,17 @@ Route::get('/test-api', function() {
     ]);
 });
 
-Route::post('/timbangan/dev/v1/insertdata', [Timbangan::class, 'insertData']);
+//Route::post('/timbangan/dev/v1/insertdata', [Timbangan::class, 'insertData']);
+Route::middleware(['auth:sanctum', 'api.client.active'])->prefix('timbangan/dev/v1')->group(function () {
+        Route::post('/insertdata', [Timbangan::class, 'insertData']);
+});
+
+Route::middleware('auth:sanctum')->prefix('admin/api-clients')->group(function () {
+    Route::get('/',                      [ApiClientTokenController::class, 'listClients']);
+    Route::post('/create',               [ApiClientTokenController::class, 'createClient']);
+    Route::patch('/{id}/deactivate',     [ApiClientTokenController::class, 'deactivateClient']);
+    Route::delete('/{id}/revoke',        [ApiClientTokenController::class, 'revokeTokens']);
+});
 
 
 

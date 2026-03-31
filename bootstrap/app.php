@@ -56,6 +56,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/mobile/*',
             'api/*',
         ]);
+
+        $middleware->alias([
+        'api.client.active' => \App\Http\Middleware\CheckApiClientActive::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
