@@ -42,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'mandor.access' => \App\Http\Middleware\MandorAccessManagement::class,
+            'api.client.active' => \App\Http\Middleware\CheckApiClientActive::class,
         ]);
 
         // Apply mandor access management globally to web routes
@@ -55,10 +56,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'dashboard/mapsapi',
             'api/mobile/*',
             'api/*',
-        ]);
-
-        $middleware->alias([
-        'api.client.active' => \App\Http\Middleware\CheckApiClientActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
