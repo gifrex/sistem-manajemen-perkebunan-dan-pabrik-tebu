@@ -285,7 +285,7 @@ class LkhApprovalService
             $total     = $alreadyApproved + (float) $plot->luashasil;
             $batcharea = (float) $plot->batcharea;
 
-            if ($total > $batcharea) {
+            if ($total > $batcharea + 0.001) {
                 $excess = number_format($total - $batcharea, 2);
                 return [
                     'valid'   => false,
