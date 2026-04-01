@@ -90,9 +90,9 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
     // COSTCENTER
     // ============================================================================
     Route::middleware('permission:masterdata.costcenter.create')->group(function () {
-        Route::get('costcenter', [CostCenterController::class, 'index'])->name('costcenter.index');
-        Route::patch('costcenter/{herbisidagroupid}', [CostCenterController::class, 'update'])->name('costcenter.update');
-        Route::delete('costcenter/{herbisidagroupid}', [CostCenterController::class, 'destroy'])->name('costcenter.destroy');
+        Route::get('costcenter', [CostcenterController::class, 'index'])->name('costcenter.index');
+        Route::patch('costcenter/{herbisidagroupid}', [CostcenterController::class, 'update'])->name('costcenter.update');
+        Route::delete('costcenter/{herbisidagroupid}', [CostcenterController::class, 'destroy'])->name('costcenter.destroy');
     });
 
     // ============================================================================
