@@ -4,7 +4,7 @@ namespace App\Models\MasterData;
 
 use Illuminate\Database\Eloquent\Model;
 
-class CostCenter extends Model
+class Costcenter extends Model
 {
     protected $table = 'costcenter';
 
