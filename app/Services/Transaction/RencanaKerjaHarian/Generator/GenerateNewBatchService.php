@@ -24,7 +24,7 @@ use Carbon\Carbon;
 class GenerateNewBatchService
 {
     const PANEN_ACTIVITIES = ['4.3.3', '4.4.3', '4.5.2', '2.2.2a', '2.2.2b'];
-    const PLANTING_ACTIVITY = '2.2.7';
+    const PLANTING_ACTIVITY = '7.3';
     const TRASH_MUCHLER_ACTIVITY = '3.2.1';
     const TOLERANCE = 0.0;
     
