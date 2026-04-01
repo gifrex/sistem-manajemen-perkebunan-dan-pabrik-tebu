@@ -47,6 +47,11 @@ return [
                         'route' => 'masterdata.open-rework.index',
                         'permission' => 'masterdata.open-rework.view',
                     ],
+                    [
+                        'name' => 'Costcenter Gudang',
+                        'route' => 'masterdata.costcenter.index',
+                        'permission' => 'masterdata.costcenter.create',
+                    ],
                 ],
             ],
             [

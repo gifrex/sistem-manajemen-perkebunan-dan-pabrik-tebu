@@ -1,12 +1,13 @@
 <?php
 
 // routes\masterdata.php
-
+ 
 use App\Http\Controllers\MasterData\ActivityController;
 use App\Http\Controllers\MasterData\BlokController;
 use App\Http\Controllers\MasterData\BatchController;
 use App\Http\Controllers\MasterData\CompanyController;
 use App\Http\Controllers\MasterData\MasterListController;
+use App\Http\Controllers\MasterData\CostcenterController;
 use App\Http\Controllers\MasterData\HerbisidaController;
 use App\Http\Controllers\MasterData\HerbisidaGroupController;
 use App\Http\Controllers\MasterData\HerbisidaDosageController;
@@ -86,6 +87,15 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
     });
 
     // ============================================================================
+    // COSTCENTER
+    // ============================================================================
+    Route::middleware('permission:masterdata.costcenter.create')->group(function () {
+        Route::get('costcenter', [CostCenterController::class, 'index'])->name('costcenter.index');
+        Route::patch('costcenter/{herbisidagroupid}', [CostCenterController::class, 'update'])->name('costcenter.update');
+        Route::delete('costcenter/{herbisidagroupid}', [CostCenterController::class, 'destroy'])->name('costcenter.destroy');
+    });
+
+    // ============================================================================
     // HERBISIDA DOSAGE
     // ============================================================================
     Route::middleware('permission:masterdata.herbisidadosage.view')->group(function () {
@@ -100,6 +110,10 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
     Route::middleware('permission:masterdata.herbisidadosage.delete')->group(function () {
         Route::delete('herbisida-dosage/{herbisidagroupid}/{itemcode}', [HerbisidaDosageController::class, 'destroy'])->name('herbisida-dosage.destroy');
     });
+
+    //
+
+    //
 
     // ============================================================================
     // AKTIVITAS

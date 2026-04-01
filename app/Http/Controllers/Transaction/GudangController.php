@@ -48,7 +48,7 @@ class GudangController extends Controller
     }
 
     public function home(Request $request)
-    {
+    { 
         // if (hasPermission('Menu Gudang')) {
             $usematerialhdr = new usematerialhdr;
             $usehdr2 = $usematerialhdr->selectuse(session('companycode'));
