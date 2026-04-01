@@ -138,22 +138,24 @@ class MasterlistBatchRepository
                     ELSE 0
                 END as is_on_panen"),
                 DB::raw('(
-                    SELECT activitycode 
+                    SELECT activitycode
                     FROM lkhdetailplot ldp2
                     JOIN lkhhdr lh2 ON ldp2.lkhno = lh2.lkhno AND ldp2.companycode = lh2.companycode
                     WHERE ldp2.companycode = "' . $companycode . '"
                     AND ldp2.plot = m.plot
+                    AND ldp2.batchno = m.activebatchno
                     AND lh2.approvalstatus = "1"
                     ORDER BY lh2.lkhdate DESC
                     LIMIT 1
                 ) as last_activitycode'),
                 DB::raw('(
-                    SELECT a2.activityname 
+                    SELECT a2.activityname
                     FROM lkhdetailplot ldp2
                     JOIN lkhhdr lh2 ON ldp2.lkhno = lh2.lkhno AND ldp2.companycode = lh2.companycode
                     JOIN activity a2 ON lh2.activitycode = a2.activitycode
                     WHERE ldp2.companycode = "' . $companycode . '"
                     AND ldp2.plot = m.plot
+                    AND ldp2.batchno = m.activebatchno
                     AND lh2.approvalstatus = "1"
                     ORDER BY lh2.lkhdate DESC
                     LIMIT 1
@@ -164,6 +166,7 @@ class MasterlistBatchRepository
                     JOIN lkhhdr lh2 ON ldp2.lkhno = lh2.lkhno AND ldp2.companycode = lh2.companycode
                     WHERE ldp2.companycode = "' . $companycode . '"
                     AND ldp2.plot = m.plot
+                    AND ldp2.batchno = m.activebatchno
                     AND lh2.approvalstatus = "1"
                     ORDER BY lh2.lkhdate DESC
                     LIMIT 1
@@ -296,9 +299,9 @@ class MasterlistBatchRepository
      * @param string $plot
      * @return string|null
      */
-    public function getLastApprovedActivityInfoForPlot($companycode, $plot)
+    public function getLastApprovedActivityInfoForPlot($companycode, $plot, $batchno = null)
     {
-        return DB::table('lkhdetailplot as ldp')
+        $query = DB::table('lkhdetailplot as ldp')
             ->join('lkhhdr as lh', function($join) {
                 $join->on('ldp.lkhno', '=', 'lh.lkhno')
                     ->on('ldp.companycode', '=', 'lh.companycode');
@@ -306,8 +309,13 @@ class MasterlistBatchRepository
             ->join('activity as ma', 'lh.activitycode', '=', 'ma.activitycode')
             ->where('ldp.companycode', $companycode)
             ->where('ldp.plot', $plot)
-            ->where('lh.approvalstatus', '1')
-            ->orderBy('lh.lkhdate', 'desc')
+            ->where('lh.approvalstatus', '1');
+
+        if ($batchno) {
+            $query->where('ldp.batchno', $batchno);
+        }
+
+        return $query->orderBy('lh.lkhdate', 'desc')
             ->select([
                 'lh.activitycode as last_activitycode',
                 'ma.activityname as last_activityname',
