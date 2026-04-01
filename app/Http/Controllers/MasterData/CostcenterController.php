@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 
-use App\Models\MasterData\CostCenter;
+use App\Models\MasterData\Costcenter;
 use App\Models\MasterData\HerbisidaGroup;
 
 class CostcenterController extends Controller
