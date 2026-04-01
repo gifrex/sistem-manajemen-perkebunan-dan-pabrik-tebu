@@ -12,7 +12,7 @@ use App\Models\MasterData\Costcenter;
 use App\Models\MasterData\HerbisidaGroup;
 
 class CostcenterController extends Controller
-{
+{ 
     /**
      * Halaman utama / list cost center
      */
