@@ -98,7 +98,7 @@ class RkhUtilityService
         
         // Get last activity info
         $tanggalActivity = null;
-        $lastActivityInfo = $this->batchRepo->getLastApprovedActivityInfoForPlot($companycode, $plot);
+        $lastActivityInfo = $this->batchRepo->getLastApprovedActivityInfoForPlot($companycode, $plot, $plotData->activebatchno);
         if ($lastActivityInfo) {
             $tanggalActivity = Carbon::parse($lastActivityInfo->last_activity_date)->format('d/m/Y');
         }
