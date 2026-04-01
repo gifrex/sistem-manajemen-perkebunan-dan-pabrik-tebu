@@ -63,7 +63,7 @@
                                 @endcan
                                 
                                 {{-- Reports Button - Check ANY report permission --}}
-                                @canany(['report.agronomi.view', 'report.hpt.view', 'report.zpk.view', 'report.manajemenlahan.view', 'report.suratjalantimbangan.view'])
+                                @canany(['report.agronomi.view', 'report.hpt.view', 'report.zpk.view', 'report.manajemenlahan.view', 'report.suratjalantimbangan.view', 'report.suratjalan.view'])
                                 <button type="button"
                                     @click="$dispatch('open-reports-modal')"
                                     class="inline-flex items-center px-8 py-4 text-base font-semibold rounded-xl text-emerald-200 bg-emerald-800/50 hover:bg-emerald-700/50 transition-all duration-200 border border-emerald-600 hover:border-emerald-500 backdrop-blur-sm group">
