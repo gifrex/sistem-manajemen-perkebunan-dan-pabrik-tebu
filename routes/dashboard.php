@@ -34,6 +34,8 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
 
     Route::middleware('permission:dashboard.timelineplot.view')->group(function () {
         Route::match(['GET', 'POST'], 'timeline-plot', [TimelineController::class, 'plot'])->name('timeline-plot');
+        Route::get('timeline-plot/detail', [DashboardController::class, 'plotDetail'])
+        ->name('timeline-plot.detail');
     });
 
     // ============================================================================

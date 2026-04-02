@@ -9,6 +9,14 @@
             <div class="max-w-7xl mx-auto px-6 py-4">
                 <h1 class="text-2xl font-semibold text-gray-900">{{ $title }}</h1>
                 <p class="text-sm text-gray-600 mt-1">Proses koreksi pemakaian atau retur item</p>
+
+                <div class="mt-2">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
+                        {{ $islokal === 'LIVE' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">
+                        Koneksi: {{ $islokal }}
+                    </span>
+                </div>
+
             </div>
         </div>
 
@@ -128,30 +136,8 @@
                             </select>
                             
                             <div x-show="!loading && rkhno && items.length" x-transition class="mt-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Cost Center
-                            </label>
-
-                            <select
-                                x-model="new_costcenter"
-                                name="new_costcenter"
-                                class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                required
-                            >
-                                <option value="">-- Pilih Cost Center --</option>
-                                <template x-for="c in costcenterList" :key="c.costcentercode">
-                                <option
-                                    :value="(c.costcentercode || '').trim()"
-                                    :selected="(c.costcentercode || '').trim() === (new_costcenter || '').trim()"
-                                    x-text="`${c.costcenterdesc} (${c.costcentercode})`">
-                                </option>
-                                </template>
-                            </select>
-
-                            <!-- hidden untuk controller supaya old/new gampang -->
-                            <input type="hidden" name="old_costcenter" x-model="old_costcenter">
                                 <div class="mt-2 text-xs text-gray-600" x-show="flagstatus">
-                                Status: <span class="font-semibold" x-text="flagstatus.replaceAll('_',' ')"></span>
+                                    Status: <span class="font-semibold" x-text="flagstatus.replaceAll('_',' ')"></span>
                                 </div>
                             </div>
 
@@ -300,20 +286,15 @@ function koreksiData() {
     loading: false,
     tipeHint: '',
 
-    old_costcenter: '',
-    new_costcenter: '',
     nouse: '',
     flagstatus: '',
-    costcenterList: [],
 
     onTipeChange() {
       this.rkhno = '';
       this.items = [];
 
-      this.old_costcenter = '';
-      this.new_costcenter = '';
       this.nouse = '';
-      this.costcenterList = [];
+      this.flagstatus = '';
 
       if (this.tipeTransaksi === 'RETUR') {
         this.tipeHint = 'RETUR: isi qty retur (max = qty pemakaian). Item tidak bisa diganti.';
@@ -347,22 +328,9 @@ function koreksiData() {
             new_itemcode: x.itemcode, // default item baru = item original
             new_qty: ''              // kosong = skip
           }));
-            // ✅ costcenter (trim biar tidak gagal match)
-            this.old_costcenter = (data.hdr?.old_costcenter || '').trim();
-            this.new_costcenter = ((data.hdr?.new_costcenter || '') || this.old_costcenter).trim();
-            this.nouse = data.hdr?.nouse || '';
-            this.flagstatus = data.hdr?.flagstatus || '';
-
-            // ✅ options dropdown
-            this.costcenterList = Array.isArray(data.costcenter) ? data.costcenter : [];
-
-            // ✅ kalau new_costcenter tidak ada di list, fallback ke old_costcenter
-            if (
-            this.new_costcenter &&
-            !this.costcenterList.some(c => (c.costcentercode || '').trim() === this.new_costcenter)
-            ) {
-            this.new_costcenter = this.old_costcenter || '';
-            }
+            
+          this.nouse = data.hdr?.nouse || '';
+          this.flagstatus = data.hdr?.flagstatus || '';
 
         } else {
           alert('Tidak ada item ditemukan pada RKH ini.');
