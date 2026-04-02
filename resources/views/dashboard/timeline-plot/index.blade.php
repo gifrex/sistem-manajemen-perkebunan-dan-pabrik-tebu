@@ -209,7 +209,8 @@
                                     : '#ffffff');
                         @endphp
 
-                            <tr style="background: {{ $rowBg }};">
+                            <tr style="background: {{ $rowBg }}; cursor:pointer;"
+                                onclick="togglePlotDetail('{{ $plot->plot }}', this)">
                                 @if($index===0)<td rowspan="{{count($plots)}}" class="sticky-h blok" style="left:0;">{{$blok}}</td>@endif
                                 <td class="sticky-h" style="left:60px;">{{$plot->plot}} ({{$status}})</td>
                                 <td class="sticky-h" style="left:120px;text-align:right;">{{$plot->batcharea?number_format($plot->batcharea,2):'-'}}</td>
@@ -255,6 +256,15 @@
                                     {{ number_format($stagePct, 2) }}%
                                 </td>
                                 @endif
+                            </tr>
+
+                            <tr id="detail-{{ $plot->plot }}" class="hidden">
+                                <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 5) : (count($activityMap) * 3 + 4) }}"
+                                    style="padding:0; background:#f9fafb;">
+                                    <div id="detail-content-{{ $plot->plot }}" style="padding:12px 16px; font-size:12px; color:#374151;">
+                                        Loading...
+                                    </div>
+                                </td>
                             </tr>
                         @endforeach
                         @endforeach
@@ -700,6 +710,92 @@ function getRingColor(d) {
 
 
         }
+
+
+
+
+        async function togglePlotDetail(plot, rowEl) {
+            const detailRow = document.getElementById(`detail-${plot}`);
+            const detailBox = document.getElementById(`detail-content-${plot}`);
+
+            if (!detailRow.classList.contains('hidden')) {
+                detailRow.classList.add('hidden');
+                return;
+            }
+
+            document.querySelectorAll('[id^="detail-"]').forEach(el => {
+                el.classList.add('hidden');
+            });
+
+            detailRow.classList.remove('hidden');
+            detailBox.innerHTML = 'Loading...';
+
+            try {
+                const res = await fetch(`{{ route('dashboard.timeline-plot.detail') }}?plot=${encodeURIComponent(plot)}`);
+                const data = await res.json();
+
+                if (!data.success) {
+                    detailBox.innerHTML = `<div class="text-red-600">Gagal ambil detail plot.</div>`;
+                    return;
+                }
+
+                const batch = data.batch;
+                const activities = data.activities || [];
+
+                let html = `
+                    <div class="mb-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div><b>Plot:</b> ${batch?.plot ?? '-'}</div>
+                        <div><b>Batch:</b> ${batch?.batchno ?? '-'}</div>
+                        <div><b>Luas:</b> ${batch?.batcharea ?? 0} HA</div>
+                        <div><b>Status:</b> ${batch?.lifecyclestatus ?? '-'}</div>
+                        <div><b>Batch Date:</b> ${batch?.batchdate ?? '-'}</div>
+                        <div><b>Umur Hari:</b> ${batch?.umur_hari ?? 0}</div>
+                        <div><b>Umur Bulan:</b> ${batch?.umur_bulan ?? 0}</div>
+                        <div><b>Panen:</b> ${batch?.tanggalpanen ?? '-'}</div>
+                    </div>
+                `;
+
+                if (activities.length) {
+                    html += `
+                        <div class="overflow-x-auto">
+                            <table class="w-full border text-xs">
+                                <thead class="bg-green-700 text-white">
+                                    <tr>
+                                        <th class="border px-2 py-1 text-left">Batch</th>
+                                        <th class="border px-2 py-1 text-left">Kegiatan</th>
+                                        <th class="border px-2 py-1 text-left">LKH</th>
+                                        <th class="border px-2 py-1 text-left">Tanggal</th>
+                                        <th class="border px-2 py-1 text-right">Luas Hasil</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+
+                    activities.forEach(r => {
+                        html += `
+                            <tr class="bg-white">
+                                <td class="border px-2 py-1">${r.batchno ?? '-'}</td>
+                                <td class="border px-2 py-1">${r.activitycode ?? '-'}</td>
+                                <td class="border px-2 py-1">${r.lkhno ?? '-'}</td>
+                                <td class="border px-2 py-1">${r.lkhdate ?? '-'}</td>
+                                <td class="border px-2 py-1 text-right">${parseFloat(r.luashasil ?? 0).toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+
+                    html += `</tbody></table></div>`;
+                } else {
+                    html += `<div class="text-gray-500 italic">Tidak ada detail activity untuk plot ini.</div>`;
+                }
+
+                detailBox.innerHTML = html;
+            } catch (err) {
+                detailBox.innerHTML = `<div class="text-red-600">Error: ${err.message}</div>`;
+            }
+        }
+        
+
+
     </script>
     
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCc2vFD26wD5ox_5EwLJhR6U1jcfKibxBQ&callback=initMapIfNeeded"></script>

@@ -556,7 +556,7 @@ class GudangController extends Controller
     
     //koreksi
     public function koreksi_insert(Request $request)
-{
+{ 
     // Tentukan koneksi berdasarkan host
     if (request()->getHost() == 'sugarcane.sblampung.com') {
         $islokal = 'LIVE';
@@ -593,96 +593,148 @@ class GudangController extends Controller
         'title' => 'Koreksi Stok',
         'navbar' => 'Input',
         'nav' => 'gudang',
+        'islokal' => $islokal
     ]);
 }
 
 //AJAX
+// public function getItemsByRkh(Request $request)
+// {
+//     $rkhno = $request->input('rkhno');
+//     $companycode = session('companycode');
+
+//     $items = usemateriallst::where('companycode', $companycode)
+//         ->where('rkhno', $rkhno)
+//         ->orderBy('itemseq')
+//         ->get();
+
+//     $formattedItems = $items->map(function($item) {
+//         return [
+//             'itemseq'  => $item->itemseq,
+//             'itemcode' => $item->itemcode,
+//             'itemname' => $item->itemname ?? '',
+//             'plot'     => $item->plot,
+//             'lkhno'    => $item->lkhno,
+//             'qty'      => $item->qty,
+//             'uom'      => $item->uom ?? '',
+//             'flagstatus' => $first->flagstatus ?? ''
+//         ];
+//     });
+
+//     // ✅ Ambil “header view” dari sumber yang sudah pasti punya factoryinv/costcenter/nouse (selectusematerial)
+//     $first = collect((new usematerialhdr)->selectusematerial($companycode, $rkhno, 1))->first();
+//     if (!$first) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Data RKH tidak ditemukan.',
+//             'items' => [],
+//             'hdr' => null,
+//             'costcenter' => [],
+//         ], 404);
+//     }
+
+//     $oldCC = $first->costcenter ?? '';
+//     $nouse = $first->nouse ?? '';
+//     $factoryinv = $first->factoryinv ?? null;
+
+//     $costcenterList = [];
+//     $companyinv = null;
+
+//     if ($factoryinv) {
+//         $companyinv = Company::where('companycode', $companycode)->first();
+
+//         $resp = Http::withoutVerifying()->asJson()->get(
+//             'https://rosebrand.sungaibudigroup.com/app/im-purchasing/purchasing/bpb/costcenter_api',
+//             [
+//                 'connection' => '172.17.1.39',
+//                 'company' => $companyinv->companyinventory ?? null,
+//                 'factory' => $factoryinv,
+//             ]
+//         );
+
+//         if ($resp->successful()) {
+//             $costcenterList = $resp->json('costcenter') ?? [];
+//         } else {
+//             Log::warning('getItemsByRkh costcenter_api failed', [
+//                 'status' => $resp->status(),
+//                 'body' => substr($resp->body(), 0, 200),
+//             ]);
+//         }
+//     }
+
+//     Log::info('getItemsByRkh debug (after fix)', [
+//         'rkhno' => $rkhno,
+//         'companycode' => $companycode,
+//         'factoryinv' => $factoryinv,
+//         'companyinventory' => $companyinv->companyinventory ?? null,
+//         'costcenter_count' => count($costcenterList),
+//         'items_count' => $items->count(),
+//     ]);
+
+//     return response()->json([
+//         'success' => true,
+//         'items' => $formattedItems,
+//         'hdr' => [
+//             'old_costcenter' => $oldCC,
+//             'new_costcenter' => $oldCC,
+//             'nouse' => $nouse,
+//             'factoryinv' => $factoryinv,
+//         ],
+//         'costcenter' => $costcenterList,
+//     ]);
+// }
+
 public function getItemsByRkh(Request $request)
 {
     $rkhno = $request->input('rkhno');
     $companycode = session('companycode');
 
-    $items = usemateriallst::where('companycode', $companycode)
-        ->where('rkhno', $rkhno)
-        ->orderBy('itemseq')
-        ->get();
-
-    $formattedItems = $items->map(function($item) {
-        return [
-            'itemseq'  => $item->itemseq,
-            'itemcode' => $item->itemcode,
-            'itemname' => $item->itemname ?? '',
-            'plot'     => $item->plot,
-            'lkhno'    => $item->lkhno,
-            'qty'      => $item->qty,
-            'uom'      => $item->uom ?? '',
-            'flagstatus' => $first->flagstatus ?? ''
-        ];
-    });
-
-    // ✅ Ambil “header view” dari sumber yang sudah pasti punya factoryinv/costcenter/nouse (selectusematerial)
     $first = collect((new usematerialhdr)->selectusematerial($companycode, $rkhno, 1))->first();
+
     if (!$first) {
         return response()->json([
             'success' => false,
             'message' => 'Data RKH tidak ditemukan.',
             'items' => [],
             'hdr' => null,
-            'costcenter' => [],
         ], 404);
     }
 
-    $oldCC = $first->costcenter ?? '';
-    $nouse = $first->nouse ?? '';
-    $factoryinv = $first->factoryinv ?? null;
+    $items = usemateriallst::where('companycode', $companycode)
+        ->where('rkhno', $rkhno)
+        ->orderBy('itemseq')
+        ->get();
 
-    $costcenterList = [];
-    $companyinv = null;
+    $formattedItems = $items->map(function($item) use ($first) {
+        return [
+            'itemseq'    => $item->itemseq,
+            'itemcode'   => $item->itemcode,
+            'itemname'   => $item->itemname ?? '',
+            'plot'       => $item->plot,
+            'lkhno'      => $item->lkhno,
+            'qty'        => $item->qty,
+            'uom'        => $item->uom ?? $item->unit ?? '',
+            'flagstatus' => $first->flagstatus ?? '',
+        ];
+    });
 
-    if ($factoryinv) {
-        $companyinv = Company::where('companycode', $companycode)->first();
-
-        $resp = Http::withoutVerifying()->asJson()->get(
-            'https://rosebrand.sungaibudigroup.com/app/im-purchasing/purchasing/bpb/costcenter_api',
-            [
-                'connection' => '172.17.1.39',
-                'company' => $companyinv->companyinventory ?? null,
-                'factory' => $factoryinv,
-            ]
-        );
-
-        if ($resp->successful()) {
-            $costcenterList = $resp->json('costcenter') ?? [];
-        } else {
-            Log::warning('getItemsByRkh costcenter_api failed', [
-                'status' => $resp->status(),
-                'body' => substr($resp->body(), 0, 200),
-            ]);
-        }
-    }
-
-    Log::info('getItemsByRkh debug (after fix)', [
+    Log::info('getItemsByRkh debug', [
         'rkhno' => $rkhno,
         'companycode' => $companycode,
-        'factoryinv' => $factoryinv,
-        'companyinventory' => $companyinv->companyinventory ?? null,
-        'costcenter_count' => count($costcenterList),
         'items_count' => $items->count(),
+        'flagstatus' => $first->flagstatus ?? null,
     ]);
 
     return response()->json([
         'success' => true,
         'items' => $formattedItems,
         'hdr' => [
-            'old_costcenter' => $oldCC,
-            'new_costcenter' => $oldCC,
-            'nouse' => $nouse,
-            'factoryinv' => $factoryinv,
+            'nouse' => $first->nouse ?? '',
+            'flagstatus' => $first->flagstatus ?? '',
+            'factoryinv' => $first->factoryinv ?? null,
         ],
-        'costcenter' => $costcenterList,
     ]);
 }
-
 
 // AJAX: Get item detail by itemseq (untuk tipe USE)
 public function getItemDetail(Request $request)
@@ -744,6 +796,16 @@ public function koreksi_submit(Request $request)
         return back()->with('error', 'Tidak ada item dengan qty yang valid untuk dikoreksi.');
     }
 
+    //cek koreksi pending
+    $pendingExists = DB::table('usematerialapproval')
+    ->where('companycode', $companycode)
+    ->where('rkhno', $request->rkhno)
+    ->where('flagstatus', 'WAIT_APPROVAL')
+    ->exists();
+    if ($pendingExists) {
+        return back()->with('warning', 'Sudah ada koreksi pending untuk RKH ini.');
+    }
+
     // Ambil header RKH
     $header = usematerialhdr::where('companycode', $companycode)
         ->where('rkhno', $request->rkhno)
@@ -751,6 +813,10 @@ public function koreksi_submit(Request $request)
 
     if (!$header) {
         return back()->with('error', 'RKH tidak ditemukan.');
+    }
+    //cek status
+    if (in_array(strtoupper($header->flagstatus ?? ''), ['ACTIVE', 'WAIT_APPROVAL', 'DISPATCHED'])) {
+        return back()->with('error', 'Koreksi tidak boleh dibuat saat status masih ACTIVE atau WAIT_APPROVAL.');
     }
 
     // ✅ CEK APPROVAL MASTER

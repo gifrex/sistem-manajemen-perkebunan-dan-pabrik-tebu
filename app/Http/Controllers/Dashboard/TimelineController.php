@@ -32,6 +32,62 @@ class TimelineController extends Controller
     }
    
     
+    public function plotDetail(Request $request)
+    {
+        $companyCode = session('companycode');
+        $plot = $request->get('plot');
+
+        if (!$plot) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Plot tidak ditemukan.'
+            ], 422);
+        }
+
+        $batchInfo = DB::table('batch as b')
+            ->join('masterlist as m', function ($join) {
+                $join->on('b.batchno', '=', 'm.activebatchno')
+                    ->on('b.companycode', '=', 'm.companycode');
+            })
+            ->where('b.companycode', $companyCode)
+            ->where('b.plot', $plot)
+            ->where('b.isactive', 1)
+            ->select(
+                'b.plot',
+                'b.batchno',
+                'b.batcharea',
+                'b.lifecyclestatus',
+                'b.batchdate',
+                'b.tanggalpanen',
+                DB::raw('DATEDIFF(CURDATE(), b.batchdate) as umur_hari'),
+                DB::raw('TIMESTAMPDIFF(MONTH, b.batchdate, CURDATE()) as umur_bulan')
+            )
+            ->first();
+
+        $activities = DB::table('lkhdetailplot as ldp')
+            ->join('lkhhdr as lh', function ($join) {
+                $join->on('ldp.lkhno', '=', 'lh.lkhno')
+                    ->on('ldp.companycode', '=', 'lh.companycode');
+            })
+            ->where('ldp.companycode', $companyCode)
+            ->where('ldp.plot', $plot)
+            ->select(
+                'lh.activitycode',
+                'lh.lkhno',
+                'lh.lkhdate',
+                'ldp.batchno',
+                'ldp.luashasil'
+            )
+            ->orderBy('lh.lkhdate', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'batch' => $batchInfo,
+            'activities' => $activities,
+        ]);
+    }
+
 
     public function plot(Request $request)
     {
@@ -141,7 +197,7 @@ class TimelineController extends Controller
                     $allActivityCodes[] = $mainCode;
                 }
             }
-
+ 
         // ✅ Query 1: Aggregate untuk total LUAS dan AVG PERCENTAGE
         $activityDataRaw = DB::table('lkhdetailplot as ldp')
         ->join('lkhhdr as lh', function($join) {

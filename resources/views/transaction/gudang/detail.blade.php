@@ -507,6 +507,15 @@
             
         <!-- koreksi -->
         {{-- ✅ PANEL DOKUMEN KOREKSI (dari usematerialapproval) --}}
+        @php
+            $koreksiSummary = collect($koreksiSummary)->filter(function($r){
+                return str_contains($r->approvalno ?? '', '-U') || str_contains($r->approvalno ?? '', '-R');
+            })->values();
+
+            $totByItem = collect($totByItem)->filter(function($t) use ($koreksiSummary) {
+                return $koreksiSummary->pluck('itemcode')->contains($t->itemcode);
+            })->values();
+        @endphp
         @if($koreksiSummary->isNotEmpty())
         @php
           $docs = $koreksiSummary->groupBy('approvalno');
