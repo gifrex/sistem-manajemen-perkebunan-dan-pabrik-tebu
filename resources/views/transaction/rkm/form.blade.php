@@ -557,8 +557,8 @@
 
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         const routes = {
-            getPlot: "{{ route('transaction.rkm.getPlot', ':blok') }}",
-            getData: "{{ route('transaction.rkm.getData') }}"
+            getPlot: "{{ route('transaction.rencana-kerja-mingguan.getPlot', ':blok') }}",
+            getData: "{{ route('transaction.rencana-kerja-mingguan.getData') }}"
         };
 
         function setupDropdown(trigger, menu, icon) {
