@@ -3,275 +3,222 @@
     <x-slot:navbar>{{ $navbar }}</x-slot:navbar>
     <x-slot:nav>{{ $nav }}</x-slot:nav>
 
-    <div class="mx-auto py-6 bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg border border-gray-200">
-        <!-- Header Section -->
-        <div class="px-6 pb-4 border-b border-gray-200">
-            <div class="flex items-center justify-between flex-wrap gap-4">
-                <!-- Title & Info -->
+    <div class="zpk-report">
+        <!-- Header -->
+        <div class="zpk-header">
+            <div class="zpk-header-left">
+                <div class="zpk-header-icon">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                </div>
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        <svg class="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <h1 class="zpk-title">Report ZPK</h1>
+                    <p class="zpk-subtitle">Zat Pemacu Kemasakan — Monitoring aplikasi & jadwal panen</p>
+                </div>
+            </div>
+            <div class="zpk-header-right">
+                @can('report.zpk.export')
+                    <button id="btn-export" data-base-url="{{ route('report.report-zpk.exportExcel') }}"
+                        class="zpk-btn-export" onclick="startExport()">
+                        <svg id="icon-export" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        Report ZPK (Zat Pemacu Kemasakan)
-                    </h2>
-                    <p class="text-sm text-gray-500 mt-1">Data aplikasi zat pemacu kemasakan dan jadwal panen tebu</p>
-                </div>
-
-                <!-- Action Button -->
-                <div>
-                    @can('report.zpk.export')
-                        <button id="btn-export" data-base-url="{{ route('report.report-zpk.exportExcel') }}"
-                            class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
-                            onclick="startExport()">
-                            <svg id="icon-export" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path fill-rule="evenodd"
-                                    d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Zm2 0V2h7a2 2 0 0 1 2 2v9.293l-2-2a1 1 0 0 0-1.414 1.414l.293.293h-6.586a1 1 0 1 0 0 2h6.586l-.293.293A1 1 0 0 0 18 16.707l2-2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9h5a2 2 0 0 0 2-2Z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                            <svg id="icon-spin" class="w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                            </svg>
-                            <span id="label-export">Export Excel</span>
-                        </button>
-                    @endcan
-                </div>
+                        <svg id="icon-spin" class="w-4 h-4 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        <span id="label-export">Export Excel</span>
+                    </button>
+                @endcan
             </div>
         </div>
 
-        <!-- Filter Section -->
-        <form method="POST" action="{{ route('report.report-zpk.index') }}">
+        <!-- Filters -->
+        <form method="POST" action="{{ route('report.report-zpk.index') }}" id="filter-form">
             @csrf
-            <div class="px-6 py-5 bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
-                <div class="flex items-center gap-4 flex-wrap justify-between">
-                    <!-- Date Filter -->
-                    <div class="flex items-center gap-3">
-                        <label class="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="zpk-filters">
+                <div class="zpk-filter-row">
+                    <!-- Date Range -->
+                    <div class="zpk-filter-group">
+                        <label class="zpk-filter-label">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            Range Tanggal:
+                            Periode
                         </label>
-                        <div class="relative">
-                            <button type="button"
-                                class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm font-medium text-gray-700"
-                                id="menu-button" onclick="toggleDropdown()">
-                                <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd"
-                                        d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                                <span id="date-label">
-                                    {{ $startDate }} s/d {{ $endDate }}
-                                </span>
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-
-                            <div class="absolute left-0 z-50 mt-2 w-56 rounded-lg bg-white border border-gray-200 shadow-xl hidden"
-                                id="menu-dropdown">
-                                <div class="p-4 space-y-4">
-                                    <div>
-                                        <label for="start_date"
-                                            class="block text-sm font-semibold text-gray-700 mb-2">Tanggal Mulai</label>
-                                        <input type="date" id="start_date" name="start_date"
-                                            value="{{ old('start_date', $startDate ?? '') }}"
-                                            class="w-full px-3 py-2 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-200">
-                                    </div>
-
-                                    <div>
-                                        <label for="end_date"
-                                            class="block text-sm font-semibold text-gray-700 mb-2">Tanggal Akhir</label>
-                                        <input type="date" id="end_date" name="end_date"
-                                            value="{{ old('end_date', $endDate ?? '') }}"
-                                            class="w-full px-3 py-2 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-200">
-                                    </div>
-
-                                    <button type="button" id="btn-apply-filter"
-                                        onclick="
-                                                document.getElementById('menu-dropdown').classList.add('hidden');
-                                                document.getElementById('date-label').textContent =
-                                                    document.getElementById('start_date').value + ' s/d ' +
-                                                    document.getElementById('end_date').value;
-                                            "
-                                        class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-all duration-200">
-                                        Terapkan
-                                    </button>
-                                </div>
-                            </div>
+                        <div class="zpk-date-inputs">
+                            <input type="date" id="start_date" name="start_date"
+                                value="{{ old('start_date', $startDate ?? '') }}" class="zpk-input zpk-input-date" />
+                            <span class="zpk-date-sep">—</span>
+                            <input type="date" id="end_date" name="end_date"
+                                value="{{ old('end_date', $endDate ?? '') }}" class="zpk-input zpk-input-date" />
                         </div>
                     </div>
 
-                    <!-- Items per page & Search -->
-                    <div class="flex items-center gap-4 flex-wrap">
-                        <div id="ajax-data" data-url="{{ route('report.report-zpk.index') }}">
-                            <div class="flex items-center gap-2">
-                                <label for="perPage"
-                                    class="text-sm font-semibold text-gray-700 whitespace-nowrap">Items per
-                                    page:</label>
-                                <input type="text" name="perPage" id="perPage" value="{{ $perPage }}"
-                                    min="1" autocomplete="off"
-                                    class="w-16 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all duration-200" />
-                            </div>
-                        </div>
+                    <!-- Search -->
+                    <div class="zpk-filter-group zpk-filter-search">
+                        <label class="zpk-filter-label">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            Pencarian
+                        </label>
+                        <input type="text" id="search" autocomplete="off" name="search"
+                            value="{{ old('search', $search) }}" class="zpk-input"
+                            placeholder="Blok, Plot, Varietas, Kategori..." />
+                    </div>
 
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                            </div>
-                            <input type="text" id="search" autocomplete="off" name="search"
-                                value="{{ old('search', $search) }}"
-                                class="w-80 pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                                placeholder="Cari Plot, Variety, Category..." />
-                        </div>
+                    <!-- Per Page -->
+                    <div class="zpk-filter-group zpk-filter-perpage">
+                        <label class="zpk-filter-label">Tampilkan</label>
+                        <select name="perPage" id="perPage" class="zpk-input zpk-input-select">
+                            <option value="25" {{ $perPage == 25 ? 'selected' : '' }}>25</option>
+                            <option value="50" {{ $perPage == 50 ? 'selected' : '' }}>50</option>
+                            <option value="100" {{ $perPage == 100 ? 'selected' : '' }}>100</option>
+                        </select>
+                    </div>
+
+                    <!-- Apply Button -->
+                    <div class="zpk-filter-group zpk-filter-apply">
+                        <label class="zpk-filter-label">&nbsp;</label>
+                        <button type="submit" class="zpk-btn-apply">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                            Terapkan
+                        </button>
                     </div>
                 </div>
             </div>
         </form>
 
-        <!-- Table Section -->
-        <div class="px-6 py-5">
-            <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                <table class="min-w-full bg-white text-sm" id="tables">
+        <!-- Summary Cards -->
+        @if ($zpk->count() > 0)
+            <div class="zpk-summary">
+                <div class="zpk-card">
+                    <div class="zpk-card-value">{{ $zpk->total() }}</div>
+                    <div class="zpk-card-label">Total Plot</div>
+                </div>
+                <div class="zpk-card">
+                    <div class="zpk-card-value">{{ number_format($zpk->sum('batcharea'), 2) }}</div>
+                    <div class="zpk-card-label">Total Luas (Ha)</div>
+                </div>
+                <div class="zpk-card">
+                    <div class="zpk-card-value">{{ $zpk->pluck('kodevarietas')->unique()->count() }}</div>
+                    <div class="zpk-card-label">Varietas</div>
+                </div>
+            </div>
+        @endif
+
+        <!-- Table -->
+        <div class="zpk-table-wrap">
+            <div class="zpk-table-scroll">
+                <table class="zpk-table" id="tables">
                     <thead>
-                        <tr class="bg-gradient-to-r from-gray-100 to-gray-50">
-                            <th
-                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                No.</th>
-                            <th
-                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                Kebun</th>
-                            <th
-                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                Blok</th>
-                            <th
-                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                Plot</th>
-                            <th
-                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-blue-50">
-                                Luas (Ha)</th>
-                            <th
-                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                Bulan Tanam</th>
-                            <th
-                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-green-50">
-                                Umur</th>
-                            <th
-                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                Kategori</th>
-                            <th
-                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
-                                Varietas</th>
-                            <th
-                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-yellow-50">
-                                PKP</th>
-                            <th
-                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-purple-50">
-                                Tanggal ZPK</th>
-                            <th
-                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-red-50">
-                                Perkiraan Panen</th>
+                        <tr>
+                            <th class="zpk-th zpk-th-fixed">No</th>
+                            <th class="zpk-th zpk-th-sortable" data-sort="blok">
+                                Blok <span class="zpk-sort-icon">↕</span>
+                            </th>
+                            <th class="zpk-th zpk-th-sortable" data-sort="plot">
+                                Plot <span class="zpk-sort-icon">↕</span>
+                            </th>
+                            <th class="zpk-th zpk-th-sortable" data-sort="tanggal_zpk">
+                                Tanggal ZPK <span class="zpk-sort-icon">↕</span>
+                            </th>
+                            <th class="zpk-th zpk-th-sortable" data-sort="batcharea">
+                                Luas (Ha) <span class="zpk-sort-icon">↕</span>
+                            </th>
+                            <th class="zpk-th">Bulan Tanam</th>
+                            <th class="zpk-th zpk-th-sortable" data-sort="umur">
+                                Umur <span class="zpk-sort-icon">↕</span>
+                            </th>
+                            <th class="zpk-th zpk-th-sortable" data-sort="lifecyclestatus">
+                                Kategori <span class="zpk-sort-icon">↕</span>
+                            </th>
+                            <th class="zpk-th zpk-th-sortable" data-sort="kodevarietas">
+                                Varietas <span class="zpk-sort-icon">↕</span>
+                            </th>
+                            <th class="zpk-th">PKP</th>
+                            <th class="zpk-th">Perkiraan Panen</th>
+                            <th class="zpk-th zpk-th-sortable" data-sort="status">
+                                Status <span class="zpk-sort-icon">↕</span>
+                            </th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-200">
+                    <tbody>
                         @forelse ($zpk as $item)
-                            <tr>
-                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->no }}.</td>
-                                <td class="py-3 px-4 text-center text-gray-700 font-medium">{{ $item->companycode }}
+                            <tr class="zpk-row">
+                                <td class="zpk-td zpk-td-fixed zpk-td-num">{{ $item->no }}</td>
+                                <td class="zpk-td">{{ $item->blok ?? '—' }}</td>
+                                <td class="zpk-td zpk-td-mono">{{ $item->plot ?? '—' }}</td>
+                                <td class="zpk-td">{{ $item->tanggal_zpk ?? '—' }}</td>
+                                <td class="zpk-td">
+                                    {{ $item->batcharea ? number_format($item->batcharea, 2) : '—' }}
                                 </td>
-                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->blok ?? '-' }}</td>
-                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->plot ?? '-' }}</td>
-                                <td class="py-3 px-4 text-center text-gray-700 bg-blue-50">
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        {{ $item->batcharea ?? '-' }} Ha
-                                    </span>
-                                </td>
-                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->bulantanam ?? '-' }}</td>
-                                <td class="py-3 px-4 text-center text-gray-700 bg-green-50">
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        {{ round($item->umur) }} Bulan
-                                    </span>
-                                </td>
-                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->lifecyclestatus ?? '-' }}
-                                </td>
-                                <td class="py-3 px-4 text-center text-gray-700 font-medium">
-                                    {{ $item->kodevarietas ?? '-' }}</td>
-                                <td class="py-3 px-4 text-center text-gray-700 bg-yellow-50">
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                        {{ $item->pkp ?? '-' }}
-                                    </span>
-                                </td>
-                                <td class="py-3 px-4 text-center text-gray-700 bg-purple-50">
-                                    <span
-                                        class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                                        {{ $item->tanggal_zpk ?? '-' }}
-                                    </span>
-                                </td>
-                                <td class="py-3 px-4 text-center text-gray-700 bg-red-50">
-                                    @if ($item->perkiraan_panen_awal)
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                                            {{ $item->perkiraan_panen_awal }} &ndash;
-                                            {{ $item->perkiraan_panen_akhir }}
+                                <td class="zpk-td">{{ $item->bulantanam ?? '—' }}</td>
+                                <td class="zpk-td">
+                                    @if ($item->umur !== null)
+                                        <span class="zpk-badge zpk-badge-umur
+                                            @if ($item->umur >= 10) zpk-badge-umur-mature @elseif($item->umur >= 6) zpk-badge-umur-mid @else zpk-badge-umur-young @endif">
+                                            {{ round($item->umur) }} bln
                                         </span>
                                     @else
-                                        <span class="text-gray-400">-</span>
+                                        —
+                                    @endif
+                                </td>
+                                <td class="zpk-td">
+                                    @if ($item->lifecyclestatus)
+                                        <span class="zpk-badge zpk-badge-kategori">{{ $item->lifecyclestatus }}</span>
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                                <td class="zpk-td zpk-td-mono">{{ $item->kodevarietas ?? '—' }}</td>
+                                <td class="zpk-td">{{ $item->pkp ?? '—' }}</td>
+                                <td class="zpk-td">
+                                    @if ($item->perkiraan_panen_awal)
+                                        <div class="zpk-panen-range">
+                                            <span class="zpk-panen-date">{{ $item->perkiraan_panen_awal }}</span>
+                                            <span class="zpk-panen-sep">→</span>
+                                            <span class="zpk-panen-date">{{ $item->perkiraan_panen_akhir }}</span>
+                                        </div>
+                                    @else
+                                        <span class="zpk-td-empty">—</span>
+                                    @endif
+                                </td>
+                                <td class="zpk-td">
+                                    @if ($item->status_panen)
+                                        <span class="zpk-status zpk-status-{{ $item->status_panen_type }}">
+                                            {{ $item->status_panen }}
+                                            @if ($item->status_panen_hari !== null)
+                                                <span class="zpk-status-hari">(H+{{ $item->status_panen_hari }})</span>
+                                            @endif
+                                        </span>
+                                    @else
+                                        —
                                     @endif
                                 </td>
                             </tr>
                         @empty
-                            <tr class="!bg-white hover:!bg-white">
-                                <td colspan="12" class="p-0 border-0">
-                                    <div
-                                        style="
-                                            position: sticky;
-                                            left: 0;
-                                            width: calc(100vw - 330px);
-                                            max-width: calc(100vw - 330px);
-                                            display: flex;
-                                            flex-direction: column;
-                                            align-items: center;
-                                            justify-content: center;
-                                            gap: 12px;
-                                            padding: 64px 16px;
-                                        ">
-                                        <div
-                                            style="
-                                                width: 64px;
-                                                height: 64px;
-                                                border-radius: 9999px;
-                                                background-color: #f3f4f6;
-                                                display: flex;
-                                                align-items: center;
-                                                justify-content: center;
-                                            ">
-                                            <svg style="width:32px;height:32px;color:#9ca3af" fill="none"
-                                                stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    stroke-width="1.5"
-                                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                            </svg>
-                                        </div>
-                                        <div style="text-align:center">
-                                            <p style="color:#4b5563;font-weight:600;font-size:0.875rem">Tidak ada data
-                                                ditemukan</p>
-                                            <p style="color:#9ca3af;font-size:0.75rem;margin-top:4px">Coba ubah rentang
-                                                tanggal atau kata kunci pencarian</p>
-                                        </div>
+                            <tr>
+                                <td colspan="12" class="zpk-empty-state">
+                                    <div class="zpk-empty-inner">
+                                        <svg class="zpk-empty-icon" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                        </svg>
+                                        <p class="zpk-empty-title">Data tidak ditemukan</p>
+                                        <p class="zpk-empty-desc">Sesuaikan periode atau kata kunci pencarian</p>
                                     </div>
                                 </td>
                             </tr>
@@ -281,22 +228,653 @@
             </div>
         </div>
 
-        <!-- Pagination Section -->
-        <div class="px-6 pb-2" id="pagination-links">
+        <!-- Info Note -->
+        <div class="zpk-note">
+            <div class="zpk-note-icon">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div class="zpk-note-content">
+                <p class="zpk-note-title">Keterangan Perhitungan Perkiraan Panen</p>
+                <div class="zpk-note-body">
+                    <p>Perkiraan panen dihitung berdasarkan <strong>tanggal aplikasi ZPK</strong> (Zat Pemacu Kemasakan):</p>
+                    <div class="zpk-note-calc">
+                        <div class="zpk-note-calc-item">
+                            <span class="zpk-note-calc-label">Batas Awal</span>
+                            <span class="zpk-note-calc-formula">Tanggal ZPK + <strong>26 hari</strong> (H+26)</span>
+                            <span class="zpk-note-calc-desc">Waktu minimum reaksi kemasakan tebu</span>
+                        </div>
+                        <div class="zpk-note-calc-divider">→</div>
+                        <div class="zpk-note-calc-item">
+                            <span class="zpk-note-calc-label">Batas Akhir</span>
+                            <span class="zpk-note-calc-formula">Tanggal ZPK + <strong>35 hari</strong> (H+35)</span>
+                            <span class="zpk-note-calc-desc">Batas optimal sebelum kadar gula menurun</span>
+                        </div>
+                    </div>
+                    <p class="zpk-note-footer">Rentang <strong>9 hari</strong> (H+26 s/d H+35) merupakan jendela panen optimal di mana kadar sukrosa tebu berada pada titik tertinggi setelah aplikasi ZPK. Panen di luar rentang ini dapat mengurangi rendemen gula.</p>
+                </div>
+                <div class="zpk-note-legend">
+                    <p class="zpk-note-legend-title">Keterangan Status:</p>
+                    <div class="zpk-note-legend-items">
+                        <span class="zpk-status zpk-status-waiting">Belum Boleh Panen</span>
+                        <span class="zpk-note-legend-desc">— Belum mencapai H+26, tebu belum cukup matang</span>
+                    </div>
+                    <div class="zpk-note-legend-items">
+                        <span class="zpk-status zpk-status-ready">Menunggu Panen</span>
+                        <span class="zpk-note-legend-desc">— Sudah dalam jendela panen optimal (H+26 s/d H+35)</span>
+                    </div>
+                    <div class="zpk-note-legend-items">
+                        <span class="zpk-status zpk-status-overdue">Lewat Batas</span>
+                        <span class="zpk-note-legend-desc">— Melewati H+35, rendemen gula mulai menurun</span>
+                    </div>
+                    <div class="zpk-note-legend-items">
+                        <span class="zpk-status zpk-status-done">Sudah Panen</span>
+                        <span class="zpk-note-legend-desc">— Tanggal panen sudah tercatat di sistem</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="zpk-pagination" id="pagination-links">
             @if ($zpk->hasPages())
                 {{ $zpk->appends(['perPage' => $zpk->perPage(), 'start_date' => $startDate ?? '', 'end_date' => $endDate ?? ''])->links() }}
             @else
-                <div class="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg">
-                    <p class="text-sm text-gray-600">
-                        Menampilkan <span class="font-semibold text-gray-800">{{ $zpk->count() }}</span> dari <span
-                            class="font-semibold text-gray-800">{{ $zpk->total() }}</span> hasil
-                    </p>
+                <div class="zpk-pagination-info">
+                    Menampilkan <strong>{{ $zpk->count() }}</strong> dari <strong>{{ $zpk->total() }}</strong> data
                 </div>
             @endif
         </div>
     </div>
 
+    <style>
+        /* ═══════════════════════════════════════════
+           ZPK Report — Clean Professional Theme
+           ═══════════════════════════════════════════ */
+
+        .zpk-report {
+            --c-bg: #ffffff;
+            --c-surface: #f8fafc;
+            --c-border: #e2e8f0;
+            --c-border-light: #f1f5f9;
+            --c-text: #1e293b;
+            --c-text-secondary: #64748b;
+            --c-text-muted: #94a3b8;
+            --c-primary: #3b82f6;
+            --radius: 8px;
+            --radius-sm: 6px;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            color: var(--c-text);
+            background: var(--c-bg);
+            border: 1px solid var(--c-border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* ── Header ── */
+        .zpk-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--c-border);
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .zpk-header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .zpk-header-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .zpk-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--c-text);
+            line-height: 1.2;
+            margin: 0;
+        }
+
+        .zpk-subtitle {
+            font-size: 0.8rem;
+            color: var(--c-text-secondary);
+            margin: 2px 0 0 0;
+        }
+
+        .zpk-btn-export {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: #16a34a;
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.813rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .zpk-btn-export:hover { background: #15803d; box-shadow: var(--shadow); }
+        .zpk-btn-export:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* ── Filters ── */
+        .zpk-filters {
+            padding: 16px 24px;
+            background: var(--c-surface);
+            border-bottom: 1px solid var(--c-border);
+        }
+
+        .zpk-filter-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .zpk-filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .zpk-filter-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--c-text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .zpk-input {
+            height: 36px;
+            padding: 0 12px;
+            border: 1px solid var(--c-border);
+            border-radius: var(--radius-sm);
+            font-size: 0.813rem;
+            color: var(--c-text);
+            background: white;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            outline: none;
+        }
+
+        .zpk-input:focus {
+            border-color: var(--c-primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .zpk-input-date { width: 150px; }
+
+        .zpk-date-inputs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .zpk-date-sep {
+            color: var(--c-text-muted);
+            font-size: 0.75rem;
+        }
+
+        .zpk-filter-search {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .zpk-filter-search .zpk-input { width: 100%; }
+
+        .zpk-input-select {
+            width: auto;
+            min-width: 72px;
+            padding: 0 28px 0 12px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            cursor: pointer;
+        }
+
+        .zpk-btn-apply {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            height: 36px;
+            padding: 0 16px;
+            background: var(--c-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.813rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .zpk-btn-apply:hover { background: #2563eb; }
+
+        /* ── Summary Cards ── */
+        .zpk-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--c-border);
+        }
+
+        .zpk-card {
+            padding: 14px 16px;
+            border-radius: var(--radius);
+            border: 1px solid var(--c-border);
+            background: white;
+        }
+
+        .zpk-card-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+            color: var(--c-text);
+        }
+
+        .zpk-card-label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: var(--c-text-secondary);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        /* ── Table ── */
+        .zpk-table-wrap {
+            padding: 0 24px 16px;
+            margin-top: 16px;
+        }
+
+        .zpk-table-scroll {
+            overflow-x: auto;
+            border: 1px solid var(--c-border);
+            border-radius: var(--radius);
+        }
+
+        .zpk-table-scroll::-webkit-scrollbar { height: 6px; }
+        .zpk-table-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+        .zpk-table-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+        .zpk-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.813rem;
+        }
+
+        .zpk-th {
+            padding: 10px 14px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--c-text-secondary);
+            background: var(--c-surface);
+            border-bottom: 2px solid var(--c-border);
+            white-space: nowrap;
+            text-align: center;
+            user-select: none;
+        }
+
+        .zpk-th-sortable { cursor: pointer; transition: background 0.1s; }
+        .zpk-th-sortable:hover { background: #e2e8f0; }
+
+        .zpk-th-sortable.sort-asc .zpk-sort-icon,
+        .zpk-th-sortable.sort-desc .zpk-sort-icon {
+            color: var(--c-primary);
+            font-size: 0;
+        }
+
+        .zpk-th-sortable.sort-asc .zpk-sort-icon::after { content: '↑'; font-size: 0.65rem; }
+        .zpk-th-sortable.sort-desc .zpk-sort-icon::after { content: '↓'; font-size: 0.65rem; }
+
+        .zpk-sort-icon {
+            font-size: 0.65rem;
+            color: var(--c-text-muted);
+            margin-left: 2px;
+        }
+
+        .zpk-td {
+            padding: 10px 14px;
+            text-align: center;
+            white-space: nowrap;
+            color: var(--c-text);
+            border-bottom: 1px solid var(--c-border-light);
+        }
+
+        .zpk-row:hover .zpk-td { background: #f8fafc; }
+
+        .zpk-td-fixed, .zpk-th-fixed {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background: white;
+        }
+
+        .zpk-th-fixed { background: var(--c-surface); z-index: 11; }
+        .zpk-row:hover .zpk-td-fixed { background: #f8fafc; }
+
+        .zpk-td-num {
+            color: var(--c-text-muted);
+            font-size: 0.75rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .zpk-td-mono {
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            letter-spacing: -0.01em;
+        }
+
+        .zpk-td-empty { color: var(--c-text-muted); }
+
+        /* ── Badges ── */
+        .zpk-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 1.5;
+        }
+
+        .zpk-badge-kategori { background: #f1f5f9; color: #475569; font-size: 0.7rem; }
+
+        .zpk-badge-umur { font-variant-numeric: tabular-nums; }
+        .zpk-badge-umur-young { background: #dcfce7; color: #166534; }
+        .zpk-badge-umur-mid { background: #fef9c3; color: #854d0e; }
+        .zpk-badge-umur-mature { background: #fee2e2; color: #991b1b; }
+
+        /* ── Status Panen ── */
+        .zpk-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .zpk-status-hari {
+            font-weight: 500;
+            opacity: 0.8;
+        }
+
+        .zpk-status-waiting {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        .zpk-status-ready {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+
+        .zpk-status-overdue {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .zpk-status-done {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        /* ── Panen range ── */
+        .zpk-panen-range {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+        }
+
+        .zpk-panen-date { font-weight: 500; }
+        .zpk-panen-sep { color: var(--c-text-muted); font-size: 0.65rem; }
+
+        /* ── Empty State ── */
+        .zpk-empty-state { padding: 0 !important; border: none !important; }
+
+        .zpk-empty-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 64px 24px;
+            position: sticky;
+            left: 0;
+            width: calc(100vw - 330px);
+            max-width: calc(100vw - 330px);
+        }
+
+        .zpk-empty-icon { width: 40px; height: 40px; color: var(--c-text-muted); margin-bottom: 12px; }
+        .zpk-empty-title { font-weight: 600; color: var(--c-text-secondary); font-size: 0.875rem; margin: 0; }
+        .zpk-empty-desc { color: var(--c-text-muted); font-size: 0.75rem; margin: 4px 0 0 0; }
+
+        /* ── Note ── */
+        .zpk-note {
+            margin: 0 24px 16px;
+            display: flex;
+            gap: 14px;
+            padding: 16px 20px;
+            background: var(--c-surface);
+            border: 1px solid var(--c-border);
+            border-radius: var(--radius);
+        }
+
+        .zpk-note-icon {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--c-primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .zpk-note-content { flex: 1; min-width: 0; }
+
+        .zpk-note-title {
+            font-size: 0.813rem;
+            font-weight: 700;
+            color: var(--c-text);
+            margin: 0 0 8px 0;
+        }
+
+        .zpk-note-body {
+            font-size: 0.78rem;
+            color: var(--c-text-secondary);
+            line-height: 1.6;
+        }
+
+        .zpk-note-body p { margin: 0 0 8px 0; }
+
+        .zpk-note-calc {
+            display: flex;
+            align-items: stretch;
+            gap: 12px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+        }
+
+        .zpk-note-calc-item {
+            flex: 1;
+            min-width: 180px;
+            background: white;
+            border: 1px solid var(--c-border);
+            border-radius: 6px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .zpk-note-calc-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--c-primary);
+        }
+
+        .zpk-note-calc-formula { font-size: 0.85rem; color: var(--c-text); font-weight: 500; }
+        .zpk-note-calc-desc { font-size: 0.7rem; color: var(--c-text-muted); }
+        .zpk-note-calc-divider { display: flex; align-items: center; color: var(--c-text-muted); font-size: 1.2rem; }
+
+        .zpk-note-footer {
+            font-size: 0.75rem;
+            color: var(--c-text-secondary);
+            margin: 4px 0 0 0 !important;
+            padding-top: 8px;
+            border-top: 1px solid var(--c-border);
+            line-height: 1.6;
+        }
+
+        .zpk-note-legend {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--c-border);
+        }
+
+        .zpk-note-legend-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--c-text);
+            margin: 0 0 8px 0;
+        }
+
+        .zpk-note-legend-items {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .zpk-note-legend-desc {
+            font-size: 0.72rem;
+            color: var(--c-text-secondary);
+        }
+
+        /* ── Pagination ── */
+        .zpk-pagination { padding: 12px 24px 20px; }
+
+        .zpk-pagination-info {
+            font-size: 0.8rem;
+            color: var(--c-text-secondary);
+            background: var(--c-surface);
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+        }
+
+        .zpk-pagination-info strong { color: var(--c-text); }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .zpk-header { padding: 16px; }
+            .zpk-filters { padding: 12px 16px; }
+            .zpk-filter-row { flex-direction: column; align-items: stretch; }
+            .zpk-filter-search { min-width: unset; }
+            .zpk-summary { grid-template-columns: 1fr; padding: 12px 16px; }
+            .zpk-table-wrap { padding: 0 16px 12px; }
+            .zpk-note { margin: 0 16px 12px; flex-direction: column; }
+            .zpk-note-calc { flex-direction: column; }
+            .zpk-note-calc-divider { justify-content: center; transform: rotate(90deg); }
+            .zpk-pagination { padding: 8px 16px 16px; }
+        }
+    </style>
+
     <script>
+        // ── Client-side sorting ──
+        document.addEventListener('DOMContentLoaded', function () {
+            const table = document.getElementById('tables');
+            if (!table) return;
+
+            const headers = table.querySelectorAll('.zpk-th-sortable');
+            let currentSort = { col: null, dir: null };
+
+            headers.forEach(function (th) {
+                th.addEventListener('click', function () {
+                    const sortKey = th.getAttribute('data-sort');
+                    const allTh = Array.from(table.querySelectorAll('thead th'));
+                    const realIndex = allTh.indexOf(th);
+
+                    if (currentSort.col === sortKey && currentSort.dir === 'asc') {
+                        currentSort = { col: sortKey, dir: 'desc' };
+                    } else {
+                        currentSort = { col: sortKey, dir: 'asc' };
+                    }
+
+                    headers.forEach(function (h) { h.classList.remove('sort-asc', 'sort-desc'); });
+                    th.classList.add(currentSort.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+
+                    const tbody = table.querySelector('tbody');
+                    const rows = Array.from(tbody.querySelectorAll('tr.zpk-row'));
+                    if (rows.length === 0) return;
+
+                    rows.sort(function (a, b) {
+                        let aVal = a.cells[realIndex]?.textContent?.trim() || '';
+                        let bVal = b.cells[realIndex]?.textContent?.trim() || '';
+
+                        // Try to extract numeric value
+                        let aClean = aVal.replace(/\s*(Ha|bln|Bulan|H\+\d+)\s*/gi, '').replace(/[^\d.\-]/g, '');
+                        let bClean = bVal.replace(/\s*(Ha|bln|Bulan|H\+\d+)\s*/gi, '').replace(/[^\d.\-]/g, '');
+
+                        const aNum = parseFloat(aClean);
+                        const bNum = parseFloat(bClean);
+
+                        let cmp;
+                        if (aClean && bClean && !isNaN(aNum) && !isNaN(bNum)) {
+                            cmp = aNum - bNum;
+                        } else {
+                            cmp = aVal.localeCompare(bVal, 'id');
+                        }
+
+                        return currentSort.dir === 'asc' ? cmp : -cmp;
+                    });
+
+                    rows.forEach(function (row, i) {
+                        row.querySelector('.zpk-td-num').textContent = i + 1;
+                        tbody.appendChild(row);
+                    });
+                });
+            });
+        });
+
+        // ── Export ──
         function startExport() {
             const btn = document.getElementById('btn-export');
             const iconExport = document.getElementById('icon-export');
@@ -313,20 +891,19 @@
             const url = baseUrl + '?' + params.toString();
 
             btn.disabled = true;
-            btn.classList.add('opacity-75', 'cursor-not-allowed');
             iconExport.classList.add('hidden');
             iconSpin.classList.remove('hidden');
             label.textContent = 'Mengekspor...';
 
             fetch(url)
-                .then(function(response) {
+                .then(function (response) {
                     const contentType = response.headers.get('Content-Type') || '';
                     if (contentType.includes('application/json')) {
-                        return response.json().then(function(json) {
+                        return response.json().then(function (json) {
                             showToast('error', json.error || 'Tidak ada data untuk diekspor.');
                         });
                     }
-                    return response.blob().then(function(blob) {
+                    return response.blob().then(function (blob) {
                         const disposition = response.headers.get('Content-Disposition') || '';
                         const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
                         const filename = match ? match[1].replace(/['"]/g, '') : 'ZPKReport.xlsx';
@@ -337,12 +914,11 @@
                         URL.revokeObjectURL(a.href);
                     });
                 })
-                .catch(function() {
+                .catch(function () {
                     showToast('error', 'Gagal mengekspor data. Silakan coba lagi.');
                 })
-                .finally(function() {
+                .finally(function () {
                     btn.disabled = false;
-                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
                     iconExport.classList.remove('hidden');
                     iconSpin.classList.add('hidden');
                     label.textContent = 'Export Excel';
@@ -350,80 +926,22 @@
         }
 
         function showToast(type, msg) {
-            const colors = type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white';
-            const icon = type === 'success' ?
-                '<svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>' :
-                '<svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>';
+            const isSuccess = type === 'success';
             const t = document.createElement('div');
-            t.className =
-                `fixed top-6 right-6 z-[9999] flex items-start gap-3 px-5 py-4 rounded-xl shadow-xl ${colors} max-w-sm transition-all duration-300 opacity-0 translate-y-2`;
-            t.innerHTML = `${icon}<span class="text-sm font-medium">${msg}</span>`;
+            t.style.cssText = 'position:fixed;top:24px;right:24px;z-index:9999;display:flex;align-items:center;gap:10px;padding:12px 20px;border-radius:8px;font-size:0.813rem;font-weight:500;color:white;max-width:360px;box-shadow:0 10px 25px rgba(0,0,0,0.15);opacity:0;transform:translateY(-8px);transition:all 0.3s ease;';
+            t.style.background = isSuccess ? '#16a34a' : '#dc2626';
+            t.innerHTML = '<span>' + msg + '</span>';
             document.body.appendChild(t);
-            setTimeout(function() {
+            requestAnimationFrame(function () {
                 t.style.opacity = '1';
                 t.style.transform = 'translateY(0)';
-            }, 10);
-            setTimeout(function() {
+            });
+            setTimeout(function () {
                 t.style.opacity = '0';
                 t.style.transform = 'translateY(-8px)';
-                setTimeout(function() {
-                    t.remove();
-                }, 300);
+                setTimeout(function () { t.remove(); }, 300);
             }, 4000);
         }
-
-        function toggleDropdown() {
-            const dropdown = document.getElementById('menu-dropdown');
-            dropdown.classList.toggle('hidden');
-        }
-
-        document.addEventListener("click", function(event) {
-            const dropdown = document.getElementById("menu-dropdown");
-            const button = document.getElementById("menu-button");
-
-            if (!dropdown.contains(event.target) && !button.contains(event.target)) {
-                dropdown.classList.add("hidden");
-            }
-        });
     </script>
-
-    <style>
-        th,
-        td {
-            white-space: nowrap;
-        }
-
-        /* Custom scrollbar */
-        .overflow-x-auto::-webkit-scrollbar {
-            height: 8px;
-        }
-
-        .overflow-x-auto::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-
-        .overflow-x-auto::-webkit-scrollbar-thumb {
-            background: #cbd5e0;
-            border-radius: 10px;
-        }
-
-        .overflow-x-auto::-webkit-scrollbar-thumb:hover {
-            background: #a0aec0;
-        }
-
-        /* Sticky first column */
-        #tables thead tr th:first-child,
-        #tables tbody tr td:first-child {
-            position: sticky;
-            left: 0;
-            z-index: 10;
-            background: white;
-        }
-
-        #tables thead tr th:first-child {
-            background: linear-gradient(to right, #f3f4f6, #e5e7eb);
-        }
-    </style>
 
 </x-layout>
