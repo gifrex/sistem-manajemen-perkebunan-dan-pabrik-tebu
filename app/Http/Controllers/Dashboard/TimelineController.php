@@ -31,8 +31,8 @@ class TimelineController extends Controller
       ]);
     }
    
-    
-    public function plotDetail(Request $request)
+     
+    public function plotQuery(Request $request)
     {
         $companyCode = session('companycode');
         $plot = $request->get('plot');
