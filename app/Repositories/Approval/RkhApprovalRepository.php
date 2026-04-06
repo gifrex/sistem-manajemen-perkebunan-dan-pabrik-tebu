@@ -23,12 +23,11 @@ class RkhApprovalRepository
      */
     public function getPendingApprovals(string $companycode, int $idjabatan, string $userid, array $filters = []): Collection
     {
+        // Gunakan snapshot fields dari rkhhdr (approval1idjabatan, approval2idjabatan, jumlahapproval)
+        // JANGAN join ke tabel approval master untuk kondisi pending — sama seperti LKH.
+        // Jika master diubah (jabatan baru ditambah), RKH lama yg sudah approved tidak boleh muncul lagi.
         $query = DB::table('rkhhdr as r')
             ->leftJoin('user as m', 'r.mandorid', '=', 'm.userid')
-            ->leftJoin('approval as app', function($join) use ($companycode) {
-                $join->on('r.activitygroup', '=', 'app.activitygroup')
-                    ->where('app.companycode', '=', $companycode);
-            })
             ->leftJoin('activitygroup as ag', 'r.activitygroup', '=', 'ag.activitygroup')
             // Filter by useractivity permission
             ->join('useractivity as ua', function($join) use ($companycode, $userid) {
@@ -38,18 +37,21 @@ class RkhApprovalRepository
                      ->where('ua.isactive', '=', 1);
             })
             ->where('r.companycode', $companycode)
+            // Exclude RKH yang sudah finalized (approvalstatus = '1' approved, '0' declined)
+            ->whereNull('r.approvalstatus')
             ->where(function($query) use ($idjabatan) {
+                // Gunakan r.approval1idjabatan (snapshot saat RKH dibuat), bukan join ke master
                 $query->where(function($q) use ($idjabatan) {
-                    $q->where('app.idjabatanapproval1', $idjabatan)
+                    $q->where('r.approval1idjabatan', $idjabatan)
                       ->whereNull('r.approval1flag');
                 })
                 ->orWhere(function($q) use ($idjabatan) {
-                    $q->where('app.idjabatanapproval2', $idjabatan)
+                    $q->where('r.approval2idjabatan', $idjabatan)
                       ->where('r.approval1flag', '1')
                       ->whereNull('r.approval2flag');
                 })
                 ->orWhere(function($q) use ($idjabatan) {
-                    $q->where('app.idjabatanapproval3', $idjabatan)
+                    $q->where('r.approval3idjabatan', $idjabatan)
                       ->where('r.approval1flag', '1')
                       ->where('r.approval2flag', '1')
                       ->whereNull('r.approval3flag');
@@ -65,11 +67,10 @@ class RkhApprovalRepository
                 'r.*',
                 'm.name as mandor_nama',
                 'ag.groupname as activity_group_name',
-                'app.jumlahapproval',
-                DB::raw('CASE 
-                    WHEN app.idjabatanapproval1 = '.$idjabatan.' AND r.approval1flag IS NULL THEN 1
-                    WHEN app.idjabatanapproval2 = '.$idjabatan.' AND r.approval1flag = "1" AND r.approval2flag IS NULL THEN 2
-                    WHEN app.idjabatanapproval3 = '.$idjabatan.' AND r.approval1flag = "1" AND r.approval2flag = "1" AND r.approval3flag IS NULL THEN 3
+                DB::raw('CASE
+                    WHEN r.approval1idjabatan = '.$idjabatan.' AND r.approval1flag IS NULL THEN 1
+                    WHEN r.approval2idjabatan = '.$idjabatan.' AND r.approval1flag = "1" AND r.approval2flag IS NULL THEN 2
+                    WHEN r.approval3idjabatan = '.$idjabatan.' AND r.approval1flag = "1" AND r.approval2flag = "1" AND r.approval3flag IS NULL THEN 3
                     ELSE 0
                 END as approval_level')
             ])
