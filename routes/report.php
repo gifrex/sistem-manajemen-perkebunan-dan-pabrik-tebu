@@ -11,6 +11,7 @@ use App\Http\Controllers\Report\PanenTrackPlotReportController;
 use App\Http\Controllers\Report\PivotController;
 use App\Http\Controllers\Report\RekapUpahMingguanController;
 use App\Http\Controllers\Report\ReportController;
+use App\Http\Controllers\Report\ZpkReportController;
 use App\Http\Controllers\Report\SaldoPanenReportController;
 use App\Http\Controllers\Report\SuratJalanReportController;
 use App\Http\Controllers\Report\SuratJalanTimbanganReportController;
@@ -51,8 +52,8 @@ Route::middleware('auth')->prefix('report')->name('report.')->group(function () 
     // ZPK
     // ============================================================================
     Route::middleware('permission:report.zpk.view')->group(function () {
-        Route::match(['GET', 'POST'], 'report-zpk', [ReportController::class, 'zpk'])->name('report-zpk.index');
-        Route::get('report-zpk/excel', [ReportController::class, 'excelZPK'])->name('report-zpk.exportExcel');
+        Route::match(['GET', 'POST'], 'report-zpk', [ZpkReportController::class, 'index'])->name('report-zpk.index');
+        Route::get('report-zpk/excel', [ZpkReportController::class, 'exportExcel'])->name('report-zpk.exportExcel');
     });
 
     // ============================================================================
