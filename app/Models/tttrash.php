@@ -5,9 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 class Trash extends Model
-{ 
+{  
     protected $table = 'trash';
- 
+  
     // Composite primary key
     protected $primaryKey = null;
     public $incrementing = false;
