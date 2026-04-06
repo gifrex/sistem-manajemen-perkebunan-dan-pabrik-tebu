@@ -247,7 +247,12 @@
                                 <th class="border border-gray-300 px-3 py-2">No</th>
                                 <th class="border border-gray-300 px-3 py-2">Company</th>
                                 <th class="border border-gray-300 px-3 py-2">Blok</th>
-                                <th class="border border-gray-300 px-3 py-2">Plot</th>
+                                <th @click="sortBy('plot')" class="border border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Plot
+                                        <span x-html="getSortIcon('plot')"></span>
+                                    </div>
+                                </th>
                                 <th @click="sortBy('plottype')" class="border border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-200 select-none">
                                     <div class="flex items-center justify-center gap-1">
                                         Type
@@ -267,7 +272,12 @@
                                         <span x-html="getSortIcon('lifecyclestatus')"></span>
                                     </div>
                                 </th>
-                                <th class="border border-gray-300 px-3 py-2">Varietas</th>
+                                <th @click="sortBy('kodevarietas')" class="border border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Varietas
+                                        <span x-html="getSortIcon('kodevarietas')"></span>
+                                    </div>
+                                </th>
                                 <th @click="sortBy('pkp')" class="border border-gray-300 px-3 py-2 cursor-pointer hover:bg-gray-200 select-none">
                                     <div class="flex items-center justify-center gap-1">
                                         PKP
