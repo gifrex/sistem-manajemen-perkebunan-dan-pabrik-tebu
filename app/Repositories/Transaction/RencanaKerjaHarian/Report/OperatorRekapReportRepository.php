@@ -123,4 +123,36 @@ class OperatorRekapReportRepository
             ->orderBy('jammulai')
             ->get();
     }
+
+    public function getStandByVehicles($companycode, $date)
+    {
+        // Kendaraan aktif di company yang tidak ada di LKH maupun SJS pada tanggal tersebut
+        $nokendaraanLkh = DB::table('lkhdetailkendaraan as lk')
+            ->join('lkhhdr as lh', function ($join) {
+                $join->on('lk.lkhno', '=', 'lh.lkhno')
+                    ->on('lk.companycode', '=', 'lh.companycode');
+            })
+            ->where('lk.companycode', $companycode)
+            ->whereDate('lh.lkhdate', $date)
+            ->pluck('lk.nokendaraan');
+
+        $nokendaraanSjs = DB::table('kendaraansupply as ks')
+            ->where('ks.companycode', $companycode)
+            ->whereDate('ks.sjsdate', $date)
+            ->pluck('ks.nokendaraan');
+
+        $usedVehicles = $nokendaraanLkh->merge($nokendaraanSjs)->unique()->values();
+
+        return DB::table('kendaraan as k')
+            ->leftJoin('tenagakerja as tk', 'k.idtenagakerja', '=', 'tk.tenagakerjaid')
+            ->where('k.companycode', $companycode)
+            ->where('k.isactive', 1)
+            ->when($usedVehicles->isNotEmpty(), function ($q) use ($usedVehicles) {
+                $q->whereNotIn('k.nokendaraan', $usedVehicles);
+            })
+            ->select(['k.nokendaraan', 'k.jenis', 'k.statuskendaraan', 'k.idtenagakerja', 'tk.nama as operator_name'])
+            ->orderBy('k.jenis')
+            ->orderBy('k.nokendaraan')
+            ->get();
+    }
 }

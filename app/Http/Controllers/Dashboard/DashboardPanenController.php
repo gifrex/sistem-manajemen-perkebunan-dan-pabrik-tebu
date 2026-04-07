@@ -66,9 +66,12 @@ class DashboardPanenController extends Controller
 
     private function getCompanies()
     {
+        $excludedCompanies = ['TST1', 'TST2', 'TST3'];
+
         // Get ALL companies from company table
         return DB::table('company')
             ->select('companycode', 'name')
+            ->whereNotIn('companycode', $excludedCompanies)
             ->orderBy('companycode')
             ->get()
             ->map(function($item) {

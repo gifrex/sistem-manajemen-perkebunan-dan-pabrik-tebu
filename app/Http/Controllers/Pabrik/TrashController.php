@@ -63,11 +63,7 @@ class TrashController extends Controller
 
             // ? Cari berdasarkan nomor surat jalan saja
             $suratJalan = DB::table('suratjalanpos')
-                ->where('suratjalanno', $noSuratJalan)
-                ->first();
-
-            $cektrashsuratjalan = DB::table('trash')
-                ->where('suratjalanno', $noSuratJalan)
+                ->where('suratjalanno', $noSuratJalan)->where('companycode', session('companycode'))
                 ->first();
 
             if ($suratJalan) {
