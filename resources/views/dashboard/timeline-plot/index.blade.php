@@ -257,7 +257,7 @@
                             </tr>
 
                             <tr id="detail-{{ $plot->plot }}" style="display:none;">
-                                <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 4) : (count($activityMap) * 3 + 3) }}"
+                                <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 3) : (count($activityMap) * 3 + 2) }}"
                                     style="padding:0 !important; background:#f9fafb !important;">
                                     <div id="detail-content-{{ $plot->plot }}" style="padding:12px 16px; font-size:12px; color:#374151; min-height:40px;">
                                         Loading...
