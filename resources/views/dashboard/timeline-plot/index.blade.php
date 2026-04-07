@@ -99,7 +99,8 @@
                 <table>
                     <thead>
                         <tr>
-                            <th class="sticky-v sticky-h" style="left:0;" rowspan="2">Plot</th>
+                            <th class="sticky-v sticky-h blok" style="left:0;" rowspan="2">Blok</th>
+                            <th class="sticky-v sticky-h" style="left:60px;" rowspan="2">Plot</th>
                             <th class="sticky-v" rowspan="2">Saldo<br><small>HA</small></th>
                             
                             {{-- DINAMIS: Loop dari $activityMap --}}
@@ -130,11 +131,15 @@
                     </thead>
                     
                     <tbody>
+                        @php
+                            $blokPlots = $plotHeaders->groupBy(fn($item)=>substr($item->plot,0,1));
+                        @endphp
                         
                         {{-- BARIS TOTAL SUMMARY --}}
                         <tr class="total-row">
-                            <td class="sticky-v sticky-h" style="left:0;">ALL</td>
-                            <td class="sticky-h" style="text-align:right; left:80px;">{{ number_format($plotHeaders->sum('batcharea'), 2) }}</td>
+                            <td class="sticky-v sticky-h blok" style="left:0;">TOTAL</td>
+                            <td class="sticky-v sticky-h" style="left:60px;">ALL</td>
+                            <td class="sticky-h" style="text-align:right; left:120px;" >{{ number_format($plotHeaders->sum('batcharea'), 2) }}</td>
                             
                             @php
                                 $grandTotalRealisasi = 0;
@@ -205,8 +210,8 @@
 
                             <tr style="background: {{ $rowBg }}; cursor:pointer;"
                                 onclick="togglePlotDetail('{{ $plot->plot }}', this)">
-                                <td class="sticky-h" style="left:0;">{{$plot->plot}} ({{$status}})</td>
-                                <td class="sticky-h" style="left:80px;text-align:right;">{{$plot->batcharea?number_format($plot->batcharea,2):'-'}}</td>
+                                <td class="sticky-h" style="left:60px;">{{$plot->plot}} ({{$status}})</td>
+                                <td class="sticky-h" style="left:120px;text-align:right;">{{$plot->batcharea?number_format($plot->batcharea,2):'-'}}</td>
                                 
                                 @php
                                     $totalRealisasiPlot = 0;
@@ -252,7 +257,7 @@
                             </tr>
 
                             <tr id="detail-{{ $plot->plot }}" style="display:none;">
-                                <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 3) : (count($activityMap) * 3 + 2) }}"
+                                <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 4) : (count($activityMap) * 3 + 3) }}"
                                     style="padding:0 !important; background:#f9fafb !important;">
                                     <div id="detail-content-{{ $plot->plot }}" style="padding:12px 16px; font-size:12px; color:#374151; min-height:40px;">
                                         Loading...
@@ -733,7 +738,7 @@ function getRingColor(d) {
             detailBox.innerHTML = '<div style="padding:8px;color:#6b7280;">Loading...</div>';
 
             try {
-                const res = await fetch(`{{ route('dashboard.timeline-plot.detail') }}?plot=${encodeURIComponent(plot)}`);
+                const res = await fetch(`{{ route('dashboard.timeline-plot.detail') }}?plot=${encodeURIComponent(plot)}&crop={{ $cropType }}`);
                 const data = await res.json();
 
                 console.log('plot detail data', data);
