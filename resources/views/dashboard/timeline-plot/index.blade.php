@@ -719,8 +719,6 @@ function getRingColor(d) {
 
 
 
-
-
         async function togglePlotDetail(plot, rowEl) {
             const detailRow = document.getElementById(`detail-${plot}`);
             const detailBox = document.getElementById(`detail-content-${plot}`);
@@ -755,10 +753,41 @@ function getRingColor(d) {
 
                 const batch = data.batch || {};
                 const activities = Array.isArray(data.activities) ? data.activities : [];
+                const activityMapJs = @json($activityMap);
+
+                const grouped = {};
+                activities.forEach(r => {
+                    const code = r.activitycode || '-';
+                    if (!grouped[code]) {
+                        grouped[code] = {
+                            rows: [],
+                            total: 0
+                        };
+                    }
+
+                    const luas = Number(r.luashasil || 0);
+                    grouped[code].rows.push({
+                        batchno: r.batchno || '-',
+                        lkhno: r.lkhno || '-',
+                        lkhdate: r.lkhdate || '-',
+                        luashasil: luas
+                    });
+                    grouped[code].total += luas;
+                });
 
                 let html = `
                     <div style="padding:12px 16px;">
-                        <div style="margin-bottom:12px; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; font-size:12px;">
+                        <div style="
+                            margin-bottom:12px;
+                            display:grid;
+                            grid-template-columns:repeat(4,minmax(0,1fr));
+                            gap:10px;
+                            font-size:12px;
+                            background:#fff;
+                            border:1px solid #e5e7eb;
+                            padding:10px;
+                            border-radius:6px;
+                        ">
                             <div><b>Plot:</b> ${batch.plot ?? '-'}</div>
                             <div><b>Batch:</b> ${batch.batchno ?? '-'}</div>
                             <div><b>Luas:</b> ${batch.batcharea ?? 0} HA</div>
@@ -773,38 +802,104 @@ function getRingColor(d) {
                 if (activities.length > 0) {
                     html += `
                         <div style="overflow-x:auto;">
-                            <table style="width:100%; border-collapse:collapse; font-size:12px; background:white;">
+                            <table style="
+                                width:max-content;
+                                min-width:100%;
+                                border-collapse:collapse;
+                                font-size:12px;
+                                background:white;
+                            ">
                                 <thead>
-                                    <tr style="background:#166534; color:white;">
-                                        <th style="border:1px solid #ddd; padding:6px 8px; text-align:left;">Batch</th>
-                                        <th style="border:1px solid #ddd; padding:6px 8px; text-align:left;">Kegiatan</th>
-                                        <th style="border:1px solid #ddd; padding:6px 8px; text-align:left;">LKH</th>
-                                        <th style="border:1px solid #ddd; padding:6px 8px; text-align:left;">Tanggal</th>
-                                        <th style="border:1px solid #ddd; padding:6px 8px; text-align:right;">Luas Hasil</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                                    <tr>
                     `;
 
-                    activities.forEach(r => {
+                    Object.entries(activityMapJs).forEach(([code, label]) => {
                         html += `
-                            <tr>
-                                <td style="border:1px solid #ddd; padding:6px 8px;">${r.batchno ?? '-'}</td>
-                                <td style="border:1px solid #ddd; padding:6px 8px;">${r.activitycode ?? '-'}</td>
-                                <td style="border:1px solid #ddd; padding:6px 8px;">${r.lkhno ?? '-'}</td>
-                                <td style="border:1px solid #ddd; padding:6px 8px;">${r.lkhdate ?? '-'}</td>
-                                <td style="border:1px solid #ddd; padding:6px 8px; text-align:right;">${Number(r.luashasil || 0).toFixed(2)}</td>
-                            </tr>
+                            <th style="
+                                border:1px solid #ddd;
+                                padding:8px;
+                                min-width:260px;
+                                text-align:left;
+                                background:#166534;
+                                color:white;
+                                vertical-align:top;
+                            ">
+                                <div style="font-weight:700;">${code}</div>
+                                <div style="font-weight:500;font-size:11px;">${label}</div>
+                            </th>
                         `;
                     });
 
                     html += `
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                    `;
+
+                    Object.entries(activityMapJs).forEach(([code, label]) => {
+                        const g = grouped[code];
+
+                        if (!g) {
+                            html += `
+                                <td style="
+                                    border:1px solid #ddd;
+                                    padding:8px;
+                                    vertical-align:top;
+                                    background:#f9fafb;
+                                    min-width:260px;
+                                ">
+                                    <div style="color:#9ca3af;font-style:italic;">Tidak ada data</div>
+                                </td>
+                            `;
+                            return;
+                        }
+
+                        let cell = `
+                            <td style="
+                                border:1px solid #ddd;
+                                padding:8px;
+                                vertical-align:top;
+                                background:#f9fafb;
+                                min-width:260px;
+                            ">
+                                <div style="
+                                    font-weight:700;
+                                    color:#166534;
+                                    margin-bottom:8px;
+                                    padding-bottom:6px;
+                                    border-bottom:1px solid #d1d5db;
+                                ">
+                                    Total ${code}: ${g.total.toFixed(2)} HA
+                                </div>
+                        `;
+
+                        g.rows.forEach((r, idx) => {
+                            cell += `
+                                <div style="
+                                    padding:6px 0;
+                                    ${idx < g.rows.length - 1 ? 'border-bottom:1px dashed #d1d5db;' : ''}
+                                ">
+                                    <div><b>LKH:</b> ${r.lkhno}</div>
+                                    <div><b>Tanggal:</b> ${r.lkhdate}</div>
+                                    <div><b>Batch:</b> ${r.batchno}</div>
+                                    <div><b>Luas Hasil:</b> ${r.luashasil.toFixed(2)} HA</div>
+                                </div>
+                            `;
+                        });
+
+                        cell += `</td>`;
+                        html += cell;
+                    });
+
+                    html += `
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
                     `;
                 } else {
-                    html += `<div style="color:#6b7280; font-style:italic;">Tidak ada detail activity untuk plot ini.</div>`;
+                    html += `<div style="color:#6b7280;font-style:italic;">Tidak ada detail activity untuk plot ini.</div>`;
                 }
 
                 html += `</div>`;
@@ -815,6 +910,8 @@ function getRingColor(d) {
                 detailBox.innerHTML = `<div style="padding:8px;color:red;">Error: ${err.message}</div>`;
             }
         }
+
+
         
 
 
