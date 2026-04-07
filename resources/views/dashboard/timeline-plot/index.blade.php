@@ -99,7 +99,6 @@
                 <table>
                     <thead>
                         <tr>
-                            <th class="sticky-v sticky-h blok" style="left:0;" rowspan="2">Blok</th>
                             <th class="sticky-v sticky-h" style="left:60px;" rowspan="2">Plot</th>
                             <th class="sticky-v" rowspan="2">Saldo<br><small>HA</small></th>
                             
@@ -131,13 +130,9 @@
                     </thead>
                     
                     <tbody>
-                        @php
-                            $blokPlots = $plotHeaders->groupBy(fn($item)=>substr($item->plot,0,1));
-                        @endphp
                         
                         {{-- BARIS TOTAL SUMMARY --}}
                         <tr class="total-row">
-                            <td class="sticky-v sticky-h blok" style="left:0;">TOTAL</td>
                             <td class="sticky-v sticky-h" style="left:60px;">ALL</td>
                             <td class="sticky-h" style="text-align:right; left:120px;" >{{ number_format($plotHeaders->sum('batcharea'), 2) }}</td>
                             
@@ -198,8 +193,7 @@
                         </tr>
                         
                         {{-- DATA PER PLOT --}}
-                        @foreach($blokPlots as $blok=>$plots)
-                        @foreach($plots as $index=>$plot)
+                        @foreach($plotHeaders as $plot)
                         @php
                             $status = strtoupper($plot->lifecyclestatus ?? '');
                             $rowBg = ($status === 'PC') 
@@ -211,7 +205,6 @@
 
                             <tr style="background: {{ $rowBg }}; cursor:pointer;"
                                 onclick="togglePlotDetail('{{ $plot->plot }}', this)">
-                                @if($index===0)<td rowspan="{{ count($plots) * 2 }}" class="sticky-h blok" style="left:0;">{{$blok}}</td>@endif
                                 <td class="sticky-h" style="left:60px;">{{$plot->plot}} ({{$status}})</td>
                                 <td class="sticky-h" style="left:120px;text-align:right;">{{$plot->batcharea?number_format($plot->batcharea,2):'-'}}</td>
                                 
@@ -259,7 +252,7 @@
                             </tr>
 
                             <tr id="detail-{{ $plot->plot }}" style="display:none;">
-                                <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 4) : (count($activityMap) * 3 + 3) }}"
+                                <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 3) : (count($activityMap) * 3 + 2) }}"
                                     style="padding:0 !important; background:#f9fafb !important;">
                                     <div id="detail-content-{{ $plot->plot }}" style="padding:12px 16px; font-size:12px; color:#374151; min-height:40px;">
                                         Loading...
