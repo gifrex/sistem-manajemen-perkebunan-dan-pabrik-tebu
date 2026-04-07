@@ -99,7 +99,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th class="sticky-v sticky-h" style="left:60px;" rowspan="2">Plot</th>
+                            <th class="sticky-v sticky-h" style="left:0;" rowspan="2">Plot</th>
                             <th class="sticky-v" rowspan="2">Saldo<br><small>HA</small></th>
                             
                             {{-- DINAMIS: Loop dari $activityMap --}}
@@ -133,8 +133,8 @@
                         
                         {{-- BARIS TOTAL SUMMARY --}}
                         <tr class="total-row">
-                            <td class="sticky-v sticky-h" style="left:60px;">ALL</td>
-                            <td class="sticky-h" style="text-align:right; left:120px;" >{{ number_format($plotHeaders->sum('batcharea'), 2) }}</td>
+                            <td class="sticky-v sticky-h" style="left:0;">ALL</td>
+                            <td class="sticky-h" style="text-align:right; left:80px;">{{ number_format($plotHeaders->sum('batcharea'), 2) }}</td>
                             
                             @php
                                 $grandTotalRealisasi = 0;
@@ -205,8 +205,8 @@
 
                             <tr style="background: {{ $rowBg }}; cursor:pointer;"
                                 onclick="togglePlotDetail('{{ $plot->plot }}', this)">
-                                <td class="sticky-h" style="left:60px;">{{$plot->plot}} ({{$status}})</td>
-                                <td class="sticky-h" style="left:120px;text-align:right;">{{$plot->batcharea?number_format($plot->batcharea,2):'-'}}</td>
+                                <td class="sticky-h" style="left:0;">{{$plot->plot}} ({{$status}})</td>
+                                <td class="sticky-h" style="left:80px;text-align:right;">{{$plot->batcharea?number_format($plot->batcharea,2):'-'}}</td>
                                 
                                 @php
                                     $totalRealisasiPlot = 0;
@@ -259,7 +259,6 @@
                                     </div>
                                 </td>
                             </tr>
-                        @endforeach
                         @endforeach
                     </tbody>
                 </table>
