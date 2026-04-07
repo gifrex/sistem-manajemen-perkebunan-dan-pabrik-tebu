@@ -28,13 +28,6 @@ class OperatorRekapReportService
     {
         $allData = $this->operatorRekapRepo->getAllOperatorsWithActivities($companycode, $date);
 
-        if ($allData->isEmpty()) {
-            return [
-                'success' => false,
-                'message' => 'Tidak ada data operator untuk tanggal ini'
-            ];
-        }
-
         $groupedByOperator = $allData->groupBy('tenagakerjaid');
 
         $allActivities = [];
@@ -150,12 +143,21 @@ class OperatorRekapReportService
 
         $companyInfo = $this->masterDataRepo->getCompanyInfo($companycode);
 
+        $standByVehicles = $this->operatorRekapRepo->getStandByVehicles($companycode, $date);
+        $standByList = $standByVehicles->map(fn($v) => [
+            'nokendaraan'     => $v->nokendaraan,
+            'jenis'           => $v->jenis,
+            'statuskendaraan' => $v->statuskendaraan,
+            'operator_name'   => $v->operator_name,
+        ])->values()->all();
+
         return [
             'success' => true,
             'date' => $date,
             'date_formatted' => Carbon::parse($date)->format('d F Y'),
             'company_info' => $companyInfo ? "{$companyInfo->companycode} - {$companyInfo->name}" : $companycode,
             'all_activities' => $allActivities,
+            'standby_vehicles' => $standByList,
             'grand_totals' => [
                 'total_operators' => $totalOperators,
                 'total_activities' => count($allActivities),

@@ -78,6 +78,28 @@
             </div>
         </div>
 
+        {{-- Kendaraan Stand By --}}
+        <div class="mb-4 mt-6" id="standby-section" style="display:none">
+            <h2 class="text-lg font-semibold text-gray-800 mb-3">
+                Kendaraan Stand By
+                <span id="standby-count" class="ml-2 text-sm font-normal text-gray-500"></span>
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full border border-gray-300">
+                    <thead class="bg-gray-100">
+                        <tr class="text-sm">
+                            <th class="border border-gray-300 px-2 py-2 text-center" style="width: 4%">No</th>
+                            <th class="border border-gray-300 px-2 py-2 text-center" style="width: 15%">Unit Alat</th>
+                            <th class="border border-gray-300 px-2 py-2 text-left" style="width: 20%">Jenis</th>
+                            <th class="border border-gray-300 px-2 py-2 text-left" style="width: 25%">Operator</th>
+                            <th class="border border-gray-300 px-2 py-2 text-center" style="width: 15%">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="standby-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
         {{-- Timestamp --}}
         <div class="mt-6 text-xs text-gray-500 text-center print:mt-8">
             <p>Dicetak pada: <span id="print-timestamp">Loading...</span></p>
@@ -117,8 +139,10 @@
                 if (data.success) {
                     updateHeaderInfo(data);
                     displayAllActivities(data.all_activities || [], data.grand_totals);
+                    displayStandByVehicles(data.standby_vehicles || []);
                 } else {
-                    showError('Gagal memuat data: ' + data.message);
+                    showError(data.message || 'Gagal memuat data');
+                    displayStandByVehicles(data.standby_vehicles || []);
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -283,6 +307,34 @@
                 `;
                 tfoot.appendChild(noteRow);
             }
+        }
+
+        function displayStandByVehicles(vehicles) {
+            const section = document.getElementById('standby-section');
+            const tbody = document.getElementById('standby-tbody');
+            const countEl = document.getElementById('standby-count');
+
+            if (!vehicles || vehicles.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = 'block';
+            countEl.textContent = `(${vehicles.length} unit)`;
+            tbody.innerHTML = '';
+
+            vehicles.forEach((v, i) => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="border border-gray-300 px-2 py-2 text-center text-sm">${i + 1}</td>
+                    <td class="border border-gray-300 px-2 py-2 text-center text-sm font-medium">${v.nokendaraan}</td>
+                    <td class="border border-gray-300 px-2 py-2 text-sm">${v.jenis || '-'}</td>
+                    <td class="border border-gray-300 px-2 py-2 text-sm">${v.operator_name || '<span class="text-gray-400 italic">-</span>'}</td>
+                    <td class="border border-gray-300 px-2 py-2 text-center text-sm">${v.statuskendaraan || '-'}</td>
+                `;
+                tbody.appendChild(row);
+            });
         }
 
         function showError(message) {
