@@ -258,10 +258,10 @@
                                 @endif
                             </tr>
 
-                            <tr id="detail-{{ $plot->plot }}" class="hidden">
+                            <tr id="detail-{{ $plot->plot }}" style="display:none;">
                                 <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 4) : (count($activityMap) * 3 + 3) }}"
-                                    style="padding:0; background:#f9fafb;">
-                                    <div id="detail-content-{{ $plot->plot }}" style="padding:12px 16px; font-size:12px; color:#374151;">
+                                    style="padding:0 !important; background:#f9fafb !important;">
+                                    <div id="detail-content-{{ $plot->plot }}" style="padding:12px 16px; font-size:12px; color:#374151; min-height:40px;">
                                         Loading...
                                     </div>
                                 </td>
@@ -714,58 +714,73 @@ function getRingColor(d) {
 
 
 
+        
+
+
+
+
+
+
         async function togglePlotDetail(plot, rowEl) {
             const detailRow = document.getElementById(`detail-${plot}`);
             const detailBox = document.getElementById(`detail-content-${plot}`);
 
-            if (!detailRow.classList.contains('hidden')) {
-                detailRow.classList.add('hidden');
+            if (!detailRow || !detailBox) {
+                console.error('Detail row/detail box not found for plot:', plot);
                 return;
             }
 
-            document.querySelectorAll('[id^="detail-"]').forEach(el => {
-                el.classList.add('hidden');
+            if (detailRow.style.display === 'table-row') {
+                detailRow.style.display = 'none';
+                return;
+            }
+
+            document.querySelectorAll('tr[id^="detail-"]').forEach(el => {
+                el.style.display = 'none';
             });
 
-            detailRow.classList.remove('hidden');
-            detailBox.innerHTML = 'Loading...';
+            detailRow.style.display = 'table-row';
+            detailBox.innerHTML = '<div style="padding:8px;color:#6b7280;">Loading...</div>';
 
             try {
                 const res = await fetch(`{{ route('dashboard.timeline-plot.detail') }}?plot=${encodeURIComponent(plot)}`);
                 const data = await res.json();
 
+                console.log('plot detail data', data);
+
                 if (!data.success) {
-                    detailBox.innerHTML = `<div class="text-red-600">Gagal ambil detail plot.</div>`;
+                    detailBox.innerHTML = `<div style="padding:8px;color:red;">Gagal ambil detail plot.</div>`;
                     return;
                 }
 
-                const batch = data.batch;
-                const activities = data.activities || [];
+                const batch = data.batch || {};
+                const activities = Array.isArray(data.activities) ? data.activities : [];
 
                 let html = `
-                    <div class="mb-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div><b>Plot:</b> ${batch?.plot ?? '-'}</div>
-                        <div><b>Batch:</b> ${batch?.batchno ?? '-'}</div>
-                        <div><b>Luas:</b> ${batch?.batcharea ?? 0} HA</div>
-                        <div><b>Status:</b> ${batch?.lifecyclestatus ?? '-'}</div>
-                        <div><b>Batch Date:</b> ${batch?.batchdate ?? '-'}</div>
-                        <div><b>Umur Hari:</b> ${batch?.umur_hari ?? 0}</div>
-                        <div><b>Umur Bulan:</b> ${batch?.umur_bulan ?? 0}</div>
-                        <div><b>Panen:</b> ${batch?.tanggalpanen ?? '-'}</div>
-                    </div>
+                    <div style="padding:12px 16px;">
+                        <div style="margin-bottom:12px; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; font-size:12px;">
+                            <div><b>Plot:</b> ${batch.plot ?? '-'}</div>
+                            <div><b>Batch:</b> ${batch.batchno ?? '-'}</div>
+                            <div><b>Luas:</b> ${batch.batcharea ?? 0} HA</div>
+                            <div><b>Status:</b> ${batch.lifecyclestatus ?? '-'}</div>
+                            <div><b>Batch Date:</b> ${batch.batchdate ?? '-'}</div>
+                            <div><b>Umur Hari:</b> ${batch.umur_hari ?? 0}</div>
+                            <div><b>Umur Bulan:</b> ${batch.umur_bulan ?? 0}</div>
+                            <div><b>Panen:</b> ${batch.tanggalpanen ?? '-'}</div>
+                        </div>
                 `;
 
-                if (activities.length) {
+                if (activities.length > 0) {
                     html += `
-                        <div class="overflow-x-auto">
-                            <table class="w-full border text-xs">
-                                <thead class="bg-green-700 text-white">
-                                    <tr>
-                                        <th class="border px-2 py-1 text-left">Batch</th>
-                                        <th class="border px-2 py-1 text-left">Kegiatan</th>
-                                        <th class="border px-2 py-1 text-left">LKH</th>
-                                        <th class="border px-2 py-1 text-left">Tanggal</th>
-                                        <th class="border px-2 py-1 text-right">Luas Hasil</th>
+                        <div style="overflow-x:auto;">
+                            <table style="width:100%; border-collapse:collapse; font-size:12px; background:white;">
+                                <thead>
+                                    <tr style="background:#166534; color:white;">
+                                        <th style="border:1px solid #ddd; padding:6px 8px; text-align:left;">Batch</th>
+                                        <th style="border:1px solid #ddd; padding:6px 8px; text-align:left;">Kegiatan</th>
+                                        <th style="border:1px solid #ddd; padding:6px 8px; text-align:left;">LKH</th>
+                                        <th style="border:1px solid #ddd; padding:6px 8px; text-align:left;">Tanggal</th>
+                                        <th style="border:1px solid #ddd; padding:6px 8px; text-align:right;">Luas Hasil</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -773,24 +788,31 @@ function getRingColor(d) {
 
                     activities.forEach(r => {
                         html += `
-                            <tr class="bg-white">
-                                <td class="border px-2 py-1">${r.batchno ?? '-'}</td>
-                                <td class="border px-2 py-1">${r.activitycode ?? '-'}</td>
-                                <td class="border px-2 py-1">${r.lkhno ?? '-'}</td>
-                                <td class="border px-2 py-1">${r.lkhdate ?? '-'}</td>
-                                <td class="border px-2 py-1 text-right">${parseFloat(r.luashasil ?? 0).toFixed(2)}</td>
+                            <tr>
+                                <td style="border:1px solid #ddd; padding:6px 8px;">${r.batchno ?? '-'}</td>
+                                <td style="border:1px solid #ddd; padding:6px 8px;">${r.activitycode ?? '-'}</td>
+                                <td style="border:1px solid #ddd; padding:6px 8px;">${r.lkhno ?? '-'}</td>
+                                <td style="border:1px solid #ddd; padding:6px 8px;">${r.lkhdate ?? '-'}</td>
+                                <td style="border:1px solid #ddd; padding:6px 8px; text-align:right;">${Number(r.luashasil || 0).toFixed(2)}</td>
                             </tr>
                         `;
                     });
 
-                    html += `</tbody></table></div>`;
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
                 } else {
-                    html += `<div class="text-gray-500 italic">Tidak ada detail activity untuk plot ini.</div>`;
+                    html += `<div style="color:#6b7280; font-style:italic;">Tidak ada detail activity untuk plot ini.</div>`;
                 }
 
+                html += `</div>`;
                 detailBox.innerHTML = html;
+
             } catch (err) {
-                detailBox.innerHTML = `<div class="text-red-600">Error: ${err.message}</div>`;
+                console.error(err);
+                detailBox.innerHTML = `<div style="padding:8px;color:red;">Error: ${err.message}</div>`;
             }
         }
         
