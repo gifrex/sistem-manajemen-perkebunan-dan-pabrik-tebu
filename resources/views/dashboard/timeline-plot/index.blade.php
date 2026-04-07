@@ -211,7 +211,7 @@
 
                             <tr style="background: {{ $rowBg }}; cursor:pointer;"
                                 onclick="togglePlotDetail('{{ $plot->plot }}', this)">
-                                @if($index===0)<td rowspan="{{count($plots)}}" class="sticky-h blok" style="left:0;">{{$blok}}</td>@endif
+                                @if($index===0)<td rowspan="{{ count($plots) * 2 }}" class="sticky-h blok" style="left:0;">{{$blok}}</td>@endif
                                 <td class="sticky-h" style="left:60px;">{{$plot->plot}} ({{$status}})</td>
                                 <td class="sticky-h" style="left:120px;text-align:right;">{{$plot->batcharea?number_format($plot->batcharea,2):'-'}}</td>
                                 
@@ -259,7 +259,7 @@
                             </tr>
 
                             <tr id="detail-{{ $plot->plot }}" class="hidden">
-                                <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 5) : (count($activityMap) * 3 + 4) }}"
+                                <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 4) : (count($activityMap) * 3 + 3) }}"
                                     style="padding:0; background:#f9fafb;">
                                     <div id="detail-content-{{ $plot->plot }}" style="padding:12px 16px; font-size:12px; color:#374151;">
                                         Loading...
