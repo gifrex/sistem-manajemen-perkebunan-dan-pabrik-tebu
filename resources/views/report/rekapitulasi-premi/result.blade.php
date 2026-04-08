@@ -257,9 +257,9 @@
                         <tr class="bg-gray-50 border-b border-gray-200">
                             <td class="py-3 px-6 text-left font-medium">
                                 Total Biaya
-                                <span class="ml-2 text-sm text-gray-600 font-medium">(Berat Bersih - Total Retensi) × Cost</span>
+                                <span class="ml-2 text-sm text-gray-600 font-medium">(Berat Bersih × Cost - Total Retensi)</span>
                             </td>
-                            <td class="py-3 px-6 text-right font-semibold">{{ number_format(($grandBeratBersih - $grandRetensi) * $cost) }}</td>
+                            <td class="py-3 px-6 text-right font-semibold">{{ number_format(($grandBeratBersih * $cost) - $grandRetensi) }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -273,7 +273,7 @@
         @if(!empty($alasanList))
         <div class="mt-8 mb-8 print-break">
             <h2 class="text-lg font-bold text-gray-900 mb-4 text-center uppercase border-b-2 border-gray-300 pb-3">
-                KETERANGAN TANGGAL TIDAK ADA DATA PANEN
+                KETERANGAN TANGGAL TIDAK EFEKTIF
             </h2>
             <div class="overflow-x-auto">
                 <table class="report-table min-w-full border-2 border-gray-300 text-sm">
