@@ -132,7 +132,7 @@ class SubkontraktorController extends Controller
         }
 
         $validated = $request->validate([
-            'id' => 'required|string|max:10',
+            // 'id' => 'required|string|max:10', // ID subkontraktor tidak bisa diubah
             'kontraktorid' => 'required|string|max:10',
             'namasubkontraktor' => 'required|string|max:100',
         ]);
@@ -150,28 +150,28 @@ class SubkontraktorController extends Controller
                     'kontraktorid' => 'Kontraktor tidak ditemukan'
                 ]);
         }
-        
-        // Cek duplicate jika ID diubah
-        if ($request->id !== $id) {
-            $exists = DB::table('subkontraktor')
-                ->where('companycode', $companycode)
-                ->where('id', $request->id)
-                ->exists();
-    
-            if ($exists) {
-                return redirect()->back()
-                    ->withInput()
-                    ->withErrors([
-                        'id' => 'Duplicate Entry, ID Subkontraktor sudah ada'
-                    ]);
-            }
-        }
-        
+
+        // // Cek duplicate jika ID diubah (dinonaktifkan karena ID tidak bisa diubah)
+        // if ($request->id !== $id) {
+        //     $exists = DB::table('subkontraktor')
+        //         ->where('companycode', $companycode)
+        //         ->where('id', $request->id)
+        //         ->exists();
+        //
+        //     if ($exists) {
+        //         return redirect()->back()
+        //             ->withInput()
+        //             ->withErrors([
+        //                 'id' => 'Duplicate Entry, ID Subkontraktor sudah ada'
+        //             ]);
+        //     }
+        // }
+
         DB::table('subkontraktor')
             ->where('companycode', $companycode)
             ->where('id', $id)
             ->update([
-                'id' => strtoupper($validated['id']),
+                // 'id' => strtoupper($validated['id']), // ID subkontraktor tidak bisa diubah
                 'kontraktorid' => $validated['kontraktorid'],
                 'namasubkontraktor' => $validated['namasubkontraktor'],
                 'updateby' => Auth::user()->userid,
