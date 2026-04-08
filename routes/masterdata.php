@@ -317,7 +317,7 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
     });
 
     Route::middleware('permission:masterdata.kontraktor.delete')->group(function () {
-        Route::delete('kontraktor/{companycode}/{id}', [KontraktorController::class, 'destroy'])->name('kontraktor.destroy');
+        Route::patch('kontraktor/{companycode}/{id}/toggle-active', [KontraktorController::class, 'toggleActive'])->name('kontraktor.toggle-active');
     });
 
     // ============================================================================
@@ -333,6 +333,6 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
     });
 
     Route::middleware('permission:masterdata.subkontraktor.delete')->group(function () {
-        Route::delete('subkontraktor/{companycode}/{id}', [SubkontraktorController::class, 'destroy'])->name('subkontraktor.destroy');
+        Route::patch('subkontraktor/{companycode}/{id}/toggle-active', [SubkontraktorController::class, 'toggleActive'])->name('subkontraktor.toggle-active');
     });
 });

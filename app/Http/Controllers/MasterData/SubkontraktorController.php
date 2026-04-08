@@ -14,6 +14,7 @@ class SubkontraktorController extends Controller
     {
         $perPage = (int) $request->input('perPage', 10);
         $search  = $request->input('search');
+        $status  = $request->input('status'); // '', '1', '0'
         $companycode = Session::get('companycode');
 
         $query = DB::table('subkontraktor')
@@ -26,6 +27,11 @@ class SubkontraktorController extends Controller
                 'kontraktor.namakontraktor'
             )
             ->where('subkontraktor.companycode', $companycode);
+
+        // Filter by status
+        if ($status !== null && $status !== '') {
+            $query->where('subkontraktor.isactive', (int) $status);
+        }
 
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -42,9 +48,10 @@ class SubkontraktorController extends Controller
             ->appends([
                 'perPage' => $perPage,
                 'search'  => $search,
+                'status'  => $status,
             ]);
 
-        // Get list kontraktor untuk dropdown
+        // Get list kontraktor untuk dropdown (hanya yang active)
         $kontraktorList = DB::table('kontraktor')
             ->where('companycode', $companycode)
             ->where('isactive', 1)
@@ -151,27 +158,11 @@ class SubkontraktorController extends Controller
                 ]);
         }
 
-        // // Cek duplicate jika ID diubah (dinonaktifkan karena ID tidak bisa diubah)
-        // if ($request->id !== $id) {
-        //     $exists = DB::table('subkontraktor')
-        //         ->where('companycode', $companycode)
-        //         ->where('id', $request->id)
-        //         ->exists();
-        //
-        //     if ($exists) {
-        //         return redirect()->back()
-        //             ->withInput()
-        //             ->withErrors([
-        //                 'id' => 'Duplicate Entry, ID Subkontraktor sudah ada'
-        //             ]);
-        //     }
-        // }
-
         DB::table('subkontraktor')
             ->where('companycode', $companycode)
             ->where('id', $id)
             ->update([
-                // 'id' => strtoupper($validated['id']), // ID subkontraktor tidak bisa diubah
+                // 'id' tidak diubah
                 'kontraktorid' => $validated['kontraktorid'],
                 'namasubkontraktor' => $validated['namasubkontraktor'],
                 'updateby' => Auth::user()->userid,
@@ -181,7 +172,7 @@ class SubkontraktorController extends Controller
         return redirect()->back()->with('success', 'Data subkontraktor berhasil di-update.');
     }
 
-    public function destroy(Request $request, $companycode, $id)
+    public function toggleActive(Request $request, $companycode, $id)
     {
         $sessionCompanycode = Session::get('companycode');
         
@@ -189,11 +180,47 @@ class SubkontraktorController extends Controller
             abort(403, 'Unauthorized access to company data');
         }
 
+        $subkontraktor = DB::table('subkontraktor')
+            ->where('companycode', $companycode)
+            ->where('id', $id)
+            ->first();
+
+        if (!$subkontraktor) {
+            abort(404, 'Data not found');
+        }
+
+        $newStatus = $subkontraktor->isactive ? 0 : 1;
+
+        // Jika mau mengaktifkan, cek dulu kontraktor parentnya aktif atau tidak
+        if ($newStatus === 1) {
+            $kontraktorActive = DB::table('kontraktor')
+                ->where('companycode', $companycode)
+                ->where('id', $subkontraktor->kontraktorid)
+                ->where('isactive', 1)
+                ->exists();
+
+            if (!$kontraktorActive) {
+                return redirect()->back()->withErrors([
+                    'toggle' => 'Tidak dapat mengaktifkan subkontraktor karena kontraktor induknya masih non-aktif.'
+                ]);
+            }
+        }
+
         DB::table('subkontraktor')
             ->where('companycode', $companycode)
             ->where('id', $id)
-            ->delete();
+            ->update([
+                'isactive' => $newStatus,
+                'updateby' => Auth::user()->userid,
+                'updatedat' => now(),
+            ]);
 
-        return redirect()->back()->with('success', 'Data subkontraktor berhasil di-hapus.');
+        $message = $newStatus 
+            ? 'Subkontraktor berhasil diaktifkan kembali.' 
+            : 'Subkontraktor berhasil dinonaktifkan.';
+
+        return redirect()->back()->with('success', $message);
     }
+
+    // destroy method dihapus - gunakan toggleActive sebagai gantinya
 }
