@@ -7,10 +7,9 @@
         h1{text-align:center;color:#333;}
         table{width:100%;border-collapse:separate;border-spacing:0;box-shadow:0 3px 8px rgba(0,0,0,.1);animation:fadeIn 0.4s ease-in;}
         th,td{border:1px solid #ddd;padding:6px 8px;font-size:13px;vertical-align:middle;background-clip:padding-box;}
-        tbody tr{transition:background-color .2s;}
-        tbody tr:hover td{background:#1f6f3d  !important;color:#ffffff ;}
-        tbody tr:hover td *{color:#ffffff !important;}
-        tbody tr:hover td * *{color:#000000 !important;}
+        tbody tr{transition:background-color .15s;}
+        tbody tr:hover td{background:#bbf7d0 !important;color:#14532d !important;}
+        tbody tr:hover td *{color:#14532d !important;}
          
         /* ✅ Sticky Vertical */
         .sticky-v{position:sticky;background:#166534;color:#fff;}
@@ -42,6 +41,8 @@
         tbody td{background:#fff;} 
         #map{height:720px;width:100%;}
         @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+        @keyframes modalIn{from{opacity:0;transform:translateY(-16px);}to{opacity:1;transform:translateY(0);}}
+        #plot-modal-box{animation:modalIn .2s ease;}
     </style>
     <div class="mx-auto px-6" x-data="{activeTab:'{{ request('tab','table') }}',map:null,markers:[],polygons:[]}">
 
@@ -282,19 +283,21 @@
         {{-- ===== MODAL DETAIL PLOT ===== --}}
         <div id="plot-modal-overlay"
              onclick="closePlotModal(event)"
-             style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; overflow-y:auto; padding:40px 16px;">
+             style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9999; padding:24px 16px; display:none; align-items:flex-start; justify-content:center;">
             <div id="plot-modal-box"
-                 style="background:white; border-radius:10px; max-width:1100px; margin:0 auto; box-shadow:0 20px 60px rgba(0,0,0,.3); overflow:hidden;">
+                 style="background:white; border-radius:10px; width:95vw; max-width:1300px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,.35); overflow:hidden;">
 
                 {{-- Modal Header --}}
-                <div style="background:#166534; color:white; padding:12px 18px; display:flex; align-items:center; justify-content:space-between;">
-                    <div id="plot-modal-title" style="font-size:15px; font-weight:700;">Detail Plot</div>
+                <div style="background:#166534; color:white; padding:12px 18px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+                    <div id="plot-modal-title" style="font-size:15px; font-weight:700; letter-spacing:.3px;">Detail Plot</div>
                     <button onclick="closePlotModal(null)"
-                            style="background:rgba(255,255,255,.2); border:none; color:white; border-radius:5px; width:28px; height:28px; cursor:pointer; font-size:16px; line-height:1;">✕</button>
+                            style="background:rgba(255,255,255,.2); border:none; color:white; border-radius:5px; width:28px; height:28px; cursor:pointer; font-size:16px; line-height:1; transition:background .15s;"
+                            onmouseover="this.style.background='rgba(255,255,255,.35)'"
+                            onmouseout="this.style.background='rgba(255,255,255,.2)'">✕</button>
                 </div>
 
-                {{-- Modal Body --}}
-                <div id="plot-modal-body" style="padding:16px; font-size:12px; color:#374151; min-height:120px;">
+                {{-- Modal Body scrollable --}}
+                <div id="plot-modal-body" style="padding:16px; font-size:12px; color:#374151; overflow-y:auto; flex:1;">
                     <div style="text-align:center; padding:40px; color:#6b7280;">Loading...</div>
                 </div>
             </div>
@@ -764,7 +767,7 @@ function getRingColor(d) {
             const blok     = plot.charAt(0);
 
             title.textContent = `Detail Plot ${plot} (Blok ${blok})`;
-            overlay.style.display = 'block';
+            overlay.style.display = 'flex';
             modalBox.innerHTML = '<div style="text-align:center;padding:40px;color:#6b7280;">Loading...</div>';
 
             try {
