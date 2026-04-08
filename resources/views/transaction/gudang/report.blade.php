@@ -78,7 +78,8 @@
            class="px-4 py-3 cursor-pointer hover:bg-gray-50 flex items-center justify-between gap-4 no-print">
         <div class="min-w-0">
           <div class="text-sm text-gray-900">
-            <b>{{ !empty($block->tgl) ? date('d M Y', strtotime($block->tgl)) : '-' }}</b>
+            <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-xs text-gray-600 mr-1">{{ $block->activitycode ?? '-' }}</span>
+            <b>{{ $block->herbisidagroupname ?? '-' }}</b>
           </div>
           <div class="text-xs text-gray-500 mt-1">
             Periode: {{ $startDate }} s/d {{ $endDate }}
@@ -108,7 +109,8 @@
       <div class="hidden print:block px-4 py-3">
         <div class="flex items-start justify-between gap-4">
           <div class="text-sm text-gray-900 min-w-0">
-            <b>{{ !empty($block->tgl) ? date('d M Y', strtotime($block->tgl)) : '-' }}</b>
+            <span class="font-mono text-xs text-gray-600 mr-1">{{ $block->activitycode ?? '-' }}</span>
+            <b>{{ $block->herbisidagroupname ?? '-' }}</b>
           </div>
 
           <div class="text-xs text-gray-600 text-right whitespace-nowrap">

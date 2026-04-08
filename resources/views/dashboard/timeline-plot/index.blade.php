@@ -271,7 +271,7 @@
                                 </tr>
 
                                 <tr id="detail-{{ $plot->plot }}" style="display:none;">
-                                    <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 4) : (count($activityMap) * 3 + 3) }}"
+                                    <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 3) : (count($activityMap) * 3 + 2) }}"
                                         style="padding:0 !important; background:#f9fafb !important;">
                                         <div id="detail-content-{{ $plot->plot }}"
                                             style="padding:12px 16px; font-size:12px; color:#374151; min-height:40px;">
@@ -769,48 +769,48 @@ function getRingColor(d) {
                 const batch = data.batch || {};
                 const activities = Array.isArray(data.activities) ? data.activities : [];
                 const activityMapJs = @json($activityMap);
+                const blok = plot.charAt(0);
 
-                // group per kegiatan, tapi rows detail tetap dipertahankan satu-satu per LKH
+                // group per kegiatan
                 const grouped = {};
                 activities.forEach(r => {
                     const code = r.activitycode || '-';
                     if (!grouped[code]) {
-                        grouped[code] = {
-                            rows: [],
-                            total: 0
-                        };
+                        grouped[code] = { rows: [], total: 0 };
                     }
-
                     const luas = Number(r.luashasil || 0);
-
                     grouped[code].rows.push({
                         batchno: r.batchno || '-',
                         lkhno: r.lkhno || '-',
                         lkhdate: r.lkhdate || '-',
                         luashasil: luas
                     });
-
                     grouped[code].total += luas;
                 });
 
                 let html = `
-                    <div style="padding:12px 16px;">
-                        <!-- TABLE ATAS: ringkas saja -->
-                        <div style="margin-bottom:12px; overflow-x:auto;">
-                            <table style="width:100%; border-collapse:collapse; font-size:12px; background:white;">
-                                <tbody>
-                                    <tr style="background:#f8fafc;">
-                                        <td style="border:1px solid #ddd; padding:6px 8px;"><b>Batch</b></td>
-                                        <td style="border:1px solid #ddd; padding:6px 8px;">${batch.batchno ?? '-'}</td>
-                                        <td style="border:1px solid #ddd; padding:6px 8px;"><b>Luas</b></td>
-                                        <td style="border:1px solid #ddd; padding:6px 8px;">${batch.batcharea ?? 0} HA</td>
-                                        <td style="border:1px solid #ddd; padding:6px 8px;"><b>Batch Date</b></td>
-                                        <td style="border:1px solid #ddd; padding:6px 8px;">${batch.batchdate ?? '-'}</td>
-                                        <td style="border:1px solid #ddd; padding:6px 8px;"><b>Umur Bulan</b></td>
-                                        <td style="border:1px solid #ddd; padding:6px 8px;">${batch.umur_bulan ?? 0}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    <div style="padding:10px 14px;">
+                        <div style="
+                            display:flex; align-items:center; gap:12px;
+                            margin-bottom:10px; padding-bottom:8px;
+                            border-bottom:2px solid #166534;
+                        ">
+                            <span style="
+                                background:#0f766e; color:white;
+                                font-weight:700; font-size:13px;
+                                padding:3px 10px; border-radius:4px;
+                            ">Blok ${blok}</span>
+                            <span style="
+                                background:#166534; color:white;
+                                font-weight:700; font-size:13px;
+                                padding:3px 10px; border-radius:4px;
+                            ">Plot ${plot}</span>
+                            <span style="font-size:11px; color:#6b7280;">
+                                Batch: <b>${batch.batchno ?? '-'}</b>
+                                &nbsp;·&nbsp; Luas: <b>${batch.batcharea ?? 0} HA</b>
+                                &nbsp;·&nbsp; Batch Date: <b>${batch.batchdate ?? '-'}</b>
+                                &nbsp;·&nbsp; Umur: <b>${batch.umur_bulan ?? 0} bln</b>
+                            </span>
                         </div>
                 `;
 
