@@ -197,74 +197,93 @@
                             @endif
                         </tr>
                         
+                        
+
                         {{-- DATA PER PLOT --}}
-                        @foreach($plotHeaders as $plot)
-                        @php
-                            $status = strtoupper($plot->lifecyclestatus ?? '');
-                            $rowBg = ($status === 'PC') 
-                                ? '#dcfce7'   // hijau muda
-                                : (str_starts_with($status, 'RC') 
-                                    ? '#dbeafe' // biru muda
-                                    : '#ffffff');
-                        @endphp
-
-                            <tr style="background: {{ $rowBg }}; cursor:pointer;"
-                                onclick="togglePlotDetail('{{ $plot->plot }}', this)">
-                                <td class="sticky-h" style="left:60px;">{{$plot->plot}} ({{$status}})</td>
-                                <td class="sticky-h" style="left:120px;text-align:right;">{{$plot->batcharea?number_format($plot->batcharea,2):'-'}}</td>
-                                
+                        @foreach($blokPlots as $blok => $plots)
+                            @foreach($plots as $index => $plot)
                                 @php
-                                    $totalRealisasiPlot = 0;
+                                    $status = strtoupper($plot->lifecyclestatus ?? '');
+                                    $rowBg = ($status === 'PC') 
+                                        ? '#dcfce7'
+                                        : (str_starts_with($status, 'RC') ? '#dbeafe' : '#ffffff');
                                 @endphp
-                                
-                                @foreach($activityMap as $activitycode => $label)
-                                @php 
-                                    $activity = $activityData->get($plot->plot)?->get($activitycode);
-                                    $value = $activity->total_luas ?? 0;
-                                    $percentage = $activity->avg_percentage ?? 0;
-                                    $tanggal = $activity->tanggal_terbaru ?? null;
-                                    $totalRealisasiPlot += $value;
 
-                                    $isRcUnique = in_array($activitycode, ['3.2.1', '3.2.2', '3.2.4', '3.2.5', '3.2.6', '3.2.7']);
-                                    $cellBg = $isRcUnique ? '#eff6ff' : '#f0fdf4';
+                                <tr style="background: {{ $rowBg }}; cursor:pointer;"
+                                    onclick="togglePlotDetail('{{ $plot->plot }}', this)">
 
-                                    $percentageColor = $percentage >= 100 ? '#22c55e' : ($percentage > 0 ? '#dc2626' : '#6b7280');
-                                @endphp
-                                    
-                                    <td style="text-align:right; background: {{ $cellBg }};">{{ $value > 0 ? number_format($value, 2) : '-' }}</td>
-                                    <td style="text-align:right; font-weight:600; color: {{ $percentageColor }}; background: {{ $cellBg }};">
-                                        {{ $value > 0 ? number_format($percentage, 2) . '%' : '-' }}
+                                    @if($index === 0)
+                                        <td rowspan="{{ count($plots) * 2 }}" class="sticky-h blok" style="left:0;">
+                                            {{ $blok }}
+                                        </td>
+                                    @endif
+
+                                    <td class="sticky-h" style="left:60px;">
+                                        {{ $plot->plot }} ({{ $status }})
                                     </td>
-                                    <td style="text-align:center;font-size:11px; background: {{ $cellBg }};">
-                                        {{ $tanggal ? \Carbon\Carbon::parse($tanggal)->format('d M y') : '-' }}
-                                    </td>
-                                @endforeach
-                                
-                                {{-- Realisasi Tanam (Total semua activity untuk plot ini) --}}
-                                <td style="text-align:right;">
-                                    {{ $totalRealisasiPlot > 0 ? number_format($totalRealisasiPlot, 2) : '-' }}
-                                </td>
 
-                                @if($cropType !== 'p')
-                                {{-- Persentase (stage: 1/total activity) --}}
-                                <td style="text-align:right;">
+                                    <td class="sticky-h" style="left:120px; text-align:right;">
+                                        {{ $plot->batcharea ? number_format($plot->batcharea, 2) : '-' }}
+                                    </td>
+
                                     @php
-                                        $stagePct = $plotActivityDetails[$plot->plot]['stage_percentage'] ?? 0;
+                                        $totalRealisasiPlot = 0;
                                     @endphp
-                                    {{ number_format($stagePct, 2) }}%
-                                </td>
-                                @endif
-                            </tr>
 
-                            <tr id="detail-{{ $plot->plot }}" style="display:none;">
-                                <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 3) : (count($activityMap) * 3 + 2) }}"
-                                    style="padding:0 !important; background:#f9fafb !important;">
-                                    <div id="detail-content-{{ $plot->plot }}" style="padding:12px 16px; font-size:12px; color:#374151; min-height:40px;">
-                                        Loading...
-                                    </div>
-                                </td>
-                            </tr>
+                                    @foreach($activityMap as $activitycode => $label)
+                                        @php
+                                            $activity = $activityData->get($plot->plot)?->get($activitycode);
+                                            $value = $activity->total_luas ?? 0;
+                                            $percentage = $activity->avg_percentage ?? 0;
+                                            $tanggal = $activity->tanggal_terbaru ?? null;
+                                            $totalRealisasiPlot += $value;
+
+                                            $isRcUnique = in_array($activitycode, ['3.2.1', '3.2.2', '3.2.4', '3.2.5', '3.2.6', '3.2.7']);
+                                            $cellBg = $isRcUnique ? '#eff6ff' : '#f0fdf4';
+                                            $percentageColor = $percentage >= 100 ? '#22c55e' : ($percentage > 0 ? '#dc2626' : '#6b7280');
+                                        @endphp
+
+                                        <td style="text-align:right; background: {{ $cellBg }};">
+                                            {{ $value > 0 ? number_format($value, 2) : '-' }}
+                                        </td>
+
+                                        <td style="text-align:right; font-weight:600; color: {{ $percentageColor }}; background: {{ $cellBg }};">
+                                            {{ $value > 0 ? number_format($percentage, 2) . '%' : '-' }}
+                                        </td>
+
+                                        <td style="text-align:center; font-size:11px; background: {{ $cellBg }};">
+                                            {{ $tanggal ? \Carbon\Carbon::parse($tanggal)->format('d M y') : '-' }}
+                                        </td>
+                                    @endforeach
+
+                                    <td style="text-align:right;">
+                                        {{ $totalRealisasiPlot > 0 ? number_format($totalRealisasiPlot, 2) : '-' }}
+                                    </td>
+
+                                    @if($cropType !== 'p')
+                                        <td style="text-align:right;">
+                                            @php
+                                                $stagePct = $plotActivityDetails[$plot->plot]['stage_percentage'] ?? 0;
+                                            @endphp
+                                            {{ number_format($stagePct, 2) }}%
+                                        </td>
+                                    @endif
+                                </tr>
+
+                                <tr id="detail-{{ $plot->plot }}" style="display:none;">
+                                    <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 4) : (count($activityMap) * 3 + 3) }}"
+                                        style="padding:0 !important; background:#f9fafb !important;">
+                                        <div id="detail-content-{{ $plot->plot }}"
+                                            style="padding:12px 16px; font-size:12px; color:#374151; min-height:40px;">
+                                            Loading...
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
                         @endforeach
+
+
+
                     </tbody>
                 </table>
             </div>
@@ -741,8 +760,6 @@ function getRingColor(d) {
                 const res = await fetch(`{{ route('dashboard.timeline-plot.detail') }}?plot=${encodeURIComponent(plot)}&crop={{ $cropType }}`);
                 const data = await res.json();
 
-                console.log('plot detail data', data);
-
                 if (!data.success) {
                     detailBox.innerHTML = `<div style="padding:8px;color:red;">Gagal ambil detail plot.</div>`;
                     return;
@@ -751,25 +768,52 @@ function getRingColor(d) {
                 const batch = data.batch || {};
                 const activities = Array.isArray(data.activities) ? data.activities : [];
                 const activityMapJs = @json($activityMap);
+                const activeBatchNo = batch.batchno || null;
 
-                const grouped = {};
+                // group by batch -> activity
+                const groupedByBatch = {};
                 activities.forEach(r => {
+                    const batchno = r.batchno || '-';
                     const code = r.activitycode || '-';
-                    if (!grouped[code]) {
-                        grouped[code] = {
-                            rows: [],
-                            total: 0
+                    const luas = Number(r.luashasil || 0);
+
+                    if (!groupedByBatch[batchno]) {
+                        groupedByBatch[batchno] = {
+                            batchno,
+                            isActive: batchno === activeBatchNo,
+                            activities: {},
+                            grandTotal: 0
                         };
                     }
 
-                    const luas = Number(r.luashasil || 0);
-                    grouped[code].rows.push({
-                        batchno: r.batchno || '-',
+                    if (!groupedByBatch[batchno].activities[code]) {
+                        groupedByBatch[batchno].activities[code] = {
+                            code,
+                            label: activityMapJs[code] || code,
+                            total: 0,
+                            latestDate: null,
+                            rows: []
+                        };
+                    }
+
+                    groupedByBatch[batchno].activities[code].rows.push({
                         lkhno: r.lkhno || '-',
                         lkhdate: r.lkhdate || '-',
                         luashasil: luas
                     });
-                    grouped[code].total += luas;
+
+                    groupedByBatch[batchno].activities[code].total += luas;
+                    groupedByBatch[batchno].grandTotal += luas;
+
+                    if (!groupedByBatch[batchno].activities[code].latestDate || (r.lkhdate || '') > groupedByBatch[batchno].activities[code].latestDate) {
+                        groupedByBatch[batchno].activities[code].latestDate = r.lkhdate || null;
+                    }
+                });
+
+                const batchList = Object.values(groupedByBatch).sort((a, b) => {
+                    if (a.isActive && !b.isActive) return -1;
+                    if (!a.isActive && b.isActive) return 1;
+                    return b.batchno.localeCompare(a.batchno);
                 });
 
                 let html = `
@@ -786,7 +830,7 @@ function getRingColor(d) {
                             border-radius:6px;
                         ">
                             <div><b>Plot:</b> ${batch.plot ?? '-'}</div>
-                            <div><b>Batch:</b> ${batch.batchno ?? '-'}</div>
+                            <div><b>Batch Aktif:</b> ${activeBatchNo ?? '-'}</div>
                             <div><b>Luas:</b> ${batch.batcharea ?? 0} HA</div>
                             <div><b>Status:</b> ${batch.lifecyclestatus ?? '-'}</div>
                             <div><b>Batch Date:</b> ${batch.batchdate ?? '-'}</div>
@@ -796,110 +840,80 @@ function getRingColor(d) {
                         </div>
                 `;
 
-                if (activities.length > 0) {
-                    html += `
-                        <div style="overflow-x:auto;">
-                            <table style="
-                                width:max-content;
-                                min-width:100%;
-                                border-collapse:collapse;
-                                font-size:12px;
-                                background:white;
-                            ">
-                                <thead>
-                                    <tr>
-                    `;
-
-                    Object.entries(activityMapJs).forEach(([code, label]) => {
-                        html += `
-                            <th style="
-                                border:1px solid #ddd;
-                                padding:8px;
-                                min-width:260px;
-                                text-align:left;
-                                background:#166534;
-                                color:white;
-                                vertical-align:top;
-                            ">
-                                <div style="font-weight:700;">${code}</div>
-                                <div style="font-weight:500;font-size:11px;">${label}</div>
-                            </th>
-                        `;
-                    });
-
-                    html += `
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                    `;
-
-                    Object.entries(activityMapJs).forEach(([code, label]) => {
-                        const g = grouped[code];
-
-                        if (!g) {
-                            html += `
-                                <td style="
-                                    border:1px solid #ddd;
-                                    padding:8px;
-                                    vertical-align:top;
-                                    background:#f9fafb;
-                                    min-width:260px;
-                                ">
-                                    <div style="color:#9ca3af;font-style:italic;">Tidak ada data</div>
-                                </td>
-                            `;
-                            return;
-                        }
-
-                        let cell = `
-                            <td style="
-                                border:1px solid #ddd;
-                                padding:8px;
-                                vertical-align:top;
-                                background:#f9fafb;
-                                min-width:260px;
-                            ">
-                                <div style="
-                                    font-weight:700;
-                                    color:#166534;
-                                    margin-bottom:8px;
-                                    padding-bottom:6px;
-                                    border-bottom:1px solid #d1d5db;
-                                ">
-                                    Total ${code}: ${g.total.toFixed(2)} HA
-                                </div>
-                        `;
-
-                        g.rows.forEach((r, idx) => {
-                            cell += `
-                                <div style="
-                                    padding:6px 0;
-                                    ${idx < g.rows.length - 1 ? 'border-bottom:1px dashed #d1d5db;' : ''}
-                                ">
-                                    <div><b>LKH:</b> ${r.lkhno}</div>
-                                    <div><b>Tanggal:</b> ${r.lkhdate}</div>
-                                    <div><b>Batch:</b> ${r.batchno}</div>
-                                    <div><b>Luas Hasil:</b> ${r.luashasil.toFixed(2)} HA</div>
-                                </div>
-                            `;
-                        });
-
-                        cell += `</td>`;
-                        html += cell;
-                    });
-
-                    html += `
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                } else {
-                    html += `<div style="color:#6b7280;font-style:italic;">Tidak ada detail activity untuk plot ini.</div>`;
+                if (!batchList.length) {
+                    html += `<div style="color:#6b7280;font-style:italic;">Tidak ada history activity untuk plot ini.</div></div>`;
+                    detailBox.innerHTML = html;
+                    return;
                 }
 
-                html += `</div>`;
+                html += `
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:12px; background:white;">
+                            <thead>
+                                <tr style="background:#166534; color:white;">
+                                    <th style="border:1px solid #ddd; padding:6px 8px; text-align:left;">Batch</th>
+                                    <th style="border:1px solid #ddd; padding:6px 8px; text-align:left;">Kegiatan</th>
+                                    <th style="border:1px solid #ddd; padding:6px 8px; text-align:left;">Nama</th>
+                                    <th style="border:1px solid #ddd; padding:6px 8px; text-align:right;">Hasil</th>
+                                    <th style="border:1px solid #ddd; padding:6px 8px; text-align:right;">Total Batch</th>
+                                    <th style="border:1px solid #ddd; padding:6px 8px; text-align:center;">Tanggal</th>
+                                    <th style="border:1px solid #ddd; padding:6px 8px; text-align:left;">Detail LKH</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                batchList.forEach(batchItem => {
+                    const activityEntries = Object.values(batchItem.activities).sort((a, b) => {
+                        const aIndex = Object.keys(activityMapJs).indexOf(a.code);
+                        const bIndex = Object.keys(activityMapJs).indexOf(b.code);
+                        return aIndex - bIndex;
+                    });
+
+                    activityEntries.forEach((act, idx) => {
+                        const detailLkh = act.rows.map((r, i) => `
+                            <div style="${i < act.rows.length - 1 ? 'border-bottom:1px dashed #e5e7eb; padding-bottom:4px; margin-bottom:4px;' : ''}">
+                                <div><b>${r.lkhno}</b></div>
+                                <div>${r.lkhdate} · ${r.luashasil.toFixed(2)} HA</div>
+                            </div>
+                        `).join('');
+
+                        html += `<tr style="background:${batchItem.isActive ? '#f0fdf4' : '#ffffff'};">`;
+
+                        if (idx === 0) {
+                            html += `
+                                <td rowspan="${activityEntries.length}" style="border:1px solid #ddd; padding:6px 8px; vertical-align:top; font-weight:700;">
+                                    ${batchItem.batchno}
+                                    ${batchItem.isActive ? '<div style="color:#16a34a; font-size:11px; margin-top:4px;">Batch aktif</div>' : ''}
+                                </td>
+                            `;
+                        }
+
+                        html += `
+                            <td style="border:1px solid #ddd; padding:6px 8px;">${act.code}</td>
+                            <td style="border:1px solid #ddd; padding:6px 8px;">${act.label}</td>
+                            <td style="border:1px solid #ddd; padding:6px 8px; text-align:right; font-weight:700; color:#166534;">
+                                ${act.total.toFixed(2)} HA
+                            </td>
+                            <td style="border:1px solid #ddd; padding:6px 8px; text-align:right;">
+                                ${batchItem.grandTotal.toFixed(2)} HA
+                            </td>
+                            <td style="border:1px solid #ddd; padding:6px 8px; text-align:center;">
+                                ${act.latestDate ?? '-'}
+                            </td>
+                            <td style="border:1px solid #ddd; padding:6px 8px;">
+                                ${detailLkh}
+                            </td>
+                        </tr>`;
+                    });
+                });
+
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>`;
+
                 detailBox.innerHTML = html;
 
             } catch (err) {
