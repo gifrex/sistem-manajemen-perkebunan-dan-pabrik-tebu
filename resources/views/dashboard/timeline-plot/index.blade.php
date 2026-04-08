@@ -204,16 +204,16 @@
                             @foreach($plots as $index => $plot)
                                 @php
                                     $status = strtoupper($plot->lifecyclestatus ?? '');
-                                    $rowBg = ($status === 'PC') 
+                                    $rowBg = ($status === 'PC')
                                         ? '#dcfce7'
                                         : (str_starts_with($status, 'RC') ? '#dbeafe' : '#ffffff');
                                 @endphp
 
                                 <tr style="background: {{ $rowBg }}; cursor:pointer;"
-                                    onclick="togglePlotDetail('{{ $plot->plot }}', this)">
+                                    onclick="openPlotModal('{{ $plot->plot }}')">
 
                                     @if($index === 0)
-                                        <td rowspan="{{ count($plots) * 2 }}" class="sticky-h blok" style="left:0;">
+                                        <td rowspan="{{ count($plots) }}" class="sticky-h blok" style="left:0;">
                                             {{ $blok }}
                                         </td>
                                     @endif
@@ -269,16 +269,6 @@
                                         </td>
                                     @endif
                                 </tr>
-
-                                <tr id="detail-{{ $plot->plot }}" style="display:none;">
-                                    <td colspan="{{ $cropType !== 'p' ? (count($activityMap) * 3 + 3) : (count($activityMap) * 3 + 2) }}"
-                                        style="padding:0 !important; background:#f9fafb !important;">
-                                        <div id="detail-content-{{ $plot->plot }}"
-                                            style="padding:12px 16px; font-size:12px; color:#374151; min-height:40px;">
-                                            Loading...
-                                        </div>
-                                    </td>
-                                </tr>
                             @endforeach
                         @endforeach
 
@@ -288,7 +278,29 @@
                 </table>
             </div>
         </div>
-  
+
+        {{-- ===== MODAL DETAIL PLOT ===== --}}
+        <div id="plot-modal-overlay"
+             onclick="closePlotModal(event)"
+             style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; overflow-y:auto; padding:40px 16px;">
+            <div id="plot-modal-box"
+                 style="background:white; border-radius:10px; max-width:1100px; margin:0 auto; box-shadow:0 20px 60px rgba(0,0,0,.3); overflow:hidden;">
+
+                {{-- Modal Header --}}
+                <div style="background:#166534; color:white; padding:12px 18px; display:flex; align-items:center; justify-content:space-between;">
+                    <div id="plot-modal-title" style="font-size:15px; font-weight:700;">Detail Plot</div>
+                    <button onclick="closePlotModal(null)"
+                            style="background:rgba(255,255,255,.2); border:none; color:white; border-radius:5px; width:28px; height:28px; cursor:pointer; font-size:16px; line-height:1;">✕</button>
+                </div>
+
+                {{-- Modal Body --}}
+                <div id="plot-modal-body" style="padding:16px; font-size:12px; color:#374151; min-height:120px;">
+                    <div style="text-align:center; padding:40px; color:#6b7280;">Loading...</div>
+                </div>
+            </div>
+        </div>
+        {{-- ===== /MODAL ===== --}}
+
         <div x-show="activeTab==='map'" x-transition class="bg-white shadow-md rounded-lg p-6">
             <!-- MAP SECTION (EXISTING) -->
             <h3 class="text-xl font-bold mb-4">Peta Lokasi Plot</h3>
@@ -734,42 +746,39 @@ function getRingColor(d) {
 
 
 
-        async function togglePlotDetail(plot, rowEl) {
-            const detailRow = document.getElementById(`detail-${plot}`);
-            const detailBox = document.getElementById(`detail-content-${plot}`);
+        function closePlotModal(event) {
+            if (event && event.target !== document.getElementById('plot-modal-overlay')) return;
+            document.getElementById('plot-modal-overlay').style.display = 'none';
+            document.getElementById('plot-modal-body').innerHTML = '<div style="text-align:center;padding:40px;color:#6b7280;">Loading...</div>';
+        }
 
-            if (!detailRow || !detailBox) {
-                console.error('Detail row/detail box not found for plot:', plot);
-                return;
-            }
+        // ESC key close
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') document.getElementById('plot-modal-overlay').style.display = 'none';
+        });
 
-            if (detailRow.style.display === 'table-row') {
-                detailRow.style.display = 'none';
-                return;
-            }
+        async function openPlotModal(plot) {
+            const overlay  = document.getElementById('plot-modal-overlay');
+            const modalBox = document.getElementById('plot-modal-body');
+            const title    = document.getElementById('plot-modal-title');
+            const blok     = plot.charAt(0);
 
-            document.querySelectorAll('tr[id^="detail-"]').forEach(el => {
-                el.style.display = 'none';
-            });
-
-            detailRow.style.display = 'table-row';
-            detailBox.innerHTML = '<div style="padding:8px;color:#6b7280;">Loading...</div>';
+            title.textContent = `Detail Plot ${plot} (Blok ${blok})`;
+            overlay.style.display = 'block';
+            modalBox.innerHTML = '<div style="text-align:center;padding:40px;color:#6b7280;">Loading...</div>';
 
             try {
                 const res = await fetch(`{{ route('dashboard.timeline-plot.detail') }}?plot=${encodeURIComponent(plot)}&crop={{ $cropType }}`);
                 const data = await res.json();
 
-                console.log('plot detail data', data);
-
                 if (!data.success) {
-                    detailBox.innerHTML = `<div style="padding:8px;color:red;">Gagal ambil detail plot.</div>`;
+                    modalBox.innerHTML = `<div style="padding:16px;color:red;">Gagal ambil detail plot.</div>`;
                     return;
                 }
 
                 const batch = data.batch || {};
                 const activities = Array.isArray(data.activities) ? data.activities : [];
                 const activityMapJs = @json($activityMap);
-                const blok = plot.charAt(0);
 
                 // group per kegiatan
                 const grouped = {};
@@ -789,28 +798,20 @@ function getRingColor(d) {
                 });
 
                 let html = `
-                    <div style="padding:10px 14px;">
+                    <div>
+                        {{-- info bar --}}
                         <div style="
-                            display:flex; align-items:center; gap:12px;
-                            margin-bottom:10px; padding-bottom:8px;
-                            border-bottom:2px solid #166534;
+                            display:flex; flex-wrap:wrap; gap:16px; align-items:center;
+                            background:#f0fdf4; border:1px solid #bbf7d0;
+                            padding:10px 14px; border-radius:6px; margin-bottom:14px;
+                            font-size:12px; color:#374151;
                         ">
-                            <span style="
-                                background:#0f766e; color:white;
-                                font-weight:700; font-size:13px;
-                                padding:3px 10px; border-radius:4px;
-                            ">Blok ${blok}</span>
-                            <span style="
-                                background:#166534; color:white;
-                                font-weight:700; font-size:13px;
-                                padding:3px 10px; border-radius:4px;
-                            ">Plot ${plot}</span>
-                            <span style="font-size:11px; color:#6b7280;">
-                                Batch: <b>${batch.batchno ?? '-'}</b>
-                                &nbsp;·&nbsp; Luas: <b>${batch.batcharea ?? 0} HA</b>
-                                &nbsp;·&nbsp; Batch Date: <b>${batch.batchdate ?? '-'}</b>
-                                &nbsp;·&nbsp; Umur: <b>${batch.umur_bulan ?? 0} bln</b>
-                            </span>
+                            <span><b>Batch:</b> ${batch.batchno ?? '-'}</span>
+                            <span><b>Luas:</b> ${batch.batcharea ?? 0} HA</span>
+                            <span><b>Batch Date:</b> ${batch.batchdate ?? '-'}</span>
+                            <span><b>Umur:</b> ${batch.umur_bulan ?? 0} bln / ${batch.umur_hari ?? 0} hari</span>
+                            <span><b>Status:</b> ${batch.lifecyclestatus ?? '-'}</span>
+                            ${batch.tanggalpanen ? `<span><b>Panen:</b> ${batch.tanggalpanen}</span>` : ''}
                         </div>
                 `;
 
@@ -923,11 +924,11 @@ function getRingColor(d) {
                 }
 
                 html += `</div>`;
-                detailBox.innerHTML = html;
+                modalBox.innerHTML = html;
 
             } catch (err) {
                 console.error(err);
-                detailBox.innerHTML = `<div style="padding:8px;color:red;">Error: ${err.message}</div>`;
+                modalBox.innerHTML = `<div style="padding:16px;color:red;">Error: ${err.message}</div>`;
             }
         }
     
