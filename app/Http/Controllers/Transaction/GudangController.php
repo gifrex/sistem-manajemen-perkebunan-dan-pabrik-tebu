@@ -144,7 +144,6 @@ class GudangController extends Controller
                     ->on('rl.plot', '=', 'u.plot');
             })
             ->leftJoin('herbisidagroup as hg', 'hg.herbisidagroupid', '=', 'rl.herbisidagroupid')
-            ->leftJoin('activity as act', 'act.activitycode', '=', 'hg.activitycode')
             ->where('u.companycode', $company)
             ->whereNotNull('u.nouse')
             ->whereDate('b.rkhdate', '>=', $startDate)
@@ -156,15 +155,14 @@ class GudangController extends Controller
                     ->orWhere('u.itemcode', 'like', "%{$search}%");
                 });
             })
-            ->groupBy('u.itemcode', 'u.nouse', 'b.rkhdate', 'hg.activitycode', 'hg.herbisidagroupname', 'act.activityname2')
+            ->groupBy('u.itemcode', 'u.nouse', 'b.rkhdate', 'hg.activitycode', 'hg.herbisidagroupname')
             ->selectRaw("
                 u.itemcode,
                 u.nouse as docno,
                 b.rkhdate as dt,
                 SUM(u.qty) as qty,
                 hg.activitycode,
-                hg.herbisidagroupname,
-                act.activityname2
+                hg.herbisidagroupname
             ")
             ->get()
             ->map(function ($r) use ($itemMaster) {
@@ -181,7 +179,6 @@ class GudangController extends Controller
                     'keluar'             => (float) $r->qty,
                     'activitycode'       => $r->activitycode,
                     'herbisidagroupname' => $r->herbisidagroupname,
-                    'activityname2'      => $r->activityname2,
                 ];
             });
 
@@ -199,7 +196,6 @@ class GudangController extends Controller
                     ->on('rl.plot', '=', 'u.plot');
             })
             ->leftJoin('herbisidagroup as hg', 'hg.herbisidagroupid', '=', 'rl.herbisidagroupid')
-            ->leftJoin('activity as act', 'act.activitycode', '=', 'hg.activitycode')
             ->where('u.companycode', $company)
             ->whereNotNull('u.noretur')
             ->whereDate('b.rkhdate', '>=', $startDate)
@@ -211,15 +207,14 @@ class GudangController extends Controller
                     ->orWhere('u.itemcode', 'like', "%{$search}%");
                 });
             })
-            ->groupBy('u.itemcode', 'u.noretur', 'b.rkhdate', 'hg.activitycode', 'hg.herbisidagroupname', 'act.activityname2')
+            ->groupBy('u.itemcode', 'u.noretur', 'b.rkhdate', 'hg.activitycode', 'hg.herbisidagroupname')
             ->selectRaw("
                 u.itemcode,
                 u.noretur as docno,
                 b.rkhdate as dt,
                 SUM(u.qtyretur) as qty,
                 hg.activitycode,
-                hg.herbisidagroupname,
-                act.activityname2
+                hg.herbisidagroupname
             ")
             ->get()
             ->map(function ($r) use ($itemMaster) {
@@ -236,7 +231,6 @@ class GudangController extends Controller
                     'keluar'             => null,
                     'activitycode'       => $r->activitycode,
                     'herbisidagroupname' => $r->herbisidagroupname,
-                    'activityname2'      => $r->activityname2,
                 ];
             });
 
@@ -283,11 +277,10 @@ class GudangController extends Controller
                         'unit'     => $ev->unit,
                     ];
                 })->values();
-
+                
                 $report[] = (object) [
                     'activitycode'       => $first->activitycode ?? '-',
                     'herbisidagroupname' => $first->herbisidagroupname ?? '-',
-                    'activityname2'      => $first->activityname2 ?? '-',
                     'rows'               => $rows,
                 ];
             }
