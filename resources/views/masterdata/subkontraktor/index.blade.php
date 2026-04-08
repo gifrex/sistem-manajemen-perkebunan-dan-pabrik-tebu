@@ -119,14 +119,27 @@
                     {{-- ID Subkontraktor --}}
                     <div>
                       <label for="id" class="block text-sm font-medium text-gray-700">ID Subkontraktor</label>
-                      <input type="text" name="id" id="id" x-model="form.id" 
-                            x-init="form.id = '{{ old('id') }}'"
-                            @input="form.id = form.id.toUpperCase()"
-                            class="mt-1 block w-1/2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 uppercase"
-                            maxlength="10" required>
-                      @error('id')
-                      <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                      @enderror
+                      <template x-if="mode === 'create'">
+                        <div>
+                          <input type="text" name="id" id="id" x-model="form.id"
+                                x-init="form.id = '{{ old('id') }}'"
+                                @input="form.id = form.id.toUpperCase()"
+                                class="mt-1 block w-1/2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 uppercase"
+                                maxlength="10" required>
+                          @error('id')
+                          <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                          @enderror
+                        </div>
+                      </template>
+                      <template x-if="mode === 'edit'">
+                        <div class="mt-1">
+                          {{-- ID tidak bisa diubah saat edit --}}
+                          {{-- <input type="text" name="id" x-model="form.id" class="mt-1 block w-1/2 border border-gray-300 rounded-md shadow-sm uppercase" maxlength="10" required> --}}
+                          <input type="hidden" name="id" x-model="form.id">
+                          <div class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-700 font-medium w-1/2 uppercase"
+                               x-text="form.id"></div>
+                        </div>
+                      </template>
                     </div>
 
                     {{-- Kontraktor Dropdown --}}
