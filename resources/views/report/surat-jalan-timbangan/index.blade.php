@@ -454,6 +454,7 @@
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Kategori</th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Varietas</th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Kode<br>Tebang</th>
+                                <th rowspan="2" class="border border-gray-300 px-2 py-2">GL</th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Langsir</th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Tebu<br>Sulit</th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Jenis<br>Kendaraan</th>
@@ -535,6 +536,10 @@
                                     </td>
                                     <td class="border border-gray-300 px-2 py-2 text-center" x-text="item.varietas || '-'"></td>
                                     <td class="border border-gray-300 px-2 py-2 text-center" x-text="item.kodetebang || '-'"></td>
+                                    <td class="border border-gray-300 px-2 py-2 text-center">
+                                        <span x-show="item.muatgl == 1" class="px-1.5 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-700">GL</span>
+                                        <span x-show="item.muatgl == 0" class="text-gray-400">-</span>
+                                    </td>
                                     <td class="border border-gray-300 px-2 py-2 text-center">
                                         <span x-show="item.langsir === 1" class="text-green-600">✓</span>
                                         <span x-show="item.langsir === 0" class="text-gray-400">-</span>
