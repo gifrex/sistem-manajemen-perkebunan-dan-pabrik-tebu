@@ -1,7 +1,7 @@
 # ============================================
 # Stage 1: Build frontend assets (Node.js)
 # ============================================
-FROM node:20-alpine AS node-builder
+FROM node:24-alpine AS node-builder
 WORKDIR /app
 
 # Ambil rahasia dari GitHub Actions
