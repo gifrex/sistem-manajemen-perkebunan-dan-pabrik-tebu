@@ -108,7 +108,7 @@
                             @foreach($activityMap as $activitycode => $label)
                                 @php
                                     $isGrouped = isset($activityGrouping[$activitycode]);
-                                    $isRcUnique = in_array($activitycode, ['3.2.1', '3.2.2', '3.2.4', '3.2.5', '3.2.6', '3.2.7']);
+                                    $isRcUnique = in_array($activitycode, ['3.2.1', '3.2.2', '3.2.4', '3.2.5', '3.2.6', '3.2.7', '3.1.6', '3.1.7', '3.1.8', '3.1.9']);
                                     $headerBg = $isRcUnique ? '#1d4ed8' : '#166534';
                                 @endphp
                                 <th class="sticky-v" colspan="3" style="text-align:center; background: {{ $headerBg }}; color: white;">
@@ -239,7 +239,7 @@
                                             $tanggal = $activity->tanggal_terbaru ?? null;
                                             $totalRealisasiPlot += $value;
 
-                                            $isRcUnique = in_array($activitycode, ['3.2.1', '3.2.2', '3.2.4', '3.2.5', '3.2.6', '3.2.7']);
+                                            $isRcUnique = in_array($activitycode, ['3.2.1', '3.2.2', '3.2.4', '3.2.5', '3.2.6', '3.2.7', '3.1.6', '3.1.7', '3.1.8', '3.1.9']);
                                             $cellBg = $isRcUnique ? '#eff6ff' : '#f0fdf4';
                                             $percentageColor = $percentage >= 100 ? '#22c55e' : ($percentage > 0 ? '#dc2626' : '#6b7280');
                                         @endphp
