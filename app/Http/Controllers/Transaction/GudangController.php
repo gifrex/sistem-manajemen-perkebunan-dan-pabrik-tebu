@@ -114,144 +114,244 @@ class GudangController extends Controller
 
     
 
-    public function report(Request $request)
-{
-    $title = "Gudang - Report";
+   public function report(Request $request)
+    {
+        $title = "Gudang - Report";
 
-    $search    = $request->input('search');
-    $startDate = $request->input('start_date', now()->subDays(7)->format('Y-m-d'));
-    $endDate   = $request->input('end_date', now()->format('Y-m-d'));
+        $search    = $request->input('search');
+        $startDate = $request->input('start_date', now()->subDays(7)->format('Y-m-d'));
+        $endDate   = $request->input('end_date', now()->format('Y-m-d'));
+        $mode      = $request->input('mode', 'item'); // item | activity
 
-    $company = session('companycode');
+        $company = session('companycode');
 
-    $itemMaster = Herbisida::where('companycode', $company)
-        ->select('itemcode', 'itemname', 'measure')
-        ->get()
-        ->keyBy('itemcode');
+        $itemMaster = Herbisida::where('companycode', $company)
+            ->select('itemcode', 'itemname', 'measure')
+            ->get()
+            ->keyBy('itemcode');
 
-    // OUT (USE) -> tanggal pakai rkhhdr.rkhdate
-    $out = usemateriallst::from('usemateriallst as u')
-        ->join('rkhhdr as b', function($join){
-            $join->on('u.rkhno','=','b.rkhno')
-                 ->on('u.companycode','=','b.companycode');
-        })
-        ->where('u.companycode', $company)
-        ->whereNotNull('u.nouse')
-        ->whereDate('b.rkhdate', '>=', $startDate)
-        ->whereDate('b.rkhdate', '<=', $endDate)
-        ->when($search, function($q) use ($search){
-            $q->where('u.rkhno', 'like', "%{$search}%")
-              ->orWhere('u.nouse', 'like', "%{$search}%");
-        })
-        ->groupBy('u.itemcode', 'u.nouse')
-        ->selectRaw("
-            u.itemcode,
-            u.nouse as docno,
-            MIN(b.rkhdate) as dt,
-            SUM(u.qty) as qty
-        ")
-        ->get()
-        ->map(fn($r) => (object)[
-            'itemcode' => $r->itemcode,
-            'type'     => 'U',
-            'docno'    => $r->docno,
-            'dt'       => $r->dt,
-            'masuk'    => null,
-            'keluar'   => (float)$r->qty,
-        ]);
+        // =========================================
+        // OUT (USE) -> tanggal pakai rkhhdr.rkhdate
+        // =========================================
+        $out = usemateriallst::from('usemateriallst as u')
+            ->join('rkhhdr as b', function ($join) {
+                $join->on('u.rkhno', '=', 'b.rkhno')
+                    ->on('u.companycode', '=', 'b.companycode');
+            })
+            ->leftJoin('rkhlst as rl', function ($join) {
+                $join->on('rl.rkhno', '=', 'u.rkhno')
+                    ->on('rl.companycode', '=', 'u.companycode')
+                    ->on('rl.plot', '=', 'u.plot');
+            })
+            ->leftJoin('herbisidagroup as hg', 'hg.herbisidagroupid', '=', 'rl.herbisidagroupid')
+            ->leftJoin('activity as act', 'act.activitycode', '=', 'hg.activitycode')
+            ->where('u.companycode', $company)
+            ->whereNotNull('u.nouse')
+            ->whereDate('b.rkhdate', '>=', $startDate)
+            ->whereDate('b.rkhdate', '<=', $endDate)
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($qq) use ($search) {
+                    $qq->where('u.rkhno', 'like', "%{$search}%")
+                    ->orWhere('u.nouse', 'like', "%{$search}%")
+                    ->orWhere('u.itemcode', 'like', "%{$search}%");
+                });
+            })
+            ->groupBy('u.itemcode', 'u.nouse', 'b.rkhdate', 'hg.activitycode', 'hg.herbisidagroupname', 'act.activityname2')
+            ->selectRaw("
+                u.itemcode,
+                u.nouse as docno,
+                b.rkhdate as dt,
+                SUM(u.qty) as qty,
+                hg.activitycode,
+                hg.herbisidagroupname,
+                act.activityname2
+            ")
+            ->get()
+            ->map(function ($r) use ($itemMaster) {
+                $meta = $itemMaster->get($r->itemcode);
 
-    // IN (RETUR) -> tanggal pakai rkhhdr.rkhdate
-    $in = usemateriallst::from('usemateriallst as u')
-        ->join('rkhhdr as b', function($join){
-            $join->on('u.rkhno','=','b.rkhno')
-                 ->on('u.companycode','=','b.companycode');
-        })
-        ->where('u.companycode', $company)
-        ->whereNotNull('u.noretur')
-        ->whereDate('b.rkhdate', '>=', $startDate)
-        ->whereDate('b.rkhdate', '<=', $endDate)
-        ->when($search, function($q) use ($search){
-            $q->where('u.rkhno', 'like', "%{$search}%")
-              ->orWhere('u.noretur', 'like', "%{$search}%");
-        })
-        ->groupBy('u.itemcode', 'u.noretur')
-        ->selectRaw("
-            u.itemcode,
-            u.noretur as docno,
-            MIN(b.rkhdate) as dt,
-            SUM(u.qtyretur) as qty
-        ")
-        ->get()
-        ->map(fn($r) => (object)[
-            'itemcode' => $r->itemcode,
-            'type'     => 'R',
-            'docno'    => $r->docno,
-            'dt'       => $r->dt,
-            'masuk'    => (float)$r->qty,
-            'keluar'   => null,
-        ]);
+                return (object) [
+                    'itemcode'           => $r->itemcode,
+                    'itemname'           => $meta->itemname ?? '-',
+                    'unit'               => $meta->measure ?? '-',
+                    'type'               => 'U',
+                    'docno'              => $r->docno,
+                    'dt'                 => $r->dt,
+                    'masuk'              => null,
+                    'keluar'             => (float) $r->qty,
+                    'activitycode'       => $r->activitycode,
+                    'herbisidagroupname' => $r->herbisidagroupname,
+                    'activityname2'      => $r->activityname2,
+                ];
+            });
 
-    $events = $out->concat($in);
+        // =========================================
+        // IN (RETUR) -> tanggal pakai rkhhdr.rkhdate
+        // =========================================
+        $in = usemateriallst::from('usemateriallst as u')
+            ->join('rkhhdr as b', function ($join) {
+                $join->on('u.rkhno', '=', 'b.rkhno')
+                    ->on('u.companycode', '=', 'b.companycode');
+            })
+            ->leftJoin('rkhlst as rl', function ($join) {
+                $join->on('rl.rkhno', '=', 'u.rkhno')
+                    ->on('rl.companycode', '=', 'u.companycode')
+                    ->on('rl.plot', '=', 'u.plot');
+            })
+            ->leftJoin('herbisidagroup as hg', 'hg.herbisidagroupid', '=', 'rl.herbisidagroupid')
+            ->leftJoin('activity as act', 'act.activitycode', '=', 'hg.activitycode')
+            ->where('u.companycode', $company)
+            ->whereNotNull('u.noretur')
+            ->whereDate('b.rkhdate', '>=', $startDate)
+            ->whereDate('b.rkhdate', '<=', $endDate)
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($qq) use ($search) {
+                    $qq->where('u.rkhno', 'like', "%{$search}%")
+                    ->orWhere('u.noretur', 'like', "%{$search}%")
+                    ->orWhere('u.itemcode', 'like', "%{$search}%");
+                });
+            })
+            ->groupBy('u.itemcode', 'u.noretur', 'b.rkhdate', 'hg.activitycode', 'hg.herbisidagroupname', 'act.activityname2')
+            ->selectRaw("
+                u.itemcode,
+                u.noretur as docno,
+                b.rkhdate as dt,
+                SUM(u.qtyretur) as qty,
+                hg.activitycode,
+                hg.herbisidagroupname,
+                act.activityname2
+            ")
+            ->get()
+            ->map(function ($r) use ($itemMaster) {
+                $meta = $itemMaster->get($r->itemcode);
 
-    // kalau tidak ada data, langsung return kosong
-    if ($events->isEmpty()) {
-        return view('transaction.gudang.report')->with([
-            'title' => $title,
-            'report' => [],
-            'search' => $search,
-            'startDate' => $startDate,
-            'endDate' => $endDate,
-        ]);
-    }
+                return (object) [
+                    'itemcode'           => $r->itemcode,
+                    'itemname'           => $meta->itemname ?? '-',
+                    'unit'               => $meta->measure ?? '-',
+                    'type'               => 'R',
+                    'docno'              => $r->docno,
+                    'dt'                 => $r->dt,
+                    'masuk'              => (float) $r->qty,
+                    'keluar'             => null,
+                    'activitycode'       => $r->activitycode,
+                    'herbisidagroupname' => $r->herbisidagroupname,
+                    'activityname2'      => $r->activityname2,
+                ];
+            });
 
-    $itemcodes = $events->pluck('itemcode')->unique()->values();
-
-    $report = [];
-
-    foreach ($itemcodes as $code) {
-        $itemEvents = $events->where('itemcode', $code)
-            ->sortBy('dt')
+        $events = $out->concat($in)
+            ->sortBy([
+                ['dt', 'asc'],
+                ['docno', 'asc'],
+                ['itemcode', 'asc'],
+            ])
             ->values();
 
-        $rows = [];
-        $uNo = 0; $rNo = 0;
-
-        foreach ($itemEvents as $ev) {
-            if ($ev->type === 'U') $uNo++;
-            if ($ev->type === 'R') $rNo++;
-
-            $no = $ev->type === 'U' ? "U-{$uNo}" : "R-{$rNo}";
-
-            $rows[] = (object)[
-                'no'     => $no,
-                'tgl'    => $ev->dt,
-                'ket'    => $ev->docno,
-                'masuk'  => $ev->masuk,
-                'keluar' => $ev->keluar,
-                'type'   => $ev->type,
-            ];
+        // kalau tidak ada data, langsung return kosong
+        if ($events->isEmpty()) {
+            return view('transaction.gudang.report')->with([
+                'title'     => $title,
+                'report'    => [],
+                'mode'      => $mode,
+                'search'    => $search,
+                'startDate' => $startDate,
+                'endDate'   => $endDate,
+            ]);
         }
 
-        $meta = $itemMaster->get($code);
+        $report = [];
 
-        $report[] = (object)[
-            'itemcode' => $code,
-            'itemname' => $meta->itemname ?? '-',
-            'unit'     => $meta->measure ?? '-',
-            'rows'     => $rows,
-        ];
+        // =========================================
+        // MODE: ACTIVITY
+        // Group per activitycode + herbisidagroupname
+        // =========================================
+        if ($mode === 'activity') {
+            $groupedByActivity = $events->groupBy(fn($ev) => ($ev->activitycode ?? '-') . '||' . ($ev->herbisidagroupname ?? '-'));
+
+            foreach ($groupedByActivity as $groupKey => $actRows) {
+                $first = $actRows->first();
+                $rows = $actRows->map(function ($ev) {
+                    return (object) [
+                        'tgl'      => $ev->dt,
+                        'ket'      => $ev->docno,
+                        'masuk'    => $ev->masuk,
+                        'keluar'   => $ev->keluar,
+                        'type'     => $ev->type,
+                        'itemcode' => $ev->itemcode,
+                        'itemname' => $ev->itemname,
+                        'unit'     => $ev->unit,
+                    ];
+                })->values();
+
+                $report[] = (object) [
+                    'activitycode'       => $first->activitycode ?? '-',
+                    'herbisidagroupname' => $first->herbisidagroupname ?? '-',
+                    'activityname2'      => $first->activityname2 ?? '-',
+                    'rows'               => $rows,
+                ];
+            }
+
+            usort($report, fn($a, $b) => strcmp($a->activitycode, $b->activitycode));
+        }
+
+        // =========================================
+        // MODE: ITEM
+        // Group per itemcode seperti sebelumnya
+        // =========================================
+        else {
+            $itemcodes = $events->pluck('itemcode')->unique()->values();
+
+            foreach ($itemcodes as $code) {
+                $itemEvents = $events->where('itemcode', $code)
+                    ->sortBy('dt')
+                    ->values();
+
+                $rows = [];
+                $uNo = 0;
+                $rNo = 0;
+
+                foreach ($itemEvents as $ev) {
+                    if ($ev->type === 'U') $uNo++;
+                    if ($ev->type === 'R') $rNo++;
+
+                    $no = $ev->type === 'U' ? "U-{$uNo}" : "R-{$rNo}";
+
+                    $rows[] = (object) [
+                        'no'       => $no,
+                        'tgl'      => $ev->dt,
+                        'ket'      => $ev->docno,
+                        'masuk'    => $ev->masuk,
+                        'keluar'   => $ev->keluar,
+                        'type'     => $ev->type,
+                        'itemcode' => $ev->itemcode,
+                        'itemname' => $ev->itemname,
+                        'unit'     => $ev->unit,
+                    ];
+                }
+
+                $meta = $itemMaster->get($code);
+
+                $report[] = (object) [
+                    'itemcode' => $code,
+                    'itemname' => $meta->itemname ?? '-',
+                    'unit'     => $meta->measure ?? '-',
+                    'rows'     => $rows,
+                ];
+            }
+
+            usort($report, fn($a, $b) => strcmp($a->itemcode, $b->itemcode));
+        }
+
+        return view('transaction.gudang.report')->with([
+            'title'     => $title,
+            'report'    => $report,
+            'mode'      => $mode,
+            'search'    => $search,
+            'startDate' => $startDate,
+            'endDate'   => $endDate,
+        ]);
     }
-
-    usort($report, fn($a,$b) => strcmp($a->itemcode, $b->itemcode));
-
-    return view('transaction.gudang.report')->with([
-        'title' => $title,
-        'report' => $report,
-        'search' => $search,
-        'startDate' => $startDate,
-        'endDate' => $endDate,
-    ]);
-}
 
  
 
