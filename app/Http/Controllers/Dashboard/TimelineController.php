@@ -38,22 +38,20 @@ class TimelineController extends Controller
         $plot = $request->get('plot');
 
         if (!$plot) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Plot tidak ditemukan.'
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Plot tidak ditemukan.'], 422);
         }
 
-        $batchInfo = DB::table('batch as b')
-            ->join('masterlist as m', function ($join) {
-                $join->on('b.batchno', '=', 'm.activebatchno')
-                    ->on('b.companycode', '=', 'm.companycode');
-            })
+        // Ambil activebatchno dari masterlist untuk tanda "aktif"
+        $activeBatchNo = DB::table('masterlist')
+            ->where('companycode', $companyCode)
+            ->where('plot', $plot)
+            ->value('activebatchno');
+
+        // Semua batch history untuk plot ini
+        $batches = DB::table('batch as b')
             ->where('b.companycode', $companyCode)
             ->where('b.plot', $plot)
-            ->where('b.isactive', 1)
             ->select(
-                'b.plot',
                 'b.batchno',
                 'b.batcharea',
                 'b.lifecyclestatus',
@@ -62,8 +60,15 @@ class TimelineController extends Controller
                 DB::raw('DATEDIFF(CURDATE(), b.batchdate) as umur_hari'),
                 DB::raw('TIMESTAMPDIFF(MONTH, b.batchdate, CURDATE()) as umur_bulan')
             )
-            ->first();
+            ->orderByDesc('b.batchdate')
+            ->get()
+            ->map(function ($b) use ($activeBatchNo, $plot) {
+                $b->plot      = $plot;
+                $b->is_active = ($b->batchno === $activeBatchNo);
+                return $b;
+            });
 
+        // Semua aktivitas di semua batch untuk plot ini
         $activities = DB::table('lkhdetailplot as ldp')
             ->join('lkhhdr as lh', function ($join) {
                 $join->on('ldp.lkhno', '=', 'lh.lkhno')
@@ -78,13 +83,19 @@ class TimelineController extends Controller
                 'ldp.batchno',
                 'ldp.luashasil'
             )
+            ->orderBy('ldp.batchno', 'desc')
             ->orderBy('lh.lkhdate', 'desc')
             ->get();
 
+        // Batch aktif untuk info ringkas di header modal
+        $activeBatch = $batches->firstWhere('is_active', true);
+
         return response()->json([
-            'success' => true,
-            'batch' => $batchInfo,
-            'activities' => $activities,
+            'success'       => true,
+            'batch'         => $activeBatch,   // kompatibel dengan kode lama (info bar)
+            'batches'       => $batches,        // semua history
+            'active_batchno'=> $activeBatchNo,
+            'activities'    => $activities,
         ]);
     }
 
@@ -443,20 +454,25 @@ class TimelineController extends Controller
                 $markerColor = 'black'; // atau '#6b7280'
             }
 
-            // tambahan persentase realisasi
-            $stageCount = count($activityMap);
+            // tambahan persentase realisasi — filter activityMap sesuai status plot
+            $isRcPlot = str_starts_with(strtoupper($lifecycleStatus), 'RC');
+            $isPcPlot = strtoupper($lifecycleStatus) === 'PC';
+
+            $relevantCodes = array_filter(array_keys($activityMap), function($code) use ($isRcPlot) {
+                $isRcActivity = str_starts_with($code, '3.2');
+                return $isRcPlot ? $isRcActivity : !$isRcActivity;
+            });
+
+            $stageCount = count($relevantCodes);
             $doneCount  = 0;
-            
-            // hitung berdasarkan activityMap (bukan $activities) biar konsisten 0/20 dst
-            foreach ($activityMap as $code => $label) {
+
+            foreach ($relevantCodes as $code) {
                 $a = $activities?->get($code);
                 $pct = (float)($a->avg_percentage ?? 0);
                 if ($pct >= 100) $doneCount++;
             }
-            
+
             $stagePct = $stageCount > 0 ? ($doneCount / $stageCount) * 100 : 0;
-            // dd($stageCount, $stagePct, $doneCount);
-            //
             
             $plotActivityDetails[$plotCode] = [
                 'activities' => $activityList,
