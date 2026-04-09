@@ -157,13 +157,13 @@
                                     {{ ucfirst($item->jenis ?? 'N/A') }}
                                 </span>
                             </td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->toleransi ?? 0, 2, ',', '.') }}</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->pucuk ?? 0, 2, ',', '.') }}</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->daungulma ?? 0, 2, ',', '.') }}</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->sogolan ?? 0, 2, ',', '.') }}</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->siwilan ?? 0, 2, ',', '.') }}</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->tebumati ?? 0, 2, ',', '.') }}</td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->tanahetc ?? 0, 2, ',', '.') }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->toleransi ?? 0, 3, ',', '.') }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->pucuk ?? 0, 3, ',', '.') }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->daungulma ?? 0, 3, ',', '.') }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->sogolan ?? 0, 3, ',', '.') }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->siwilan ?? 0, 3, ',', '.') }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->tebumati ?? 0, 3, ',', '.') }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->tanahetc ?? 0, 3, ',', '.') }}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->total ?? 0, 3, ',', '.') }}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->nettotrash ?? 0, 3, ',', '.') }}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-900">{{ $item->createdby ?? '-' }}</td>
