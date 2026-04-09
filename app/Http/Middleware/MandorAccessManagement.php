@@ -17,7 +17,7 @@ class MandorAccessManagement
 
         $user = auth()->user();
         
-        // Jika user adalah mandor (idjabatan = 20)
+        // Jika user adalah mandor (idjabatan = 999)
         if ($user->idjabatan == 999) {
             $allowedPaths = [
                 'mandor',
@@ -44,7 +44,7 @@ class MandorAccessManagement
             }
         }
         
-        // Jika user adalah absen approver (idjabatan = 10)
+        // Jika user adalah absen approver (idjabatan = 998)
         else if ($user->idjabatan == 998) {
             $allowedPaths = [
                 'approver',
