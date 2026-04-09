@@ -76,6 +76,8 @@ class TrashController extends Controller
                         'plot' => $suratJalan->plot,
                         'varietas' => $suratJalan->varietas,
                         'kategori' => $suratJalan->kategori,
+                        'namasubkontraktor' => $suratJalan->namasubkontraktor,
+                        'nomorpolisi' => $suratJalan->nomorpolisi,
                     ]
                 ]);
             } else {
@@ -132,7 +134,8 @@ class TrashController extends Controller
                     'varietas',
                     'kategori',
                     'tanggalangkut',
-                    'nomorpolisi'
+                    'nomorpolisi',
+                    'namasubkontraktor'
                 ])
                 ->where('companycode', $company)
                 ->whereDate('tanggalangkut', $date)
@@ -165,7 +168,65 @@ class TrashController extends Controller
                 'data' => []
             ], 500);
         }
-    }   
+    }
+
+    public function searchSuratJalanByNopol(Request $request)
+    {
+        try {
+            $company  = $request->get('company');
+            $nopol    = $request->get('nopol');
+
+            if (empty($company) || empty($nopol)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Company dan nomor polisi harus diisi',
+                    'data'    => []
+                ]);
+            }
+
+            $suratJalanList = DB::table('suratjalanpos')
+                ->select([
+                    'suratjalanno',
+                    'companycode',
+                    'plot',
+                    'varietas',
+                    'kategori',
+                    'tanggalangkut',
+                    'nomorpolisi',
+                    'namasubkontraktor'
+                ])
+                ->where('companycode', $company)
+                ->where('nomorpolisi', $nopol)
+                ->whereNotExists(function ($query) {
+                    $query->select(DB::raw(1))
+                        ->from('trash')
+                        ->whereColumn('trash.suratjalanno', 'suratjalanpos.suratjalanno')
+                        ->whereColumn('trash.companycode', 'suratjalanpos.companycode');
+                })
+                ->orderBy('tanggalangkut', 'desc')
+                ->get();
+
+            if ($suratJalanList->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada surat jalan yang tersedia untuk nomor polisi tersebut',
+                    'data'    => []
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Surat jalan ditemukan',
+                'data'    => $suratJalanList->toArray()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+                'data'    => []
+            ], 500);
+        }
+    }
 
     public function store(Request $request)
     {
