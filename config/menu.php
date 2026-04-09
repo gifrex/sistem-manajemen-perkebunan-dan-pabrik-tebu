@@ -337,6 +337,11 @@ return [
                 'route' => 'dashboard.maps',
                 'permission' => 'dashboard.maps.view',
             ],
+            [
+                'name' => 'Surat Teguran',
+                'route' => 'dashboard.surat-teguran.index',
+                'permission' => 'dashboard.suratteguran.view',
+            ],
         ],
     ],
 
@@ -409,6 +414,11 @@ return [
                 'name' => 'Dashboard Panen Pabrik',
                 'route' => 'pabrik.panen-pabrik.index',
                 'permission' => 'pabrik.panenpabrik.view',
+            ],
+            [
+                'name' => 'Surat Teguran',
+                'route' => 'pabrik.surat-teguran.index',
+                'permission' => 'pabrik.suratteguran.view',
             ],
         ],
     ],

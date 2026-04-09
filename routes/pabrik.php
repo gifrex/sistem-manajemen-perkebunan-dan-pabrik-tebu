@@ -4,6 +4,7 @@
 
 use App\Http\Controllers\Pabrik\TrashController;
 use App\Http\Controllers\Pabrik\DashboardPanenPabrikController;
+use App\Http\Controllers\Pabrik\SuratTeguranController;
 
 Route::middleware('auth')->prefix('pabrik')->name('pabrik.')->group(function () {
 
@@ -38,6 +39,20 @@ Route::middleware('auth')->prefix('pabrik')->name('pabrik.')->group(function () 
             ->where('companycode', '.*')
             ->where('jenis', '.*')
             ->name('trash.destroy');
+    });
+
+    // ============================================================================
+    // SURAT TEGURAN
+    // ============================================================================
+    Route::middleware('permission:pabrik.suratteguran.view')->group(function () {
+        Route::get('surat-teguran', [SuratTeguranController::class, 'index'])->name('surat-teguran.index');
+        Route::get('surat-teguran/create', [SuratTeguranController::class, 'create'])->name('surat-teguran.create');
+        Route::post('surat-teguran', [SuratTeguranController::class, 'store'])->name('surat-teguran.store');
+        Route::get('surat-teguran/{id}', [SuratTeguranController::class, 'show'])->name('surat-teguran.show');
+        Route::get('surat-teguran/{id}/edit', [SuratTeguranController::class, 'edit'])->name('surat-teguran.edit');
+        Route::post('surat-teguran/{id}', [SuratTeguranController::class, 'update'])->name('surat-teguran.update');
+        Route::post('surat-teguran/{id}/send', [SuratTeguranController::class, 'send'])->name('surat-teguran.send');
+        Route::delete('surat-teguran/{id}', [SuratTeguranController::class, 'destroy'])->name('surat-teguran.destroy');
     });
 
     // ============================================================================

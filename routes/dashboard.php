@@ -6,6 +6,7 @@ use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\TimelineController;
 use App\Http\Controllers\Dashboard\MapsController;
 use App\Http\Controllers\Dashboard\DashboardPanenController;
+use App\Http\Controllers\Dashboard\SuratTeguranController as DashboardSuratTeguranController;
 use App\Http\Controllers\Pabrik\DashboardPanenPabrikController;
 
 
@@ -45,6 +46,15 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
         Route::match(['GET', 'POST'], 'mapsapi', [MapsController::class, 'indexapi'])->name('mapsapi');
         Route::match(['GET', 'POST'], 'callmapsapi', [MapsController::class, 'callmapsapi'])->name('callmapsapi');
         Route::match(['GET', 'POST'], 'maps/upload', [MapsController::class, 'upload'])->name('maps.upload');
+    });
+
+    // ============================================================================
+    // SURAT TEGURAN DASHBOARD (Kebun)
+    // ============================================================================
+    Route::middleware('permission:dashboard.suratteguran.view')->group(function () {
+        Route::get('surat-teguran', [DashboardSuratTeguranController::class, 'index'])->name('surat-teguran.index');
+        Route::get('surat-teguran/{id}', [DashboardSuratTeguranController::class, 'show'])->name('surat-teguran.show');
+        Route::post('surat-teguran/{id}/mark-read', [DashboardSuratTeguranController::class, 'markAsRead'])->name('surat-teguran.mark-read');
     });
 
     // ============================================================================
