@@ -819,14 +819,10 @@
                                         <!-- Step 1: Company dan Nomor Polisi -->
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                             <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-2">Company</label>
-                                                <select x-model="nopolForm.company"
-                                                    class="w-full border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 px-3 py-2">
-                                                    <option value="">Pilih Company</option>
-                                                    @foreach ($companies as $c)
-                                                    <option value="{{ $c->companycode }}">{{ $c->name }}</option>
-                                                    @endforeach
-                                                </select>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">Company Code</label>
+                                                <input type="text" x-model="nopolForm.company"
+                                                    class="w-full border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 px-3 py-2"
+                                                    placeholder="Masukkan company code">
                                             </div>
                                             <div>
                                                 <label class="block text-sm font-medium text-gray-700 mb-2">Nomor Polisi</label>

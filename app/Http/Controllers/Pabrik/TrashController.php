@@ -62,21 +62,40 @@ class TrashController extends Controller
             }
 
             // ? Cari berdasarkan nomor surat jalan saja
-            $suratJalan = DB::table('suratjalanpos')
-                ->where('suratjalanno', $noSuratJalan)->where('companycode', session('companycode'))
+            $suratJalan = DB::table('suratjalanpos as sj')
+                ->leftJoin('subkontraktor as sk', function ($join) {
+                    $join->on('sk.id', '=', 'sj.namasubkontraktor')
+                         ->on('sk.companycode', '=', 'sj.companycode');
+                })
+                ->where('sj.suratjalanno', $noSuratJalan)
+                ->where('sj.companycode', session('companycode'))
+                ->select([
+                    'sj.suratjalanno',
+                    'sj.companycode',
+                    'sj.plot',
+                    'sj.varietas',
+                    'sj.kategori',
+                    'sj.namasubkontraktor as kodesubkontraktor',
+                    'sk.namasubkontraktor as namasubkontraktor',
+                    'sj.nomorpolisi',
+                ])
                 ->first();
 
             if ($suratJalan) {
+                $subkontraktor = ($suratJalan->kodesubkontraktor)
+                    ? ($suratJalan->kodesubkontraktor . ' - ' . ($suratJalan->namasubkontraktor ?? '-'))
+                    : '-';
+
                 return response()->json([
                     'exists' => true,
                     'message' => 'Surat jalan ditemukan dan siap digunakan',
                     'data' => [
                         'suratjalanno' => $suratJalan->suratjalanno,
-                        'companycode' => $suratJalan->companycode, // Return company code
+                        'companycode' => $suratJalan->companycode,
                         'plot' => $suratJalan->plot,
                         'varietas' => $suratJalan->varietas,
                         'kategori' => $suratJalan->kategori,
-                        'namasubkontraktor' => $suratJalan->namasubkontraktor,
+                        'namasubkontraktor' => $subkontraktor,
                         'nomorpolisi' => $suratJalan->nomorpolisi,
                     ]
                 ]);
@@ -126,26 +145,30 @@ class TrashController extends Controller
                 ->count();
 
             // Query utama
-            $suratJalanList = DB::table('suratjalanpos')
+            $suratJalanList = DB::table('suratjalanpos as sj')
+                ->leftJoin('subkontraktor as sk', function ($join) {
+                    $join->on('sk.id', '=', 'sj.namasubkontraktor')
+                         ->on('sk.companycode', '=', 'sj.companycode');
+                })
                 ->select([
-                    'suratjalanno',
-                    'companycode',
-                    'plot',
-                    'varietas',
-                    'kategori',
-                    'tanggalangkut',
-                    'nomorpolisi',
-                    'namasubkontraktor'
+                    'sj.suratjalanno',
+                    'sj.companycode',
+                    'sj.plot',
+                    'sj.varietas',
+                    'sj.kategori',
+                    'sj.tanggalangkut',
+                    'sj.nomorpolisi',
+                    DB::raw("CASE WHEN sj.namasubkontraktor IS NOT NULL AND sj.namasubkontraktor != '' THEN CONCAT(sj.namasubkontraktor, ' - ', COALESCE(sk.namasubkontraktor, '-')) ELSE '-' END as namasubkontraktor"),
                 ])
-                ->where('companycode', $company)
-                ->whereDate('tanggalangkut', $date)
+                ->where('sj.companycode', $company)
+                ->whereDate('sj.tanggalangkut', $date)
                 ->whereNotExists(function ($query) {
                     $query->select(DB::raw(1))
                         ->from('trash')
-                        ->whereColumn('trash.suratjalanno', 'suratjalanpos.suratjalanno')
-                        ->whereColumn('trash.companycode', 'suratjalanpos.companycode');
+                        ->whereColumn('trash.suratjalanno', 'sj.suratjalanno')
+                        ->whereColumn('trash.companycode', 'sj.companycode');
                 })
-                ->orderBy('suratjalanno')
+                ->orderBy('sj.suratjalanno')
                 ->get();
 
             if ($suratJalanList->isEmpty()) {
@@ -173,8 +196,8 @@ class TrashController extends Controller
     public function searchSuratJalanByNopol(Request $request)
     {
         try {
-            $company  = $request->get('company');
-            $nopol    = $request->get('nopol');
+            $company = $request->get('company');
+            $nopol   = trim($request->get('nopol'));
 
             if (empty($company) || empty($nopol)) {
                 return response()->json([
@@ -184,32 +207,55 @@ class TrashController extends Controller
                 ]);
             }
 
-            $suratJalanList = DB::table('suratjalanpos')
-                ->select([
-                    'suratjalanno',
-                    'companycode',
-                    'plot',
-                    'varietas',
-                    'kategori',
-                    'tanggalangkut',
-                    'nomorpolisi',
-                    'namasubkontraktor'
-                ])
+            // Normalisasi nopol: hilangkan spasi dan uppercase untuk perbandingan
+            $nopolNormalized = strtoupper(str_replace(' ', '', $nopol));
+
+            // DEBUG: total SJ dengan nopol tersebut
+            $totalSuratJalan = DB::table('suratjalanpos')
                 ->where('companycode', $company)
-                ->where('nomorpolisi', $nopol)
+                ->whereRaw('UPPER(REPLACE(nomorpolisi, " ", "")) = ?', [$nopolNormalized])
+                ->count();
+
+            // DEBUG: berapa yang sudah ada di trash
+            $sudahAdaTrash = DB::table('suratjalanpos as sj')
+                ->join('trash as t', function ($join) {
+                    $join->on('t.suratjalanno', '=', 'sj.suratjalanno')
+                         ->on('t.companycode', '=', 'sj.companycode');
+                })
+                ->where('sj.companycode', $company)
+                ->whereRaw('UPPER(REPLACE(sj.nomorpolisi, " ", "")) = ?', [$nopolNormalized])
+                ->count();
+
+            $suratJalanList = DB::table('suratjalanpos as sj')
+                ->leftJoin('subkontraktor as sk', function ($join) {
+                    $join->on('sk.id', '=', 'sj.namasubkontraktor')
+                         ->on('sk.companycode', '=', 'sj.companycode');
+                })
+                ->select([
+                    'sj.suratjalanno',
+                    'sj.companycode',
+                    'sj.plot',
+                    'sj.varietas',
+                    'sj.kategori',
+                    'sj.tanggalangkut',
+                    'sj.nomorpolisi',
+                    DB::raw("CASE WHEN sj.namasubkontraktor IS NOT NULL AND sj.namasubkontraktor != '' THEN CONCAT(sj.namasubkontraktor, ' - ', COALESCE(sk.namasubkontraktor, '-')) ELSE '-' END as namasubkontraktor"),
+                ])
+                ->where('sj.companycode', $company)
+                ->whereRaw('UPPER(REPLACE(sj.nomorpolisi, " ", "")) = ?', [$nopolNormalized])
                 ->whereNotExists(function ($query) {
                     $query->select(DB::raw(1))
                         ->from('trash')
-                        ->whereColumn('trash.suratjalanno', 'suratjalanpos.suratjalanno')
-                        ->whereColumn('trash.companycode', 'suratjalanpos.companycode');
+                        ->whereColumn('trash.suratjalanno', 'sj.suratjalanno')
+                        ->whereColumn('trash.companycode', 'sj.companycode');
                 })
-                ->orderBy('tanggalangkut', 'desc')
+                ->orderBy('sj.tanggalangkut', 'desc')
                 ->get();
 
             if ($suratJalanList->isEmpty()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Tidak ada surat jalan yang tersedia untuk nomor polisi tersebut',
+                    'message' => "Total SJ: {$totalSuratJalan}, Sudah ada trash: {$sudahAdaTrash}. Tidak ada surat jalan yang tersedia untuk nomor polisi tersebut.",
                     'data'    => []
                 ]);
             }
