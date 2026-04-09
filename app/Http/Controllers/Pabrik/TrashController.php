@@ -13,6 +13,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 
 class TrashController extends Controller
@@ -927,7 +928,7 @@ class TrashController extends Controller
                 $colWidths  = [5, 10, 20, 14, 12, 10, 22, 22, 11, 14, 11, 11, 13, 13, 11, 13, 11];
 
                 foreach ($colWidths as $i => $w) {
-                    $sheet->getColumnDimensionByColumn($i + 1)->setWidth($w);
+                    $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($i + 1))->setWidth($w);
                 }
                 $sheet->getDefaultRowDimension()->setRowHeight(16);
 
@@ -958,7 +959,7 @@ class TrashController extends Controller
 
                         // Column headers
                         foreach ($colHeaders as $ci => $ch) {
-                            $sheet->setCellValueByColumnAndRow($ci + 1, $row, $ch);
+                            $sheet->setCellValue([$ci + 1, $row], $ch);
                         }
                         $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($headerFill('E5E7EB'));
                         $sheet->getRowDimension($row)->setRowHeight(30);
@@ -974,7 +975,7 @@ class TrashController extends Controller
                                 $fmt3($item['total']), $fmt3($item['toleransi']), $fmt3($item['nettotrash']),
                             ];
                             foreach ($vals as $ci => $v) {
-                                $sheet->setCellValueByColumnAndRow($ci + 1, $row, $v);
+                                $sheet->setCellValue([$ci + 1, $row], $v);
                             }
                             $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($dataBorder);
                             // right-align numeric cols I–Q
@@ -999,7 +1000,7 @@ class TrashController extends Controller
                             $row++;
 
                             foreach ($colHeaders as $ci => $ch) {
-                                $sheet->setCellValueByColumnAndRow($ci + 1, $row, $ch);
+                                $sheet->setCellValue([$ci + 1, $row], $ch);
                             }
                             $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($headerFill('E5E7EB'));
                             $sheet->getRowDimension($row)->setRowHeight(30);
@@ -1016,7 +1017,7 @@ class TrashController extends Controller
                                     $fmt3($item['total']), $fmt3($item['toleransi']), $fmt3($item['nettotrash']),
                                 ];
                                 foreach ($vals as $ci => $v) {
-                                    $sheet->setCellValueByColumnAndRow($ci + 1, $row, $v);
+                                    $sheet->setCellValue([$ci + 1, $row], $v);
                                 }
                                 $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($dataBorder);
                                 $sheet->getStyle("I{$row}:{$lastCol}{$row}")->applyFromArray($right);
@@ -1057,8 +1058,8 @@ class TrashController extends Controller
                 $h1 = ['Asal Tebu','Tonase','Pucuk (%)','Daun Gulma (%)','Sogolan (%)','Siwilan (%)','Tebu Mati (%)','Tanah dll (%)','Total Trash','Trash % Bruto','Trash % Netto (Pot 5%)','KG Trash Bruto','KG Trash Netto'];
                 $colW = [18, 12, 11, 14, 11, 11, 13, 13, 12, 13, 18, 14, 14];
                 foreach ($h1 as $ci => $h) {
-                    $sheet->setCellValueByColumnAndRow($ci + 1, 5, $h);
-                    $sheet->getColumnDimensionByColumn($ci + 1)->setWidth($colW[$ci]);
+                    $sheet->setCellValue([$ci + 1, 5], $h);
+                    $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($ci + 1))->setWidth($colW[$ci]);
                 }
                 $sheet->getStyle('A5:M5')->applyFromArray($headerFill('E5E7EB'));
                 $sheet->getRowDimension(5)->setRowHeight(30);
@@ -1120,7 +1121,7 @@ class TrashController extends Controller
                                 number_format($kgBruto, 0, '.', ''), number_format($kgNetto, 0, '.', ''),
                             ];
                             foreach ($vals as $ci => $v) {
-                                $sheet->setCellValueByColumnAndRow($ci + 1, $row, $v);
+                                $sheet->setCellValue([$ci + 1, $row], $v);
                             }
                             $sheet->getStyle("A{$row}:M{$row}")->applyFromArray($dataBorder);
                             $sheet->getStyle("B{$row}:M{$row}")->applyFromArray($right);
@@ -1151,7 +1152,7 @@ class TrashController extends Controller
                         number_format($gKgBruto, 0, '.', ''), number_format($gKgNetto, 0, '.', ''),
                     ];
                     foreach ($totalVals as $ci => $v) {
-                        $sheet->setCellValueByColumnAndRow($ci + 1, $row, $v);
+                        $sheet->setCellValue([$ci + 1, $row], $v);
                     }
                     $sheet->getStyle("A{$row}:M{$row}")->applyFromArray($headerFill('D1D5DB'));
                     $sheet->getStyle("B{$row}:M{$row}")->applyFromArray($right);
