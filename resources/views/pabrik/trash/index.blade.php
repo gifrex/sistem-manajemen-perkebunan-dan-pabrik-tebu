@@ -29,24 +29,58 @@
 
         <!-- Header Section with Controls -->
         <div class="px-4 py-4 border-b border-gray-200">
-            <div class="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
+            <div class="flex flex-col space-y-3">
 
-                <!-- New Data Button -->
-                <div class="flex justify-start">
-                    @can('pabrik.trash.create')
-                    <button @click="openModal('create')"
-                        class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 transition-colors duration-200">
-                        <svg class="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5" />
-                        </svg>
-                        <span class="hidden sm:inline">Tambah Data Trash</span>
-                        <span class="sm:hidden">Tambah</span>
-                    </button>
-                    @endcan
+                <!-- Row 1: Tambah Button + Date Filter -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+
+                    <!-- New Data Button -->
+                    <div class="flex items-center gap-3">
+                        @can('pabrik.trash.create')
+                        <button @click="openModal('create')"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 transition-colors duration-200">
+                            <svg class="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5" />
+                            </svg>
+                            <span class="hidden sm:inline">Tambah Data Trash</span>
+                            <span class="sm:hidden">Tambah</span>
+                        </button>
+                        @endcan
+                    </div>
+
+                    <!-- Date Filter Form -->
+                    <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-2">
+                        <label for="date" class="text-xs font-medium text-gray-700 whitespace-nowrap flex items-center gap-1">
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            Tanggal:
+                        </label>
+                        <input type="date" name="date" id="date"
+                            value="{{ $date }}"
+                            onchange="this.form.submit()"
+                            class="text-xs border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2 cursor-pointer" />
+                        @if(request('search'))
+                        <input type="hidden" name="search" value="{{ request('search') }}">
+                        @endif
+                        @if(request('perPage'))
+                        <input type="hidden" name="perPage" value="{{ request('perPage') }}">
+                        @endif
+                        @if($date !== now()->format('Y-m-d'))
+                        <a href="{{ route('pabrik.trash.index') }}"
+                            title="Kembali ke hari ini"
+                            class="text-xs text-blue-600 hover:text-blue-800 whitespace-nowrap flex items-center gap-1 px-2 py-1 border border-blue-300 rounded-md hover:bg-blue-50 transition-colors">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            Hari ini
+                        </a>
+                        @endif
+                    </form>
                 </div>
 
-                <!-- Search and Per Page Controls -->
-                <div class="flex flex-col space-y-3 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
+                <!-- Row 2: Search + Per Page -->
+                <div class="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
                     <!-- Search Form -->
                     <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-2">
                         <label for="search" class="text-xs font-medium text-gray-700 whitespace-nowrap">Cari:</label>
@@ -56,13 +90,14 @@
                             class="text-xs w-full sm:w-48 md:w-64 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2"
                             onkeydown="if(event.key==='Enter') this.form.submit()" />
                         @if(request('search'))
-                        <a href="{{ route('pabrik.trash.index') }}"
+                        <a href="{{ route('pabrik.trash.index', ['date' => $date]) }}"
                             class="text-gray-500 hover:text-gray-700 px-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                             </svg>
                         </a>
                         @endif
+                        <input type="hidden" name="date" value="{{ $date }}">
                         @if(request('perPage'))
                         <input type="hidden" name="perPage" value="{{ request('perPage') }}">
                         @endif
@@ -78,11 +113,13 @@
                             <option value="20" {{ (int)request('perPage', 10) === 20 ? 'selected' : '' }}>20</option>
                             <option value="50" {{ (int)request('perPage', 10) === 50 ? 'selected' : '' }}>50</option>
                         </select>
+                        <input type="hidden" name="date" value="{{ $date }}">
                         @if(request('search'))
                         <input type="hidden" name="search" value="{{ request('search') }}">
                         @endif
                     </form>
                 </div>
+
             </div>
         </div>
 
@@ -181,7 +218,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                                     </svg>
                                     <p class="text-lg font-medium">Tidak ada data trash yang ditemukan</p>
-                                    <p class="text-sm">{{ request('search') ? 'Tidak ada hasil untuk pencarian "'.request('search').'"' : 'Belum ada data trash yang diinput' }}</p>
+                                    <p class="text-sm">{{ request('search') ? 'Tidak ada hasil untuk pencarian "'.request('search').'"' : 'Belum ada data trash pada tanggal '.date('d/m/Y', strtotime($date)) }}</p>
                                 </div>
                             </td>
                         </tr>

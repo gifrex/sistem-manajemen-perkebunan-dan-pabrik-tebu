@@ -14,9 +14,10 @@ class TrashController extends Controller
 {
     public function index(Request $request)
     {
-        $search = $request->get('search');
-        $perPage = $request->get('perPage', 10);
+        $search      = $request->get('search');
+        $perPage     = $request->get('perPage', 10);
         $companycode = session('companycode');
+        $date        = $request->get('date', now()->format('Y-m-d'));
 
         $query = Trash::query();
 
@@ -25,15 +26,17 @@ class TrashController extends Controller
             $query->where('companycode', $companycode);
         }
 
+        // Filter by createddate (default: hari ini)
+        $query->whereDate('createddate', $date);
+
         // Search functionality
         if ($search) {
             $query->where('suratjalanno', 'like', "%{$search}%");
         }
 
-        // Order by suratjalanno aja, jangan created_at
         $query->orderBy('createddate', 'desc');
 
-        $data = $query->paginate($perPage);
+        $data = $query->paginate($perPage)->appends($request->query());
 
         $companies = DB::table('company')
             ->select('companycode', 'name')
@@ -41,11 +44,12 @@ class TrashController extends Controller
             ->get();
 
         return view('pabrik.trash.index', [
-            'title' => 'Trash Pabrik',
-            'navbar' => 'Pabrik',
-            'nav' => 'Trash',
+            'title'     => 'Trash Pabrik',
+            'navbar'    => 'Pabrik',
+            'nav'       => 'Trash',
             'companies' => $companies,
-            'data' => $data
+            'data'      => $data,
+            'date'      => $date,
         ]);
     }
 
