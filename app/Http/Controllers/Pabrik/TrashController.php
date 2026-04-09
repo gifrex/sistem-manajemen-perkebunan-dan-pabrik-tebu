@@ -325,17 +325,17 @@ class TrashController extends Controller
             $tanahEtc = $this->parseDecimal($request->tanah_etc ?? '0');
             $beratKotor = $this->parseDecimal($request->berat_kotor);
 
-            // Calculate percentages based on berat kotor
-            $tebumatiPct = $beratKotor > 0 ? round(($tebumati / $beratKotor) * 100, 2) : 0; // 2 desimal
-            $daunPct = $beratKotor > 0 ? round(($daunGulma / $beratKotor) * 100, 2) : 0; // 2 desimal
-            $pucukPct = $beratKotor > 0 ? round(($pucuk / $beratKotor) * 100, 2) : 0; // 2 desimal
-            $sogolanPct = $beratKotor > 0 ? round(($sogolan / $beratKotor) * 100, 2) : 0; // 2 desimal
-            $siwlanPct = $beratKotor > 0 ? round(($siwilan / $beratKotor) * 100, 2) : 0; // 2 desimal
-            $tanahEtcRounded = round($tanahEtc, 2); // 2 desimal
+            // Calculate percentages based on berat kotor (truncate 3 desimal, tanpa pembulatan)
+            $tebumatiPct = $beratKotor > 0 ? $this->truncate3(($tebumati / $beratKotor) * 100) : 0;
+            $daunPct     = $beratKotor > 0 ? $this->truncate3(($daunGulma / $beratKotor) * 100) : 0;
+            $pucukPct    = $beratKotor > 0 ? $this->truncate3(($pucuk / $beratKotor) * 100) : 0;
+            $sogolanPct  = $beratKotor > 0 ? $this->truncate3(($sogolan / $beratKotor) * 100) : 0;
+            $siwlanPct   = $beratKotor > 0 ? $this->truncate3(($siwilan / $beratKotor) * 100) : 0;
+            $tanahEtc3   = $this->truncate3($tanahEtc);
 
-            // Calculate totals dengan 3 desimal
-            $totalTrash = round($tebumatiPct + $daunPct + $pucukPct + $sogolanPct + $siwlanPct + $tanahEtcRounded, 2); // 3 desimal
-            $nettoTrash = round($totalTrash - $toleransi, 2); // 3 desimal menggunakan toleransi dari request
+            // Calculate totals (truncate 3 desimal, tanpa pembulatan)
+            $totalTrash = $this->truncate3($tebumatiPct + $daunPct + $pucukPct + $sogolanPct + $siwlanPct + $tanahEtc3);
+            $nettoTrash = $this->truncate3($totalTrash - $toleransi);
 
             // Pastikan netto trash tidak kurang dari 0
             if ($nettoTrash < 0) {
@@ -353,7 +353,7 @@ class TrashController extends Controller
                 'sogolan' => $sogolanPct,
                 'siwilan' => $siwlanPct,
                 'tebumati' => $tebumatiPct,
-                'tanahetc' => $tanahEtcRounded,
+                'tanahetc' => $tanahEtc3,
                 'total' => $totalTrash,
                 'nettotrash' => $nettoTrash,
                 'createdby' => Auth::user()->userid,
@@ -423,17 +423,17 @@ class TrashController extends Controller
             $tanahEtc = $this->parseDecimal($request->tanah_etc ?? '0');
             $beratKotor = $this->parseDecimal($request->berat_kotor);
 
-            // Calculate percentages based on berat kotor (SAMA SEPERTI STORE)
-            $tebumatiPct = $beratKotor > 0 ? round(($tebumati / $beratKotor) * 100, 2) : 0;
-            $daunPct = $beratKotor > 0 ? round(($daunGulma / $beratKotor) * 100, 2) : 0;
-            $pucukPct = $beratKotor > 0 ? round(($pucuk / $beratKotor) * 100, 2) : 0;
-            $sogolanPct = $beratKotor > 0 ? round(($sogolan / $beratKotor) * 100, 2) : 0;
-            $siwlanPct = $beratKotor > 0 ? round(($siwilan / $beratKotor) * 100, 2) : 0;
-            $tanahEtcRounded = round($tanahEtc, 2);
+            // Calculate percentages based on berat kotor (truncate 3 desimal, tanpa pembulatan)
+            $tebumatiPct = $beratKotor > 0 ? $this->truncate3(($tebumati / $beratKotor) * 100) : 0;
+            $daunPct     = $beratKotor > 0 ? $this->truncate3(($daunGulma / $beratKotor) * 100) : 0;
+            $pucukPct    = $beratKotor > 0 ? $this->truncate3(($pucuk / $beratKotor) * 100) : 0;
+            $sogolanPct  = $beratKotor > 0 ? $this->truncate3(($sogolan / $beratKotor) * 100) : 0;
+            $siwlanPct   = $beratKotor > 0 ? $this->truncate3(($siwilan / $beratKotor) * 100) : 0;
+            $tanahEtc3   = $this->truncate3($tanahEtc);
 
-            // Calculate totals dengan 3 desimal (SAMA SEPERTI STORE)
-            $totalTrash = round($tebumatiPct + $daunPct + $pucukPct + $sogolanPct + $siwlanPct + $tanahEtcRounded, 2);
-            $nettoTrash = round($totalTrash - $toleransi, 2); // Menggunakan toleransi dari request
+            // Calculate totals (truncate 3 desimal, tanpa pembulatan)
+            $totalTrash = $this->truncate3($tebumatiPct + $daunPct + $pucukPct + $sogolanPct + $siwlanPct + $tanahEtc3);
+            $nettoTrash = $this->truncate3($totalTrash - $toleransi);
 
             // Pastikan netto trash tidak kurang dari 0
             if ($nettoTrash < 0) {
@@ -455,7 +455,7 @@ class TrashController extends Controller
                     'sogolan' => $sogolanPct,
                     'siwilan' => $siwlanPct,
                     'tebumati' => $tebumatiPct,
-                    'tanahetc' => $tanahEtcRounded,
+                    'tanahetc' => $tanahEtc3,
                     'total' => $totalTrash,
                     'nettotrash' => $nettoTrash,
                     // Note: createdby dan createddate tidak diupdate karena ini adalah data audit
@@ -498,6 +498,17 @@ class TrashController extends Controller
             return redirect()->back()
                 ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Truncate to 3 decimal places WITHOUT rounding
+     * Example: 8.8388888 -> 8.838  (bukan 8.839)
+     */
+    private function truncate3($value)
+    {
+        $str = number_format((float) $value, 10, '.', '');
+        $dot = strpos($str, '.');
+        return (float) substr($str, 0, $dot + 4);
     }
 
     /**
