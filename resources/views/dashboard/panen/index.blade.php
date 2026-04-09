@@ -75,7 +75,10 @@
                         <div class="bg-slate-700 px-4 py-2">
                             <div class="flex items-center justify-between">
                                 <h3 class="text-base font-bold text-white" x-text="company.companycode"></h3>
-                                <span class="bg-white bg-opacity-20 text-white text-xs font-bold px-2 py-0.5 rounded" x-text="company.percentage_done + '%'"></span>
+                                <div class="flex items-center gap-2">
+                                    <span class="bg-white bg-opacity-20 text-white text-xs font-bold px-2 py-0.5 rounded" x-text="company.percentage_done + '%'"></span>
+                                    <a href="{{ route('report.report-surat-jalan-timbangan.index') }}" class="bg-blue-500 hover:bg-blue-400 text-white text-[10px] font-semibold px-2 py-0.5 rounded transition-colors">Detail</a>
+                                </div>
                             </div>
                             <p class="text-slate-300 text-[10px] truncate" x-text="company.companyname"></p>
                         </div>
