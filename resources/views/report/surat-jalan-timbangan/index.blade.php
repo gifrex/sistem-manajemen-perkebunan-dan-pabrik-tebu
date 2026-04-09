@@ -413,15 +413,15 @@
                     <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Detail Surat Jalan</h3>
                     <div class="flex gap-2">
                         <button @click="exportSummary()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors">
-                            📊 Export Summary
+                            Export Summary
                         </button>
                         <button @click="exportDetail()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors">
-                            📋 Export Detail
+                            Export Detail
                         </button>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="min-w-full table-auto border-collapse text-xs">
+                    <table id="detailTable" class="min-w-full table-auto border-collapse text-xs">
                         <thead>
                             <tr class="bg-gray-100">
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">No</th>
@@ -458,6 +458,7 @@
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Langsir</th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Tebu<br>Sulit</th>
                                 <th rowspan="2" class="border border-gray-300 px-2 py-2">Jenis<br>Kendaraan</th>
+                                <th rowspan="2" class="border border-gray-300 px-2 py-2">No<br>Kendaraan</th>
                                 <th rowspan="2" @click="sortBy('nomorpolisi')" class="border border-gray-300 px-2 py-2 cursor-pointer hover:bg-gray-200 select-none">
                                     <div class="flex items-center justify-center gap-1">
                                         No Polisi
@@ -549,6 +550,7 @@
                                         <span x-show="item.tebusulit === 0" class="text-gray-400">-</span>
                                     </td>
                                     <td class="border border-gray-300 px-2 py-2 text-center" x-text="item.kendaraankontraktor === 0 ? 'WL' : 'Umum'"></td>
+                                    <td class="border border-gray-300 px-2 py-2 text-center" x-text="item.nomorkendaraan || '-'"></td>
                                     <td class="border border-gray-300 px-2 py-2 text-center font-medium" x-text="item.nomorpolisi || '-'"></td>
                                     <td class="border border-gray-300 px-2 py-2" x-text="item.namasupir || '-'"></td>
                                     <td class="border border-gray-300 px-2 py-2 text-xs" x-text="item.nama_kontraktor_lengkap || '-'"></td>
@@ -570,7 +572,7 @@
                             </template>
                             <template x-if="!data.details || data.details.length === 0">
                                 <tr>
-                                    <td colspan="26" class="border border-gray-300 px-3 py-8 text-center text-gray-500 font-medium">Tidak ada data</td>
+                                    <td colspan="27" class="border border-gray-300 px-3 py-8 text-center text-gray-500 font-medium">Tidak ada data</td>
                                 </tr>
                             </template>
                         </tbody>
@@ -1047,29 +1049,94 @@
             },
 
             exportSummary() {
-                let html = '<table border="1"><thead><tr><th>Mandor</th><th>Total SJ</th><th>Total Netto (kg)</th></tr></thead><tbody>';
-                const s = {};
-                this.data.details.forEach(item => {
-                    const m = item.nama_mandor || item.mandorid;
-                    if (!s[m]) s[m] = { count: 0, netto: 0 };
-                    s[m].count++;
-                    if (item.netto) s[m].netto += parseFloat(item.netto);
+                const details = this.data.details || [];
+                const startDate = this.filters.start_date;
+                const endDate = this.filters.end_date;
+
+                // Group by kontraktor
+                const grouped = {};
+                details.forEach(item => {
+                    const key = item.nama_kontraktor_lengkap || item.namakontraktor || 'Unknown';
+                    if (!grouped[key]) grouped[key] = { total_sj: 0, sudah_timbang: 0, pending: 0, total_netto: 0 };
+                    grouped[key].total_sj++;
+                    if (item.status === 'Sudah Timbang') {
+                        grouped[key].sudah_timbang++;
+                        grouped[key].total_netto += parseFloat(item.netto || 0);
+                    } else {
+                        grouped[key].pending++;
+                    }
                 });
-                Object.keys(s).forEach(m => { html += `<tr><td>${m}</td><td>${s[m].count}</td><td>${s[m].netto}</td></tr>`; });
-                html += '</tbody></table>';
-                const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+
+                let html = `
+                    <html><head><meta charset="UTF-8"></head><body>
+                    <table border="1" cellpadding="4" cellspacing="0">
+                        <tr><td colspan="5" style="font-weight:bold;font-size:14px">Summary Surat Jalan &amp; Timbangan</td></tr>
+                        <tr><td colspan="5">Periode: ${startDate} s/d ${endDate}</td></tr>
+                        <tr></tr>
+                        <thead>
+                            <tr style="background:#d0d0d0;font-weight:bold">
+                                <th>No</th>
+                                <th>Kontraktor</th>
+                                <th>Total SJ</th>
+                                <th>Sudah Timbang</th>
+                                <th>Pending</th>
+                                <th>Total Netto (kg)</th>
+                                <th>Total Netto (ton)</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                let no = 1;
+                let totalSJ = 0, totalSudah = 0, totalPending = 0, totalNetto = 0;
+                Object.keys(grouped).sort().forEach(key => {
+                    const d = grouped[key];
+                    totalSJ += d.total_sj;
+                    totalSudah += d.sudah_timbang;
+                    totalPending += d.pending;
+                    totalNetto += d.total_netto;
+                    html += `<tr>
+                        <td>${no++}</td>
+                        <td>${key}</td>
+                        <td>${d.total_sj}</td>
+                        <td>${d.sudah_timbang}</td>
+                        <td>${d.pending}</td>
+                        <td>${d.total_netto.toFixed(0)}</td>
+                        <td>${(d.total_netto / 1000).toFixed(2)}</td>
+                    </tr>`;
+                });
+
+                html += `<tr style="font-weight:bold;background:#f0f0f0">
+                    <td colspan="2">TOTAL</td>
+                    <td>${totalSJ}</td>
+                    <td>${totalSudah}</td>
+                    <td>${totalPending}</td>
+                    <td>${totalNetto.toFixed(0)}</td>
+                    <td>${(totalNetto / 1000).toFixed(2)}</td>
+                </tr>`;
+
+                html += `</tbody></table></body></html>`;
+
+                const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = `Summary_SJ_${this.filters.start_date}_${this.filters.end_date}.xls`;
+                a.download = `Summary_SJ_${startDate}_${endDate}.xls`;
+                document.body.appendChild(a);
                 a.click();
+                document.body.removeChild(a);
             },
 
             exportDetail() {
-                const blob = new Blob([document.querySelector('table').outerHTML], { type: 'application/vnd.ms-excel' });
+                const table = document.getElementById('detailTable');
+                if (!table) return;
+
+                const html = `<html><head><meta charset="UTF-8"></head><body>${table.outerHTML}</body></html>`;
+                const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
                 a.download = `Detail_SJ_${this.filters.start_date}_${this.filters.end_date}.xls`;
+                document.body.appendChild(a);
                 a.click();
+                document.body.removeChild(a);
             }
         }
     }
