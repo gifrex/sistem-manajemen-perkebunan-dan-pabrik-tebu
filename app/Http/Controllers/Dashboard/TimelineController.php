@@ -68,6 +68,25 @@ class TimelineController extends Controller
                 return $b;
             });
 
+        // Map sub-kode ke parent (sama dengan $activityGrouping di plot())
+        $activityGrouping = [
+            '2.1.11' => ['2.1.11a', '2.1.11b', '2.1.12'],
+            '2.2.7'  => ['2.2.7a', '2.2.7b'],
+            '3.1.1'  => ['3.1.1a', '3.1.1b'],
+            '3.1.2'  => ['3.1.2a', '3.1.2b'],
+            '3.1.5'  => ['3.1.5a', '3.1.5b'],
+            '3.2.4'  => ['3.2.4a', '3.2.4b'],
+            '3.2.5'  => ['3.2.5a', '3.2.5b'],
+            '3.2.6'  => ['3.2.6a', '3.2.6b'],
+        ];
+        // Buat reverse map: sub-kode -> parent
+        $subToParent = [];
+        foreach ($activityGrouping as $parent => $subs) {
+            foreach ($subs as $sub) {
+                $subToParent[$sub] = $parent;
+            }
+        }
+
         // Semua aktivitas di semua batch untuk plot ini
         $activities = DB::table('lkhdetailplot as ldp')
             ->join('lkhhdr as lh', function ($join) {
@@ -85,7 +104,12 @@ class TimelineController extends Controller
             )
             ->orderBy('ldp.batchno', 'desc')
             ->orderBy('lh.lkhdate', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($r) use ($subToParent) {
+                // normalisasi sub-kode ke parent
+                $r->activitycode = $subToParent[$r->activitycode] ?? $r->activitycode;
+                return $r;
+            });
 
         // Batch aktif untuk info ringkas di header modal
         $activeBatch = $batches->firstWhere('is_active', true);
