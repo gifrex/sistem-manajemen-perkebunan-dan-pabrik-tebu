@@ -8,6 +8,11 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Trash;
 use App\Models\MasterData\Company;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 
 class TrashController extends Controller
@@ -779,6 +784,398 @@ class TrashController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    public function exportExcel(Request $request)
+    {
+        try {
+            $reportType = $request->report_type;
+            $company    = $request->company;
+
+            if ($reportType === 'harian' || $reportType === 'bulanan') {
+                $company = 'all';
+            }
+
+            if ($reportType === 'bulanan') {
+                $month     = (int) $request->month;
+                $year      = (int) $request->year;
+                $startDate = sprintf('%04d-%02d-01', $year, $month);
+                $endDate   = date('Y-m-t', strtotime($startDate));
+            } else {
+                $startDate = $request->start_date;
+                $endDate   = $request->end_date;
+                $month     = null;
+                $year      = null;
+            }
+
+            // — sama persis dengan generateReport —
+            $query = DB::table('trash as t')
+                ->select([
+                    't.suratjalanno', 't.companycode', 't.jenis', 't.createddate',
+                    't.pucuk', 't.daungulma', 't.sogolan', 't.siwilan',
+                    't.tebumati', 't.tanahetc', 't.total', 't.toleransi', 't.nettotrash',
+                    'sj.plot', 'sj.varietas', 'sj.kategori', 'sj.nomorpolisi',
+                    'sj.tanggalangkut', 'k.namakontraktor', 'sk.namasubkontraktor',
+                    'tp.netto as tonase_netto',
+                ])
+                ->leftJoin('suratjalanpos as sj', 't.suratjalanno', '=', 'sj.suratjalanno')
+                ->leftJoin('kontraktor as k', 'sj.namakontraktor', '=', 'k.id')
+                ->leftJoin('subkontraktor as sk', 'sj.namasubkontraktor', '=', 'sk.id')
+                ->leftJoin('timbanganpayload as tp', 'sj.suratjalanno', '=', 'tp.suratjalanno')
+                ->whereBetween(DB::raw('DATE(sj.tanggalangkut)'), [$startDate, $endDate])
+                ->whereNotNull('sj.tanggalangkut');
+
+            if ($company !== 'all' && !empty($company)) {
+                if ($reportType === 'mingguan') {
+                    if ($company === 'BNIL')       $query->where('t.companycode', 'LIKE', 'BNL%');
+                    elseif ($company === 'SILVA')  $query->where('t.companycode', 'LIKE', 'SIL%');
+                    else                           $query->where('t.companycode', 'LIKE', $company . '%');
+                } else {
+                    $query->where('t.companycode', $company);
+                }
+            }
+
+            $data = $query->orderBy('sj.tanggalangkut')->orderBy('t.companycode')->get();
+
+            if ($data->isEmpty()) {
+                return redirect()->back()->with('error', 'Tidak ada data untuk diekspor.');
+            }
+
+            $rows = [];
+            foreach ($data as $item) {
+                $rows[] = [
+                    'suratjalanno'      => $item->suratjalanno ?? '',
+                    'companycode'       => $item->companycode ?? '',
+                    'jenis'             => $item->jenis ?? '',
+                    'tanggalangkut'     => $item->tanggalangkut ?? '',
+                    'nomorpolisi'       => $item->nomorpolisi ?? '',
+                    'plot'              => $item->plot ?? '',
+                    'namakontraktor'    => $item->namakontraktor ?? '',
+                    'namasubkontraktor' => $item->namasubkontraktor ?? '',
+                    'pucuk'             => (float)($item->pucuk ?? 0),
+                    'daungulma'         => (float)($item->daungulma ?? 0),
+                    'sogolan'           => (float)($item->sogolan ?? 0),
+                    'siwilan'           => (float)($item->siwilan ?? 0),
+                    'tebumati'          => (float)($item->tebumati ?? 0),
+                    'tanahetc'          => (float)($item->tanahetc ?? 0),
+                    'total'             => (float)($item->total ?? 0),
+                    'toleransi'         => (float)($item->toleransi ?? 0),
+                    'nettotrash'        => (float)($item->nettotrash ?? 0),
+                    'tonase_netto'      => (float)($item->tonase_netto ?? 0),
+                ];
+            }
+
+            $spreadsheet = new Spreadsheet();
+            $monthNames  = [
+                '01'=>'Januari','02'=>'Februari','03'=>'Maret','04'=>'April',
+                '05'=>'Mei','06'=>'Juni','07'=>'Juli','08'=>'Agustus',
+                '09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember',
+            ];
+
+            // ── helper closures ──────────────────────────────────────────────
+            $fmt3  = fn($v) => number_format((float)$v, 3, '.', '');
+            $bold  = ['font' => ['bold' => true]];
+            $center = ['alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]];
+            $right  = ['alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT]];
+            $wrapCenter = ['alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true, 'vertical' => Alignment::VERTICAL_CENTER]];
+
+            $headerFill = fn(string $hex) => [
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $hex]],
+                'font' => ['bold' => true],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            ];
+            $dataBorder = [
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+            ];
+
+            $applyRange = function($sheet, $range, $style) {
+                $sheet->getStyle($range)->applyFromArray($style);
+            };
+
+            // ════════════════════════════════════════════════════════════════
+            if ($reportType === 'harian' || $reportType === 'mingguan') {
+
+                $sheet = $spreadsheet->getActiveSheet();
+                $sheet->setTitle($reportType === 'harian' ? 'Harian' : 'Mingguan');
+
+                $title    = $reportType === 'harian' ? 'LAPORAN HARIAN DATA TRASH' : 'LAPORAN MINGGUAN DATA TRASH';
+                $colCount = 17; // A–Q
+                $lastCol  = 'Q';
+
+                // Judul
+                $sheet->mergeCells("A1:{$lastCol}1");
+                $sheet->setCellValue('A1', $title);
+                $sheet->getStyle('A1')->applyFromArray(['font' => ['bold' => true, 'size' => 14], 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]]);
+
+                $sheet->mergeCells("A2:{$lastCol}2");
+                $sheet->setCellValue('A2', 'SUNGAI BUDI GROUP');
+                $sheet->getStyle('A2')->applyFromArray(['font' => ['bold' => true, 'size' => 12], 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]]);
+
+                $sheet->mergeCells("A3:{$lastCol}3");
+                $period = 'Periode: ' . date('d/m/Y', strtotime($startDate)) . ' s/d ' . date('d/m/Y', strtotime($endDate));
+                $sheet->setCellValue('A3', $period);
+                $sheet->getStyle('A3')->applyFromArray($center);
+
+                $sheet->mergeCells("A4:{$lastCol}4");
+                $sheet->setCellValue('A4', 'Dicetak: ' . date('d/m/Y H:i'));
+                $sheet->getStyle('A4')->applyFromArray($center);
+
+                $colHeaders = ['No','Jenis','Surat Jalan','No. Polisi','Asal Tebu','Plot','Kontraktor','Sub Kontraktor','Pucuk (%)','Daun Gulma (%)','Sogolan (%)','Siwilan (%)','Tebu Mati (%)','Tanah dll (%)','Total (%)','Toleransi (%)','Netto (%)'];
+                $colWidths  = [5, 10, 20, 14, 12, 10, 22, 22, 11, 14, 11, 11, 13, 13, 11, 13, 11];
+
+                foreach ($colWidths as $i => $w) {
+                    $sheet->getColumnDimensionByColumn($i + 1)->setWidth($w);
+                }
+                $sheet->getDefaultRowDimension()->setRowHeight(16);
+
+                // Grouping
+                $grouped = [];
+                if ($reportType === 'harian') {
+                    foreach ($rows as $r) {
+                        $key = date('Y-m-d', strtotime($r['tanggalangkut']));
+                        $grouped[$key][] = $r;
+                    }
+                } else {
+                    foreach ($rows as $r) {
+                        $grouped[$r['jenis']][$r['companycode']][] = $r;
+                    }
+                    foreach ($grouped as $j => $c) { ksort($grouped[$j]); }
+                }
+
+                $row = 5;
+
+                if ($reportType === 'harian') {
+                    foreach ($grouped as $tanggal => $items) {
+                        // Group header
+                        $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
+                        $sheet->setCellValue("A{$row}", 'TANGGAL: ' . date('d/m/Y', strtotime($tanggal)));
+                        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($headerFill('DBEAFE'));
+                        $sheet->getRowDimension($row)->setRowHeight(18);
+                        $row++;
+
+                        // Column headers
+                        foreach ($colHeaders as $ci => $ch) {
+                            $sheet->setCellValueByColumnAndRow($ci + 1, $row, $ch);
+                        }
+                        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($headerFill('E5E7EB'));
+                        $sheet->getRowDimension($row)->setRowHeight(30);
+                        $row++;
+
+                        foreach ($items as $no => $item) {
+                            $vals = [
+                                $no + 1, ucfirst($item['jenis']), $item['suratjalanno'],
+                                $item['nomorpolisi'], $item['companycode'], $item['plot'],
+                                $item['namakontraktor'], $item['namasubkontraktor'],
+                                $fmt3($item['pucuk']), $fmt3($item['daungulma']), $fmt3($item['sogolan']),
+                                $fmt3($item['siwilan']), $fmt3($item['tebumati']), $fmt3($item['tanahetc']),
+                                $fmt3($item['total']), $fmt3($item['toleransi']), $fmt3($item['nettotrash']),
+                            ];
+                            foreach ($vals as $ci => $v) {
+                                $sheet->setCellValueByColumnAndRow($ci + 1, $row, $v);
+                            }
+                            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($dataBorder);
+                            // right-align numeric cols I–Q
+                            $sheet->getStyle("I{$row}:{$lastCol}{$row}")->applyFromArray($right);
+                            $row++;
+                        }
+                        $row++; // blank line between dates
+                    }
+                } else {
+                    // Mingguan
+                    foreach ($grouped as $jenis => $companies) {
+                        $jenisColor = $jenis === 'manual' ? 'D1FAE5' : 'DBEAFE';
+                        $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
+                        $sheet->setCellValue("A{$row}", 'JENIS: ' . strtoupper($jenis));
+                        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($headerFill($jenisColor));
+                        $row++;
+
+                        foreach ($companies as $compCode => $items) {
+                            $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
+                            $sheet->setCellValue("A{$row}", $compCode);
+                            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($headerFill('F3F4F6'));
+                            $row++;
+
+                            foreach ($colHeaders as $ci => $ch) {
+                                $sheet->setCellValueByColumnAndRow($ci + 1, $row, $ch);
+                            }
+                            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($headerFill('E5E7EB'));
+                            $sheet->getRowDimension($row)->setRowHeight(30);
+                            $row++;
+
+                            foreach ($items as $no => $item) {
+                                $vals = [
+                                    $no + 1, date('d/m/Y', strtotime($item['tanggalangkut'])),
+                                    $item['suratjalanno'], $item['nomorpolisi'],
+                                    $item['companycode'], $item['plot'],
+                                    $item['namakontraktor'], $item['namasubkontraktor'],
+                                    $fmt3($item['pucuk']), $fmt3($item['daungulma']), $fmt3($item['sogolan']),
+                                    $fmt3($item['siwilan']), $fmt3($item['tebumati']), $fmt3($item['tanahetc']),
+                                    $fmt3($item['total']), $fmt3($item['toleransi']), $fmt3($item['nettotrash']),
+                                ];
+                                foreach ($vals as $ci => $v) {
+                                    $sheet->setCellValueByColumnAndRow($ci + 1, $row, $v);
+                                }
+                                $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($dataBorder);
+                                $sheet->getStyle("I{$row}:{$lastCol}{$row}")->applyFromArray($right);
+                                $row++;
+                            }
+                            $row++;
+                        }
+                        $row++;
+                    }
+                }
+
+                $filename = 'Trash_' . ucfirst($reportType) . '_' . $startDate . '_' . $endDate . '.xlsx';
+
+            // ════════════════════════════════════════════════════════════════
+            } else { // bulanan
+
+                $sheet = $spreadsheet->getActiveSheet();
+                $sheet->setTitle('Bulanan');
+
+                $mn = str_pad((string)$month, 2, '0', STR_PAD_LEFT);
+                $sheet->mergeCells('A1:M1');
+                $sheet->setCellValue('A1', 'RATA-RATA TRASH KEBUN ' . strtoupper($monthNames[$mn] ?? $mn) . ' ' . $year);
+                $sheet->getStyle('A1')->applyFromArray(['font' => ['bold' => true, 'size' => 14], 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]]);
+
+                $sheet->mergeCells('A2:M2');
+                $sheet->setCellValue('A2', 'SUNGAI BUDI GROUP');
+                $sheet->getStyle('A2')->applyFromArray(['font' => ['bold' => true, 'size' => 12], 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]]);
+
+                $sheet->mergeCells('A3:M3');
+                $sheet->setCellValue('A3', 'Periode: ' . ($monthNames[$mn] ?? $mn) . ' ' . $year);
+                $sheet->getStyle('A3')->applyFromArray($center);
+
+                $sheet->mergeCells('A4:M4');
+                $sheet->setCellValue('A4', 'Dicetak: ' . date('d/m/Y H:i'));
+                $sheet->getStyle('A4')->applyFromArray($center);
+
+                // Header row 1 (row 5)
+                $h1 = ['Asal Tebu','Tonase','Pucuk (%)','Daun Gulma (%)','Sogolan (%)','Siwilan (%)','Tebu Mati (%)','Tanah dll (%)','Total Trash','Trash % Bruto','Trash % Netto (Pot 5%)','KG Trash Bruto','KG Trash Netto'];
+                $colW = [18, 12, 11, 14, 11, 11, 13, 13, 12, 13, 18, 14, 14];
+                foreach ($h1 as $ci => $h) {
+                    $sheet->setCellValueByColumnAndRow($ci + 1, 5, $h);
+                    $sheet->getColumnDimensionByColumn($ci + 1)->setWidth($colW[$ci]);
+                }
+                $sheet->getStyle('A5:M5')->applyFromArray($headerFill('E5E7EB'));
+                $sheet->getRowDimension(5)->setRowHeight(30);
+
+                // Build grouped by company (same as blade)
+                $companyGroups = [];
+                foreach ($rows as $r) {
+                    $cc = $r['companycode'];
+                    if (str_starts_with($cc, 'TBL'))      $prefix = 'TBL';
+                    elseif (str_starts_with($cc, 'BNL'))  $prefix = 'BNL';
+                    elseif (str_starts_with($cc, 'SIL'))  $prefix = 'SIL';
+                    else                                   $prefix = $cc;
+                    $companyGroups[$prefix][$cc][] = $r;
+                }
+
+                $row = 6;
+                foreach ($companyGroups as $groupName => $companies) {
+                    $groupTotals = array_fill_keys(['pucuk','daun','sogolan','siwilan','tebumati','tanah','tonase','count'], 0);
+
+                    foreach ($companies as $compCode => $items) {
+                        $byJenis = [];
+                        foreach ($items as $it) {
+                            $byJenis[$it['jenis']][] = $it;
+                        }
+                        // manual first
+                        if (isset($byJenis['mesin'])) { $tmp = $byJenis['mesin']; unset($byJenis['mesin']); $byJenis['mesin'] = $tmp; }
+                        uksort($byJenis, fn($a,$b) => $a === 'manual' ? -1 : 1);
+
+                        foreach ($byJenis as $jenis => $jenisItems) {
+                            $cnt = count($jenisItems);
+                            $tp = $td = $ts = $tsw = $ttm = $ttn = $ttonase = 0;
+                            foreach ($jenisItems as $it) {
+                                $tp += $it['pucuk']; $td += $it['daungulma'];
+                                $ts += $it['sogolan']; $tsw += $it['siwilan'];
+                                $ttm += $it['tebumati']; $ttn += $it['tanahetc'];
+                                $ttonase += $it['tonase_netto'];
+                            }
+                            $ap = $cnt > 0 ? $tp / $cnt : 0;
+                            $ad = $cnt > 0 ? $td / $cnt : 0;
+                            $as = $cnt > 0 ? $ts / $cnt : 0;
+                            $asw = $cnt > 0 ? $tsw / $cnt : 0;
+                            $atm = $cnt > 0 ? $ttm / $cnt : 0;
+                            $atn = $cnt > 0 ? $ttn / $cnt : 0;
+                            $totalT = $ap + $ad + $as + $asw + $atm + $atn;
+                            $nettoT = max(0, $totalT - 5);
+                            $kgBruto = ($totalT / 100) * $ttonase;
+                            $kgNetto = ($nettoT / 100) * $ttonase;
+
+                            $groupTotals['pucuk']   += $ap; $groupTotals['daun']   += $ad;
+                            $groupTotals['sogolan'] += $as; $groupTotals['siwilan'] += $asw;
+                            $groupTotals['tebumati'] += $atm; $groupTotals['tanah'] += $atn;
+                            $groupTotals['tonase']  += $ttonase; $groupTotals['count']++;
+
+                            $vals = [
+                                $compCode . ' (' . ucfirst($jenis) . ')',
+                                $ttonase,
+                                $fmt3($ap), $fmt3($ad), $fmt3($as), $fmt3($asw), $fmt3($atm), $fmt3($atn),
+                                $fmt3($totalT), $fmt3($totalT), $fmt3($nettoT),
+                                number_format($kgBruto, 0, '.', ''), number_format($kgNetto, 0, '.', ''),
+                            ];
+                            foreach ($vals as $ci => $v) {
+                                $sheet->setCellValueByColumnAndRow($ci + 1, $row, $v);
+                            }
+                            $sheet->getStyle("A{$row}:M{$row}")->applyFromArray($dataBorder);
+                            $sheet->getStyle("B{$row}:M{$row}")->applyFromArray($right);
+                            $row++;
+                        }
+                    }
+
+                    // Group total row
+                    $gc = $groupTotals['count'];
+                    $gAP = $gc > 0 ? $groupTotals['pucuk'] / $gc : 0;
+                    $gAD = $gc > 0 ? $groupTotals['daun'] / $gc : 0;
+                    $gAS = $gc > 0 ? $groupTotals['sogolan'] / $gc : 0;
+                    $gASW = $gc > 0 ? $groupTotals['siwilan'] / $gc : 0;
+                    $gATM = $gc > 0 ? $groupTotals['tebumati'] / $gc : 0;
+                    $gATN = $gc > 0 ? $groupTotals['tanah'] / $gc : 0;
+                    $gTotal = $gAP + $gAD + $gAS + $gASW + $gATM + $gATN;
+                    $gNetto = max(0, $gTotal - 5);
+                    $gTonase = $groupTotals['tonase'];
+                    $gKgBruto = ($gTonase * $gTotal) / 100;
+                    $gKgNetto = ($gTonase * $gNetto) / 100;
+                    $gPctBruto = $gTonase > 0 ? ($gKgBruto / $gTonase) * 100 : 0;
+                    $gPctNetto = $gTonase > 0 ? ($gKgNetto / $gTonase) * 100 : 0;
+
+                    $totalVals = [
+                        $groupName, number_format($gTonase, 0, '.', ''),
+                        $fmt3($gAP), $fmt3($gAD), $fmt3($gAS), $fmt3($gASW), $fmt3($gATM), $fmt3($gATN),
+                        $fmt3($gTotal), $fmt3($gPctBruto), $fmt3($gPctNetto),
+                        number_format($gKgBruto, 0, '.', ''), number_format($gKgNetto, 0, '.', ''),
+                    ];
+                    foreach ($totalVals as $ci => $v) {
+                        $sheet->setCellValueByColumnAndRow($ci + 1, $row, $v);
+                    }
+                    $sheet->getStyle("A{$row}:M{$row}")->applyFromArray($headerFill('D1D5DB'));
+                    $sheet->getStyle("B{$row}:M{$row}")->applyFromArray($right);
+                    $row += 2; // blank line between groups
+                }
+
+                $filename = 'Trash_Bulanan_' . ($monthNames[$mn] ?? $mn) . '_' . $year . '.xlsx';
+            }
+
+            // ── freeze header & output ────────────────────────────────────
+            $writer = new Xlsx($spreadsheet);
+
+            $headers = [
+                'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Cache-Control'       => 'max-age=0',
+            ];
+
+            return response()->stream(function () use ($writer) {
+                $writer->save('php://output');
+            }, 200, $headers);
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal export Excel: ' . $e->getMessage());
         }
     }
 
