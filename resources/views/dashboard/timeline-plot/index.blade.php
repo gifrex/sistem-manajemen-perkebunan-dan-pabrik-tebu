@@ -123,9 +123,14 @@
                                 </th>
                             @endforeach
                             
-                            {{-- 2 Kolom Terakhir --}}
+                            {{-- Kolom Terakhir --}}
                             <th class="sticky-v" rowspan="2">Realisasi<br>{{ $cropType === 'p' ? 'Panen' : 'Tanam' }}<br><small>HA</small></th>
-                            @if($cropType !== 'p')
+                            @if($cropType === 'p')
+                            <th class="sticky-v" rowspan="2">Est.<br>Ton</th>
+                            <th class="sticky-v" rowspan="2">Real.<br>Ton</th>
+                            <th class="sticky-v" rowspan="2">%<br>Ton</th>
+                            <th class="sticky-v" rowspan="2">Rit</th>
+                            @else
                             <th class="sticky-v" rowspan="2">%</th>
                             @endif
                         </tr>
@@ -181,13 +186,26 @@
                                 </td>
                             @endforeach
                             
-                            {{-- Total Realisasi Tanam --}}
+                            {{-- Total Realisasi Panen/Tanam --}}
                             <td style="text-align:right;">
                                 {{ number_format($grandTotalRealisasi, 2) }}
                             </td>
-                            
+
+                            @if($cropType === 'p')
+                            @php
+                                $grandEstTon  = collect($plotActivityDetails)->sum('estimasi_ton');
+                                $grandRealTon = collect($plotActivityDetails)->sum('total_netto_ton');
+                                $grandPctTon  = $grandEstTon > 0 ? ($grandRealTon / $grandEstTon) * 100 : 0;
+                                $grandRit     = collect($plotActivityDetails)->sum('total_rit');
+                            @endphp
+                            <td style="text-align:right;">{{ number_format($grandEstTon, 2) }}</td>
+                            <td style="text-align:right;">{{ number_format($grandRealTon, 2) }}</td>
+                            <td style="text-align:right; font-weight:bold; color:{{ $grandPctTon >= 100 ? '#22c55e' : ($grandPctTon > 0 ? '#dc2626' : '#6b7280') }};">
+                                {{ $grandPctTon > 0 ? number_format($grandPctTon, 2).'%' : '-' }}
+                            </td>
+                            <td style="text-align:right;">{{ $grandRit }}</td>
+                            @else
                             {{-- Total Persentase --}}
-                            @if($cropType !== 'p')
                             <td style="text-align:right;">
                                 @php
                                     $totalSaldo = $plotHeaders->sum('batcharea');
@@ -260,7 +278,22 @@
                                         {{ $totalRealisasiPlot > 0 ? number_format($totalRealisasiPlot, 2) : '-' }}
                                     </td>
 
-                                    @if($cropType !== 'p')
+                                    @if($cropType === 'p')
+                                        @php
+                                            $pDetail  = $plotActivityDetails[$plot->plot] ?? [];
+                                            $estTon   = (float)($pDetail['estimasi_ton'] ?? 0);
+                                            $realTon  = (float)($pDetail['total_netto_ton'] ?? 0);
+                                            $pctTon   = $estTon > 0 ? ($realTon / $estTon) * 100 : 0;
+                                            $rit      = (int)($pDetail['total_rit'] ?? 0);
+                                            $tonColor = $pctTon >= 100 ? '#22c55e' : ($pctTon > 0 ? '#dc2626' : '#6b7280');
+                                        @endphp
+                                        <td style="text-align:right;">{{ $estTon > 0 ? number_format($estTon, 2) : '-' }}</td>
+                                        <td style="text-align:right;">{{ $realTon > 0 ? number_format($realTon, 2) : '-' }}</td>
+                                        <td style="text-align:right; font-weight:600; color:{{ $tonColor }};">
+                                            {{ $pctTon > 0 ? number_format($pctTon, 2).'%' : '-' }}
+                                        </td>
+                                        <td style="text-align:right;">{{ $rit > 0 ? $rit : '-' }}</td>
+                                    @else
                                         <td style="text-align:right;">
                                             @php
                                                 $stagePct = $plotActivityDetails[$plot->plot]['stage_percentage'] ?? 0;
@@ -770,7 +803,8 @@ function getRingColor(d) {
             modalBox.innerHTML = '<div style="text-align:center;padding:40px;color:#6b7280;">Loading...</div>';
 
             try {
-                const res = await fetch(`{{ route('dashboard.timeline-plot.detail') }}?plot=${encodeURIComponent(plot)}&crop={{ $cropType }}`);
+                const cropParam = @json($cropType);
+                const res = await fetch(`{{ route('dashboard.timeline-plot.detail') }}?plot=${encodeURIComponent(plot)}&crop=${cropParam}`);
                 const data = await res.json();
 
                 if (!data.success) {
@@ -778,11 +812,14 @@ function getRingColor(d) {
                     return;
                 }
 
-                const activeBatch   = data.batch || {};
-                const batches       = Array.isArray(data.batches) ? data.batches : [];
-                const activities    = Array.isArray(data.activities) ? data.activities : [];
-                const activityMapJs = @json($activityMap);
-                const activeBatchNo = data.active_batchno || null;
+                const activeBatch      = data.batch || {};
+                const batches          = Array.isArray(data.batches) ? data.batches : [];
+                const activities       = Array.isArray(data.activities) ? data.activities : [];
+                const activityMapJs    = @json($activityMap);
+                const activeBatchNo    = data.active_batchno || null;
+                const suratJalanList   = Array.isArray(data.surat_jalan) ? data.surat_jalan : [];
+                const estimasiTonBatch = data.estimasi_ton_batch || {};
+                const isPanen          = @json($cropType) === 'p';
 
                 // group aktivitas per batchno -> activitycode
                 const groupedByBatch = {};
@@ -796,7 +833,103 @@ function getRingColor(d) {
                     groupedByBatch[bno][code].total += luas;
                 });
 
+                // group suratjalan per tanggal (untuk panen mode)
+                const totalSJNetto = suratJalanList.reduce((s, r) => s + Number(r.netto || 0), 0);
+                const totalSJRit   = suratJalanList.length;
+                const sudahTimbang = suratJalanList.filter(r => r.sudah_timbang).length;
+
                 let html = `<div>`;
+
+                // ===== PANEN SUMMARY CARD =====
+                if (isPanen && batches.length > 0) {
+                    const activeBatchInfo = batches.find(b => b.batchno === activeBatchNo) || batches[0];
+                    const batchArea = parseFloat(activeBatchInfo?.batcharea || 0);
+                    const estBatch  = estimasiTonBatch[activeBatchNo] || {};
+                    const estTon    = parseFloat(estBatch.total_estimasi_ton || 0);
+                    const realLuas  = parseFloat(estBatch.total_luas_panen || 0);
+                    const realTon   = totalSJNetto / 1000;
+                    const pctLuas   = batchArea > 0 ? Math.min((realLuas / batchArea) * 100, 100) : 0;
+                    const pctTon    = estTon > 0 ? (realTon / estTon) * 100 : 0;
+                    const cLuas     = pctLuas >= 100 ? '#16a34a' : pctLuas > 0 ? '#dc2626' : '#6b7280';
+                    const cTon      = pctTon  >= 100 ? '#16a34a' : pctTon  > 0 ? '#dc2626' : '#6b7280';
+
+                    html += `
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
+                        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px;text-align:center;">
+                            <div style="font-size:10px;color:#6b7280;font-weight:600;text-transform:uppercase;">Estimasi Luas</div>
+                            <div style="font-size:18px;font-weight:700;color:#166534;">${batchArea.toFixed(2)} HA</div>
+                        </div>
+                        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px;text-align:center;">
+                            <div style="font-size:10px;color:#6b7280;font-weight:600;text-transform:uppercase;">Realisasi Luas</div>
+                            <div style="font-size:18px;font-weight:700;color:${cLuas};">${realLuas.toFixed(2)} HA</div>
+                            <div style="font-size:11px;color:${cLuas};font-weight:600;">${pctLuas.toFixed(1)}%</div>
+                        </div>
+                        <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:10px;text-align:center;">
+                            <div style="font-size:10px;color:#6b7280;font-weight:600;text-transform:uppercase;">Estimasi Tonase</div>
+                            <div style="font-size:18px;font-weight:700;color:#1d4ed8;">${estTon.toFixed(2)} Ton</div>
+                        </div>
+                        <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:10px;text-align:center;">
+                            <div style="font-size:10px;color:#6b7280;font-weight:600;text-transform:uppercase;">Realisasi Tonase</div>
+                            <div style="font-size:18px;font-weight:700;color:${cTon};">${realTon.toFixed(2)} Ton</div>
+                            <div style="font-size:11px;color:${cTon};font-weight:600;">${pctTon.toFixed(1)}%</div>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+                        <div style="background:#fafafa;border:1px solid #e5e7eb;border-radius:6px;padding:8px;text-align:center;">
+                            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;">Total Rit</div>
+                            <div style="font-size:16px;font-weight:700;">${totalSJRit}</div>
+                        </div>
+                        <div style="background:#fafafa;border:1px solid #e5e7eb;border-radius:6px;padding:8px;text-align:center;">
+                            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;">Sudah Timbang</div>
+                            <div style="font-size:16px;font-weight:700;color:#16a34a;">${sudahTimbang}</div>
+                        </div>
+                        <div style="background:#fafafa;border:1px solid #e5e7eb;border-radius:6px;padding:8px;text-align:center;">
+                            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;">Pending Timbang</div>
+                            <div style="font-size:16px;font-weight:700;color:#dc2626;">${totalSJRit - sudahTimbang}</div>
+                        </div>
+                    </div>`;
+
+                    // Tabel SuratJalan
+                    if (suratJalanList.length > 0) {
+                        html += `<div style="margin-bottom:16px;">
+                            <div style="font-weight:700;font-size:12px;margin-bottom:6px;color:#1d4ed8;">📦 Detail Surat Jalan & Timbangan</div>
+                            <div style="overflow-x:auto;max-height:220px;overflow-y:auto;">
+                            <table style="width:100%;border-collapse:collapse;font-size:10px;">
+                                <thead style="position:sticky;top:0;">
+                                    <tr style="background:#1d4ed8;color:white;">
+                                        <th style="padding:5px 8px;border:1px solid #e5e7eb;">No. SJ</th>
+                                        <th style="padding:5px 8px;border:1px solid #e5e7eb;">Tgl Angkut</th>
+                                        <th style="padding:5px 8px;border:1px solid #e5e7eb;">Nopol</th>
+                                        <th style="padding:5px 8px;border:1px solid #e5e7eb;">Kontraktor</th>
+                                        <th style="padding:5px 8px;border:1px solid #e5e7eb;text-align:right;">Netto (kg)</th>
+                                        <th style="padding:5px 8px;border:1px solid #e5e7eb;text-align:center;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${suratJalanList.map((sj, i) => {
+                                        const st = sj.sudah_timbang ? '<span style="color:#16a34a;font-weight:600;">✔ Timbang</span>' : '<span style="color:#dc2626;">⏳ Pending</span>';
+                                        const bg = i % 2 === 0 ? '#ffffff' : '#f9fafb';
+                                        return `<tr style="background:${bg};">
+                                            <td style="padding:4px 8px;border:1px solid #e5e7eb;font-weight:600;">${sj.suratjalanno}</td>
+                                            <td style="padding:4px 8px;border:1px solid #e5e7eb;">${sj.tanggalangkut ? new Date(sj.tanggalangkut).toLocaleDateString('id-ID') : '-'}</td>
+                                            <td style="padding:4px 8px;border:1px solid #e5e7eb;">${sj.nomorpolisi || '-'}</td>
+                                            <td style="padding:4px 8px;border:1px solid #e5e7eb;">${sj.namakontraktor || '-'}</td>
+                                            <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;font-weight:600;">${sj.netto > 0 ? Number(sj.netto).toLocaleString('id-ID') : '-'}</td>
+                                            <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:center;">${st}</td>
+                                        </tr>`;
+                                    }).join('')}
+                                </tbody>
+                                <tfoot>
+                                    <tr style="background:#dbeafe;font-weight:700;font-size:10px;">
+                                        <td colspan="4" style="padding:5px 8px;border:1px solid #e5e7eb;text-align:right;">TOTAL NETTO</td>
+                                        <td style="padding:5px 8px;border:1px solid #e5e7eb;text-align:right;color:#1d4ed8;">${totalSJNetto.toLocaleString('id-ID')} kg = ${(totalSJNetto/1000).toFixed(2)} Ton</td>
+                                        <td style="padding:5px 8px;border:1px solid #e5e7eb;"></td>
+                                    </tr>
+                                </tfoot>
+                            </table></div>
+                        </div>`;
+                    }
+                }
 
                 if (batches.length === 0) {
                     html += `<div style="color:#6b7280;font-style:italic;padding:12px;">Tidak ada data batch untuk plot ini.</div>`;
@@ -810,14 +943,18 @@ function getRingColor(d) {
 
                         const totalRealisasi = codesWithData.filter(c => c !== '4.2.2').reduce((s, c) => s + (batchGroup[c]?.total || 0), 0);
 
-                        const borderColor  = isActive ? '#86efac' : '#d1d5db';
-                        const headerBg     = isActive ? '#166534' : '#9ca3af';
+                        const borderColor    = isActive ? '#86efac' : '#d1d5db';
+                        const headerBg       = isActive ? '#166534' : '#9ca3af';
                         const sectionOpacity = isActive ? '1' : '0.7';
+
+                        // panen: estimasi ton batch
+                        const estBatch  = estimasiTonBatch[b.batchno] || {};
+                        const estTonB   = parseFloat(estBatch.total_estimasi_ton || 0);
 
                         html += `
                             <div style="margin-bottom:16px;border:2px solid ${borderColor};border-radius:8px;overflow:hidden;opacity:${sectionOpacity};">
                                 <div style="background:${headerBg};color:white;
-                                    padding:7px 14px;display:flex;align-items:center;gap:10px;font-size:12px;">
+                                    padding:7px 14px;display:flex;align-items:center;gap:10px;font-size:12px;flex-wrap:wrap;">
                                     <span style="font-weight:700;">${b.batchno}</span>
                                     ${isActive
                                         ? '<span style="background:#bbf7d0;color:#166534;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;">AKTIF</span>'
@@ -826,7 +963,8 @@ function getRingColor(d) {
                                     <span style="opacity:.85;">Status: ${b.lifecyclestatus ?? '-'}</span>
                                     <span style="opacity:.85;">Luas: ${b.batcharea ?? 0} HA</span>
                                     <span style="opacity:.85;">Date: ${b.batchdate ?? '-'}</span>
-                                    ${b.tanggalpanen ? `<span style="opacity:.85;">Panen: ${b.tanggalpanen}</span>` : ''}
+                                    ${b.tanggalpanen ? `<span style="opacity:.85;">Tgl Panen: ${b.tanggalpanen}</span>` : ''}
+                                    ${isPanen && estTonB > 0 ? `<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;padding:1px 7px;border-radius:20px;">Est. ${estTonB.toFixed(2)} Ton</span>` : ''}
                                 </div>`;
 
                         if (codesWithData.length === 0) {
@@ -846,12 +984,13 @@ function getRingColor(d) {
                                         ${codesWithData.map(code => {
                                             const g     = batchGroup[code];
                                             const label = activityMapJs[code] || code;
+                                            const isZpk = (code === '4.2.2');
                                             const lkhDetail = g.rows.map(r =>
                                                 `<span style="display:inline-block;margin-right:8px;white-space:nowrap;">${r.lkhno} <span style="color:#6b7280;">${r.lkhdate} · ${r.luashasil.toFixed(2)} HA</span></span>`
                                             ).join('');
                                             return `
-                                                <tr style="background:${isActive ? '#ffffff' : '#fafafa'};">
-                                                    <td style="border:1px solid #e5e7eb;padding:6px 10px;font-weight:700;color:${isActive ? '#166534' : '#4b5563'};">${code}</td>
+                                                <tr style="background:${isZpk ? '#fef9c3' : (isActive ? '#ffffff' : '#fafafa')};">
+                                                    <td style="border:1px solid #e5e7eb;padding:6px 10px;font-weight:700;color:${isZpk ? '#854d0e' : (isActive ? '#166534' : '#4b5563')};">${code}${isZpk ? ' ⚡' : ''}</td>
                                                     <td style="border:1px solid #e5e7eb;padding:6px 10px;">${label}</td>
                                                     <td style="border:1px solid #e5e7eb;padding:6px 10px;text-align:right;font-weight:700;">${g.total.toFixed(2)}</td>
                                                     <td style="border:1px solid #e5e7eb;padding:6px 10px;font-size:10px;color:#374151;">${lkhDetail}</td>
@@ -860,9 +999,9 @@ function getRingColor(d) {
                                     </tbody>
                                     <tfoot>
                                         <tr style="background:${isActive ? '#dcfce7' : '#f3f4f6'};font-weight:700;">
-                                            <td colspan="2" style="border:1px solid #e5e7eb;padding:6px 10px;text-align:right;">Total Realisasi</td>
+                                            <td colspan="2" style="border:1px solid #e5e7eb;padding:6px 10px;text-align:right;">Total Realisasi ${isPanen ? 'Panen' : ''}</td>
                                             <td style="border:1px solid #e5e7eb;padding:6px 10px;text-align:right;color:${isActive ? '#166534' : '#374151'};">${totalRealisasi.toFixed(2)} HA</td>
-                                            <td style="border:1px solid #e5e7eb;padding:6px 10px;"></td>
+                                            <td style="border:1px solid #e5e7eb;padding:6px 10px;font-size:10px;color:#6b7280;">${isPanen ? '(ZPK tidak dihitung)' : ''}</td>
                                         </tr>
                                     </tfoot>
                                 </table>`;
