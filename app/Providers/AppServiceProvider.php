@@ -28,9 +28,9 @@ class AppServiceProvider extends ServiceProvider
         Model::preventLazyLoading();
 
         // 1. PENGAMANAN LOG VIEWER (SANGAT PENTING)
-        // Mengecek apakah user yang login memiliki idjabatan = 7 (Admin)
+        // Mengecek apakah user yang login memiliki idjabatan = 0 (Admin)
         Gate::define('viewLogViewer', function ($user) {
-            return $user && (int) $user->idjabatan === 7;
+            return $user && (int) $user->idjabatan === 0;
         });
 
         // 2. Share navigation data ke view yang butuh sidebar
