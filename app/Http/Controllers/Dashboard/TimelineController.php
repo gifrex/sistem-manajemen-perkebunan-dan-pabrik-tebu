@@ -458,13 +458,8 @@ class TimelineController extends Controller
             $isRcPlot = str_starts_with(strtoupper($lifecycleStatus), 'RC');
             $isPcPlot = strtoupper($lifecycleStatus) === 'PC';
 
-            $rcActivityCodes = array_merge(
-                array_filter(array_keys($activityMap), fn($c) => str_starts_with($c, '3.2')),
-                ['3.1.6', '3.1.7', '3.1.8', '3.1.9'] // Weeding I/II, Post Emergence I/II
-            );
-
-            $relevantCodes = array_filter(array_keys($activityMap), function($code) use ($isRcPlot, $rcActivityCodes) {
-                $isRcActivity = in_array($code, $rcActivityCodes);
+            $relevantCodes = array_filter(array_keys($activityMap), function($code) use ($isRcPlot) {
+                $isRcActivity = str_starts_with($code, '3.2');
                 return $isRcPlot ? $isRcActivity : !$isRcActivity;
             });
 

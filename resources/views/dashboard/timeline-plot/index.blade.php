@@ -108,7 +108,7 @@
                             @foreach($activityMap as $activitycode => $label)
                                 @php
                                     $isGrouped = isset($activityGrouping[$activitycode]);
-                                    $isRcUnique = in_array($activitycode, ['3.2.1', '3.2.2', '3.2.4', '3.2.5', '3.2.6', '3.2.7', '3.1.6', '3.1.7', '3.1.8', '3.1.9']);
+                                    $isRcUnique = str_starts_with($activitycode, '3.2');
                                     $headerBg = $isRcUnique ? '#1d4ed8' : '#166534';
                                 @endphp
                                 <th class="sticky-v" colspan="3" style="text-align:center; background: {{ $headerBg }}; color: white;">
@@ -239,10 +239,7 @@
                                             $tanggal = $activity->tanggal_terbaru ?? null;
                                             $totalRealisasiPlot += $value;
 
-                                            $isAlwaysRc  = in_array($activitycode, ['3.2.1', '3.2.2', '3.2.4', '3.2.5', '3.2.6', '3.2.7']);
-                                            $isSharedRc  = in_array($activitycode, ['3.1.6', '3.1.7', '3.1.8', '3.1.9']);
-                                            $isRcRow     = str_starts_with($status, 'RC');
-                                            $cellBg = ($isAlwaysRc || ($isSharedRc && $isRcRow)) ? '#eff6ff' : '#f0fdf4';
+                                            $cellBg = $isRcUnique ? '#eff6ff' : '#f0fdf4';
                                             $percentageColor = $percentage >= 100 ? '#22c55e' : ($percentage > 0 ? '#dc2626' : '#6b7280');
                                         @endphp
 
@@ -799,86 +796,74 @@ function getRingColor(d) {
                     groupedByBatch[bno][code].total += luas;
                 });
 
-                // info bar batch aktif
                 let html = `<div>`;
-                if (activeBatch.batchno) {
-                    html += `
-                        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;
-                            background:#f0fdf4;border:1px solid #bbf7d0;
-                            padding:9px 14px;border-radius:6px;margin-bottom:14px;font-size:12px;color:#374151;">
-                            <span style="font-weight:700;color:#166534;">▶ Batch Aktif: ${activeBatch.batchno}</span>
-                            <span><b>Luas:</b> ${activeBatch.batcharea ?? 0} HA</span>
-                            <span><b>Status:</b> ${activeBatch.lifecyclestatus ?? '-'}</span>
-                            <span><b>Batch Date:</b> ${activeBatch.batchdate ?? '-'}</span>
-                            <span><b>Umur:</b> ${activeBatch.umur_bulan ?? 0} bln / ${activeBatch.umur_hari ?? 0} hari</span>
-                            ${activeBatch.tanggalpanen ? `<span><b>Panen:</b> ${activeBatch.tanggalpanen}</span>` : ''}
-                        </div>`;
-                }
 
                 if (batches.length === 0) {
                     html += `<div style="color:#6b7280;font-style:italic;padding:12px;">Tidak ada data batch untuk plot ini.</div>`;
                 } else {
-                    // render per batch
                     batches.forEach(b => {
-                        const isActive = b.batchno === activeBatchNo;
+                        const isActive   = b.batchno === activeBatchNo;
                         const batchGroup = groupedByBatch[b.batchno] || {};
-                        const hasActivity = Object.keys(batchGroup).length > 0;
+
+                        // kumpulkan semua kode aktivity yg ada data, urutkan sesuai activityMapJs
+                        const codesWithData = Object.keys(activityMapJs).filter(c => batchGroup[c]);
+                        // tambah kode yg ada di data tapi tidak di activityMapJs (jaga-jaga)
+                        Object.keys(batchGroup).forEach(c => { if (!codesWithData.includes(c)) codesWithData.push(c); });
+
+                        const totalRealisasi = codesWithData.reduce((s, c) => s + (batchGroup[c]?.total || 0), 0);
 
                         html += `
-                            <div style="margin-bottom:18px;border:1px solid ${isActive ? '#86efac' : '#e5e7eb'};border-radius:8px;overflow:hidden;">
-                                <div style="
-                                    background:${isActive ? '#166534' : '#6b7280'};
-                                    color:white; padding:7px 14px;
-                                    display:flex; align-items:center; gap:10px; font-size:12px;
-                                ">
+                            <div style="margin-bottom:16px;border:2px solid ${isActive ? '#86efac' : '#e5e7eb'};border-radius:8px;overflow:hidden;">
+                                <div style="background:${isActive ? '#166534' : '#6b7280'};color:white;
+                                    padding:7px 14px;display:flex;align-items:center;gap:10px;font-size:12px;">
                                     <span style="font-weight:700;">${b.batchno}</span>
                                     ${isActive ? '<span style="background:#bbf7d0;color:#166534;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;">AKTIF</span>' : ''}
                                     <span style="opacity:.85;">Status: ${b.lifecyclestatus ?? '-'}</span>
                                     <span style="opacity:.85;">Luas: ${b.batcharea ?? 0} HA</span>
                                     <span style="opacity:.85;">Date: ${b.batchdate ?? '-'}</span>
                                     ${b.tanggalpanen ? `<span style="opacity:.85;">Panen: ${b.tanggalpanen}</span>` : ''}
-                                </div>
+                                </div>`;
 
-                                ${!hasActivity ? `
-                                    <div style="padding:10px 14px;color:#9ca3af;font-style:italic;background:#f9fafb;">Tidak ada activity tercatat untuk batch ini.</div>
-                                ` : `
-                                    <div style="overflow-x:auto;">
-                                        <table style="width:max-content;min-width:100%;border-collapse:collapse;font-size:11px;background:white;">
-                                            <thead>
-                                                <tr>
-                                                    ${Object.entries(activityMapJs).map(([code, label]) => `
-                                                        <th style="border:1px solid #ddd;padding:7px 9px;min-width:200px;text-align:left;
-                                                            background:${isActive ? '#166534' : '#4b5563'};color:white;vertical-align:top;">
-                                                            <div style="font-weight:700;">${code}</div>
-                                                            <div style="font-size:10px;font-weight:400;">${label}</div>
-                                                        </th>
-                                                    `).join('')}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    ${Object.entries(activityMapJs).map(([code]) => {
-                                                        const g = batchGroup[code];
-                                                        if (!g) return `<td style="border:1px solid #ddd;padding:7px 9px;vertical-align:top;background:#f9fafb;min-width:200px;color:#d1d5db;font-style:italic;">-</td>`;
-                                                        const lkhRows = g.rows.map((r, i) => `
-                                                            <div style="padding:4px 0;${i < g.rows.length-1 ? 'border-bottom:1px dashed #e5e7eb;' : ''}">
-                                                                <div style="font-weight:600;">${r.lkhno}</div>
-                                                                <div style="color:#6b7280;">${r.lkhdate} · ${r.luashasil.toFixed(2)} HA</div>
-                                                            </div>`).join('');
-                                                        return `
-                                                            <td style="border:1px solid #ddd;padding:7px 9px;vertical-align:top;background:${isActive ? '#f0fdf4' : '#f9fafb'};min-width:200px;">
-                                                                ${lkhRows}
-                                                                <div style="margin-top:6px;padding-top:5px;border-top:1px solid #d1d5db;font-weight:700;color:${isActive ? '#166534' : '#374151'};">
-                                                                    ${g.total.toFixed(2)} HA
-                                                                </div>
-                                                            </td>`;
-                                                    }).join('')}
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                `}
-                            </div>`;
+                        if (codesWithData.length === 0) {
+                            html += `<div style="padding:10px 14px;color:#9ca3af;font-style:italic;background:#f9fafb;">Tidak ada activity tercatat.</div>`;
+                        } else {
+                            html += `
+                                <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                                    <thead>
+                                        <tr style="background:${isActive ? '#f0fdf4' : '#f5f5f5'};">
+                                            <th style="border:1px solid #e5e7eb;padding:6px 10px;text-align:left;width:90px;">Kode</th>
+                                            <th style="border:1px solid #e5e7eb;padding:6px 10px;text-align:left;">Kegiatan</th>
+                                            <th style="border:1px solid #e5e7eb;padding:6px 10px;text-align:right;width:90px;">Total HA</th>
+                                            <th style="border:1px solid #e5e7eb;padding:6px 10px;text-align:left;">Detail LKH</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${codesWithData.map(code => {
+                                            const g     = batchGroup[code];
+                                            const label = activityMapJs[code] || code;
+                                            const lkhDetail = g.rows.map(r =>
+                                                `<span style="display:inline-block;margin-right:8px;white-space:nowrap;">${r.lkhno} <span style="color:#6b7280;">${r.lkhdate} · ${r.luashasil.toFixed(2)} HA</span></span>`
+                                            ).join('');
+                                            return `
+                                                <tr style="background:${isActive ? '#ffffff' : '#fafafa'};">
+                                                    <td style="border:1px solid #e5e7eb;padding:6px 10px;font-weight:700;color:${isActive ? '#166534' : '#4b5563'};">${code}</td>
+                                                    <td style="border:1px solid #e5e7eb;padding:6px 10px;">${label}</td>
+                                                    <td style="border:1px solid #e5e7eb;padding:6px 10px;text-align:right;font-weight:700;">${g.total.toFixed(2)}</td>
+                                                    <td style="border:1px solid #e5e7eb;padding:6px 10px;font-size:10px;color:#374151;">${lkhDetail}</td>
+                                                </tr>`;
+                                        }).join('')}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr style="background:${isActive ? '#dcfce7' : '#f3f4f6'};font-weight:700;">
+                                            <td colspan="2" style="border:1px solid #e5e7eb;padding:6px 10px;text-align:right;">Total Realisasi</td>
+                                            <td style="border:1px solid #e5e7eb;padding:6px 10px;text-align:right;color:${isActive ? '#166534' : '#374151'};">${totalRealisasi.toFixed(2)} HA</td>
+                                            <td style="border:1px solid #e5e7eb;padding:6px 10px;"></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>`;
+                        }
+
+                        html += `</div>`;
                     });
                 }
 
