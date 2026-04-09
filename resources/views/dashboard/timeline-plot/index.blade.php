@@ -805,19 +805,24 @@ function getRingColor(d) {
                         const isActive   = b.batchno === activeBatchNo;
                         const batchGroup = groupedByBatch[b.batchno] || {};
 
-                        // kumpulkan semua kode aktivity yg ada data, urutkan sesuai activityMapJs
+                        // hanya tampilkan kode yang ada di activityMapJs, urut sesuai map
                         const codesWithData = Object.keys(activityMapJs).filter(c => batchGroup[c]);
-                        // tambah kode yg ada di data tapi tidak di activityMapJs (jaga-jaga)
-                        Object.keys(batchGroup).forEach(c => { if (!codesWithData.includes(c)) codesWithData.push(c); });
 
                         const totalRealisasi = codesWithData.reduce((s, c) => s + (batchGroup[c]?.total || 0), 0);
 
+                        const borderColor  = isActive ? '#86efac' : '#d1d5db';
+                        const headerBg     = isActive ? '#166534' : '#9ca3af';
+                        const sectionOpacity = isActive ? '1' : '0.7';
+
                         html += `
-                            <div style="margin-bottom:16px;border:2px solid ${isActive ? '#86efac' : '#e5e7eb'};border-radius:8px;overflow:hidden;">
-                                <div style="background:${isActive ? '#166534' : '#6b7280'};color:white;
+                            <div style="margin-bottom:16px;border:2px solid ${borderColor};border-radius:8px;overflow:hidden;opacity:${sectionOpacity};">
+                                <div style="background:${headerBg};color:white;
                                     padding:7px 14px;display:flex;align-items:center;gap:10px;font-size:12px;">
                                     <span style="font-weight:700;">${b.batchno}</span>
-                                    ${isActive ? '<span style="background:#bbf7d0;color:#166534;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;">AKTIF</span>' : ''}
+                                    ${isActive
+                                        ? '<span style="background:#bbf7d0;color:#166534;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;">AKTIF</span>'
+                                        : '<span style="background:rgba(255,255,255,.2);font-size:10px;padding:1px 7px;border-radius:20px;">HISTORY</span>'
+                                    }
                                     <span style="opacity:.85;">Status: ${b.lifecyclestatus ?? '-'}</span>
                                     <span style="opacity:.85;">Luas: ${b.batcharea ?? 0} HA</span>
                                     <span style="opacity:.85;">Date: ${b.batchdate ?? '-'}</span>
