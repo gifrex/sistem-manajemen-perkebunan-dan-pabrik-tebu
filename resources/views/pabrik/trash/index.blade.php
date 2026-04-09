@@ -605,7 +605,7 @@
                                                     <input type="text" name="toleransi" x-model="form.toleransi"
                                                         @blur="formatInput('toleransi')"
                                                         class="w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2"
-                                                        placeholder="Default: 5,00" required>
+                                                        placeholder="Default: 5,000" required>
                                                 </div>
                                             </div>
                                         </div>
@@ -804,7 +804,7 @@
                                                     <input type="text" name="toleransi" x-model="form.toleransi"
                                                         @blur="formatInput('toleransi')"
                                                         class="w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2"
-                                                        placeholder="Default: 5,00" required>
+                                                        placeholder="Default: 5,000" required>
                                                 </div>
                                             </div>
                                         </div>
@@ -999,7 +999,7 @@
                                                     <input type="text" name="toleransi" x-model="form.toleransi"
                                                         @blur="formatInput('toleransi')"
                                                         class="w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2"
-                                                        placeholder="Default: 5,00" required>
+                                                        placeholder="Default: 5,000" required>
                                                 </div>
                                             </div>
                                         </div>
@@ -1045,7 +1045,7 @@
                     companycode: '',
                     no_surat_jalan: '',
                     jenis: '',
-                    toleransi: '5,00',
+                    toleransi: '5,000',
                     berat_bersih: '',
                     pucuk: '',
                     daun_gulma: '',
@@ -1117,7 +1117,7 @@
                         companycode: '',
                         no_surat_jalan: '',
                         jenis: '',
-                        toleransi: '5,00',
+                        toleransi: '5,000',
                         berat_bersih: '',
                         pucuk: '',
                         daun_gulma: '',
@@ -1193,7 +1193,7 @@
                         companycode: data.companycode || '',
                         no_surat_jalan: data.suratjalanno || '',
                         jenis: data.jenis || '',
-                        toleransi: data.toleransi || '5,00',
+                        toleransi: data.toleransi ? this.truncate3(parseFloat(data.toleransi.toString().replace(',', '.'))) : '5,000',
                         berat_bersih: data.berat_bersih || '',
                         pucuk: data.pucuk || '',
                         daun_gulma: data.daun_gulma || '',
@@ -1206,6 +1206,13 @@
                     this.calculateBeratKotor();
                 },
 
+                // Truncate ke 3 desimal TANPA pembulatan
+                truncate3(value) {
+                    const str = value.toFixed(10);
+                    const dotIdx = str.indexOf('.');
+                    return str.substring(0, dotIdx + 4).replace('.', ',');
+                },
+
                 calculateBeratKotor() {
                     const beratBersih = parseFloat(this.form.berat_bersih.toString().replace(',', '.')) || 0;
                     const pucuk = parseFloat(this.form.pucuk.toString().replace(',', '.')) || 0;
@@ -1216,13 +1223,13 @@
                     const tanahEtc = parseFloat(this.form.tanah_etc.toString().replace(',', '.')) || 0;
 
                     const beratKotor = beratBersih + pucuk + daunGulma + sogolan + siwilan + tebumati + tanahEtc;
-                    this.form.berat_kotor = beratKotor.toFixed(2).replace('.', ',');
+                    this.form.berat_kotor = this.truncate3(beratKotor);
                 },
 
                 formatInput(field) {
                     if (this.form[field] && this.form[field] !== '') {
                         const value = parseFloat(this.form[field].toString().replace(',', '.')) || 0;
-                        this.form[field] = value.toFixed(2).replace('.', ',');
+                        this.form[field] = this.truncate3(value);
                         if (field !== 'toleransi') {
                             this.calculateBeratKotor();
                         }
