@@ -456,7 +456,7 @@ class TimelineController extends Controller
                 ];
             
                 $totalPercentage += $percentage;
-                $totalLuasHasil  += $luasHasil;
+                if ($actCode !== '4.2.2') $totalLuasHasil += $luasHasil;
                 $activityCount++;
                 $hasActivity = true;
             
