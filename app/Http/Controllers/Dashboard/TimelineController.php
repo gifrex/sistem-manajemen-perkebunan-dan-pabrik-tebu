@@ -114,12 +114,58 @@ class TimelineController extends Controller
         // Batch aktif untuk info ringkas di header modal
         $activeBatch = $batches->firstWhere('is_active', true);
 
+        // Panen: SuratJalan + timbangan per batchno, dan estimasi ton dari fieldbalanceton
+        $suratJalanData = collect();
+        $estimasiTonPerBatch = collect();
+        $crop = $request->get('crop', 'pc');
+        if ($crop === 'p') {
+            $suratJalanData = DB::table('suratjalanpos as sj')
+                ->leftJoin('timbanganpayload as tp', function ($j) {
+                    $j->on('sj.companycode', '=', 'tp.companycode')
+                      ->on('sj.suratjalanno', '=', 'tp.suratjalanno');
+                })
+                ->where('sj.companycode', $companyCode)
+                ->where('sj.plot', $plot)
+                ->select(
+                    'sj.suratjalanno',
+                    'sj.tanggalangkut',
+                    'sj.tanggaltebang',
+                    'sj.nomorpolisi',
+                    'sj.namakontraktor',
+                    DB::raw('COALESCE(tp.netto, 0) as netto'),
+                    DB::raw('COALESCE(tp.bruto, 0) as bruto'),
+                    DB::raw('CASE WHEN tp.netto IS NOT NULL THEN 1 ELSE 0 END as sudah_timbang')
+                )
+                ->orderBy('sj.tanggalangkut', 'desc')
+                ->get();
+
+            // Estimasi ton (fieldbalanceton) per batchno dari panen activities
+            $estimasiTonPerBatch = DB::table('lkhdetailplot as ldp')
+                ->join('lkhhdr as lh', function ($j) {
+                    $j->on('ldp.lkhno', '=', 'lh.lkhno')
+                      ->on('ldp.companycode', '=', 'lh.companycode');
+                })
+                ->where('ldp.companycode', $companyCode)
+                ->where('ldp.plot', $plot)
+                ->whereIn('lh.activitycode', ['4.3.3', '4.4.3', '4.5.2'])
+                ->select(
+                    'ldp.batchno',
+                    DB::raw('COALESCE(SUM(ldp.fieldbalanceton), 0) as total_estimasi_ton'),
+                    DB::raw('COALESCE(SUM(ldp.luashasil), 0) as total_luas_panen')
+                )
+                ->groupBy('ldp.batchno')
+                ->get()
+                ->keyBy('batchno');
+        }
+
         return response()->json([
-            'success'       => true,
-            'batch'         => $activeBatch,   // kompatibel dengan kode lama (info bar)
-            'batches'       => $batches,        // semua history
-            'active_batchno'=> $activeBatchNo,
-            'activities'    => $activities,
+            'success'            => true,
+            'batch'              => $activeBatch,
+            'batches'            => $batches,
+            'active_batchno'     => $activeBatchNo,
+            'activities'         => $activities,
+            'surat_jalan'        => $suratJalanData,
+            'estimasi_ton_batch' => $estimasiTonPerBatch,
         ]);
     }
 
@@ -398,6 +444,49 @@ class TimelineController extends Controller
                 ->select('a.plot', 'a.latitude', 'a.longitude', 'd.centerlatitude', 'd.centerlongitude')
                 ->get();
             
+            // ✅ Panen: query tonase (realisasi netto timbangan) & estimasi ton (fieldbalanceton LKH)
+            $tonasePerPlot      = collect();
+            $estimasiTonPerPlot = collect();
+            if ($cropType === 'p') {
+                $tonasePerPlot = DB::table('suratjalanpos as sj')
+                    ->leftJoin('timbanganpayload as tp', function ($j) {
+                        $j->on('sj.companycode', '=', 'tp.companycode')
+                          ->on('sj.suratjalanno', '=', 'tp.suratjalanno');
+                    })
+                    ->where('sj.companycode', $companyCode)
+                    ->whereIn('sj.plot', $filteredPlots)
+                    ->select(
+                        'sj.plot',
+                        DB::raw('COUNT(sj.suratjalanno) as total_rit'),
+                        DB::raw('SUM(CASE WHEN tp.netto IS NOT NULL THEN 1 ELSE 0 END) as sudah_timbang'),
+                        DB::raw('COALESCE(SUM(tp.netto), 0) as total_netto_kg')
+                    )
+                    ->groupBy('sj.plot')
+                    ->get()
+                    ->keyBy('plot');
+
+                $estimasiTonPerPlot = DB::table('lkhdetailplot as ldp')
+                    ->join('lkhhdr as lh', function ($j) {
+                        $j->on('ldp.lkhno', '=', 'lh.lkhno')
+                          ->on('ldp.companycode', '=', 'lh.companycode');
+                    })
+                    ->join('masterlist as m', function ($j) {
+                        $j->on('ldp.plot', '=', 'm.plot')
+                          ->on('ldp.companycode', '=', 'm.companycode');
+                    })
+                    ->where('ldp.companycode', $companyCode)
+                    ->whereRaw('ldp.batchno = m.activebatchno')
+                    ->whereIn('lh.activitycode', ['4.3.3', '4.4.3', '4.5.2'])
+                    ->whereIn('ldp.plot', $filteredPlots)
+                    ->select(
+                        'ldp.plot',
+                        DB::raw('COALESCE(SUM(ldp.fieldbalanceton), 0) as total_estimasi_ton')
+                    )
+                    ->groupBy('ldp.plot')
+                    ->get()
+                    ->keyBy('plot');
+            }
+
             // ✅ GABUNG: Process plotHeadersForMap + plotActivityDetails sekaligus
             $plotHeadersForMap = [];
             $plotActivityDetails = [];
@@ -507,12 +596,17 @@ class TimelineController extends Controller
                 'marker_color' => $markerColor,
                 'luas_rkh' => $luasRkh,
                 'total_luas_hasil' => $totalLuasHasil,
-                'lifecyclestatus' => $lifecycleStatus,  
-                'umur_hari' => $umurHari,          
-                'umur_bulan' => $umurBulan,      
-                'is_panen'                 => $hasPanen ? 1 : 0,          
+                'lifecyclestatus' => $lifecycleStatus,
+                'umur_hari' => $umurHari,
+                'umur_bulan' => $umurBulan,
+                'is_panen'                 => $hasPanen ? 1 : 0,
                 'tanggal_panen_terakhir'   => $lastPanen,
-                'is_match' => $match
+                'is_match' => $match,
+                // panen tonase
+                'total_rit'       => (int)($tonasePerPlot->get($plotCode)?->total_rit ?? 0),
+                'sudah_timbang'   => (int)($tonasePerPlot->get($plotCode)?->sudah_timbang ?? 0),
+                'total_netto_ton' => round((float)($tonasePerPlot->get($plotCode)?->total_netto_kg ?? 0) / 1000, 2),
+                'estimasi_ton'    => round((float)($estimasiTonPerPlot->get($plotCode)?->total_estimasi_ton ?? 0), 2),
             ];
         } else {
             $markerColor = 'black';
@@ -529,14 +623,17 @@ class TimelineController extends Controller
                 'marker_color' => $markerColor,
                 'luas_rkh' => $luasRkh,
                 'total_luas_hasil' => 0,
-                'lifecyclestatus' => $lifecycleStatus,  
-                'umur_hari' => $umurHari,        
-                'umur_bulan' => $umurBulan,               
-                'is_panen' => $hasPanen ? 1 : 0,          
+                'lifecyclestatus' => $lifecycleStatus,
+                'umur_hari' => $umurHari,
+                'umur_bulan' => $umurBulan,
+                'is_panen' => $hasPanen ? 1 : 0,
                 'tanggal_panen_terakhir' => $lastPanen,
-
-                // ✅ tambahin ini
                 'is_match' => $match,
+                // panen tonase
+                'total_rit'       => (int)($tonasePerPlot->get($plotCode)?->total_rit ?? 0),
+                'sudah_timbang'   => (int)($tonasePerPlot->get($plotCode)?->sudah_timbang ?? 0),
+                'total_netto_ton' => round((float)($tonasePerPlot->get($plotCode)?->total_netto_kg ?? 0) / 1000, 2),
+                'estimasi_ton'    => round((float)($estimasiTonPerPlot->get($plotCode)?->total_estimasi_ton ?? 0), 2),
             ];
         }
         }
@@ -556,15 +653,21 @@ class TimelineController extends Controller
                 $sheet->setTitle('Map Detail');
 
                 // Header (plot info + activity + lkh)
-                $sheet->fromArray([[
-                    'Plot','Blok',
-                    'Luas RKH (HA)','Total Hasil (HA)','Progress (%)','Marker',
-                    'Status','Umur (hari)','Is Panen','Tgl Panen Terakhir',
+                $mapHdr = ['Plot','Blok',
+                    'Luas RKH (HA)', $cropType === 'p' ? 'Total Realisasi Panen (HA)' : 'Total Hasil (HA)', 'Progress (%)','Marker',
+                    'Status','Umur (bulan)','Is Panen','Tgl Panen Terakhir',
+                ];
+                if ($cropType === 'p') {
+                    $mapHdr = array_merge($mapHdr, ['Estimasi Tonase (Ton)','Realisasi Tonase/Netto (Ton)','% Tonase','Total Rit','Sudah Timbang']);
+                }
+                $mapHdr = array_merge($mapHdr, [
                     'Activity Code','Activity Label','Activity Luas (HA)','Activity (%)','Activity Tanggal',
                     'LKH No','LKH Tanggal','LKH Luas (HA)','LKH (%)'
-                ]], null, 'A1');
+                ]);
+                $sheet->fromArray([$mapHdr], null, 'A1');
 
-                $sheet->getStyle("A1:U1")->getFont()->setBold(true);
+                $lastMapHdrCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($mapHdr));
+                $sheet->getStyle("A1:{$lastMapHdrCol}1")->getFont()->setBold(true);
                 $sheet->freezePane('A2');
 
                 $row = 2;
@@ -599,6 +702,16 @@ class TimelineController extends Controller
                         (int)($detail['is_panen'] ?? 0),
                         $tglPanen ? \Carbon\Carbon::parse($tglPanen)->format('Y-m-d') : '-',
                     ];
+                    if ($cropType === 'p') {
+                        $estTonMap  = (float)($detail['estimasi_ton'] ?? 0);
+                        $realTonMap = (float)($detail['total_netto_ton'] ?? 0);
+                        $pctTonMap  = $estTonMap > 0 ? round(($realTonMap / $estTonMap) * 100, 2) : 0;
+                        $base = array_merge($base, [
+                            $estTonMap, $realTonMap, $pctTonMap,
+                            (int)($detail['total_rit'] ?? 0),
+                            (int)($detail['sudah_timbang'] ?? 0),
+                        ]);
+                    }
 
                     $acts = $detail['activities'] ?? [];
 
@@ -680,9 +793,15 @@ class TimelineController extends Controller
                 $sheet->setCellValue($col++ . '1', "$code (Tanggal)");
             }
 
-            $sheet->setCellValue($col++ . '1', 'Realisasi Tanam (HA)');
-            if ($cropType !== 'p') {
-            $sheet->setCellValue($col++ . '1', 'Persentase (%)');
+            $sheet->setCellValue($col++ . '1', $cropType === 'p' ? 'Realisasi Panen (HA)' : 'Realisasi Tanam (HA)');
+            if ($cropType === 'p') {
+                $sheet->setCellValue($col++ . '1', 'Estimasi Tonase (Ton)');
+                $sheet->setCellValue($col++ . '1', 'Realisasi Tonase/Netto (Ton)');
+                $sheet->setCellValue($col++ . '1', '% Tonase');
+                $sheet->setCellValue($col++ . '1', 'Total Rit');
+                $sheet->setCellValue($col++ . '1', 'Sudah Timbang');
+            } else {
+                $sheet->setCellValue($col++ . '1', 'Persentase (%)');
             }
 
             // ========== STYLE HEADER ==========
@@ -719,7 +838,7 @@ class TimelineController extends Controller
                         $value = $activity->total_luas ?? 0;
                         $percentage = $activity->avg_percentage ?? 0;
                         $tanggal = $activity->tanggal_terbaru ?? null;
-                        $totalRealisasiPlot += $value;
+                        if ($activitycode !== '4.2.2') $totalRealisasiPlot += $value;
 
                         $sheet->setCellValue($col++ . $row, $value > 0 ? (float)$value : 0);
                         $sheet->setCellValue($col++ . $row, $value > 0 ? (float)$percentage : 0);
@@ -728,7 +847,17 @@ class TimelineController extends Controller
 
                         $sheet->setCellValue($col++ . $row, $totalRealisasiPlot > 0 ? (float)$totalRealisasiPlot : 0);
 
-                        if ($cropType !== 'p') {
+                        if ($cropType === 'p') {
+                            $detail = $plotActivityDetails[$plot->plot] ?? [];
+                            $estTon   = (float)($detail['estimasi_ton'] ?? 0);
+                            $realTon  = (float)($detail['total_netto_ton'] ?? 0);
+                            $pctTon   = $estTon > 0 ? round(($realTon / $estTon) * 100, 2) : 0;
+                            $sheet->setCellValue($col++ . $row, $estTon);
+                            $sheet->setCellValue($col++ . $row, $realTon);
+                            $sheet->setCellValue($col++ . $row, $pctTon);
+                            $sheet->setCellValue($col++ . $row, (int)($detail['total_rit'] ?? 0));
+                            $sheet->setCellValue($col++ . $row, (int)($detail['sudah_timbang'] ?? 0));
+                        } else {
                             $stageCount = count($activityMap);
                             $doneCount  = 0;
                             foreach ($activityMap as $code => $label) {
@@ -737,7 +866,7 @@ class TimelineController extends Controller
                                 if ($pct >= 100) $doneCount++;
                             }
                             $stagePct = $stageCount > 0 ? ($doneCount / $stageCount) * 100 : 0;
-                            $sheet->setCellValue($col++ . $row, (float)$stagePct);                
+                            $sheet->setCellValue($col++ . $row, (float)$stagePct);
                         }
 
                         $row++;
