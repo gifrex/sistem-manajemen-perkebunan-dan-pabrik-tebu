@@ -124,7 +124,7 @@
                             @endforeach
                             
                             {{-- 2 Kolom Terakhir --}}
-                            <th class="sticky-v" rowspan="2">Realisasi<br>Tanam<br><small>HA</small></th>
+                            <th class="sticky-v" rowspan="2">Realisasi<br>{{ $cropType === 'p' ? 'Panen' : 'Tanam' }}<br><small>HA</small></th>
                             @if($cropType !== 'p')
                             <th class="sticky-v" rowspan="2">%</th>
                             @endif
@@ -164,7 +164,7 @@
                                     }
                                 }
                                 
-                                $grandTotalRealisasi += $totalActivity;
+                                if ($activitycode !== '4.2.2') $grandTotalRealisasi += $totalActivity;
                                 $latestDate = !empty($allDates) ? max($allDates) : null;
                                 
                                 // Calculate average percentage for total
@@ -237,7 +237,7 @@
                                             $value = $activity->total_luas ?? 0;
                                             $percentage = $activity->avg_percentage ?? 0;
                                             $tanggal = $activity->tanggal_terbaru ?? null;
-                                            $totalRealisasiPlot += $value;
+                                            if ($activitycode !== '4.2.2') $totalRealisasiPlot += $value;
 
                                             $cellBg = $isRcUnique ? '#eff6ff' : '#f0fdf4';
                                             $percentageColor = $percentage >= 100 ? '#22c55e' : ($percentage > 0 ? '#dc2626' : '#6b7280');
@@ -808,7 +808,7 @@ function getRingColor(d) {
                         // hanya tampilkan kode yang ada di activityMapJs, urut sesuai map
                         const codesWithData = Object.keys(activityMapJs).filter(c => batchGroup[c]);
 
-                        const totalRealisasi = codesWithData.reduce((s, c) => s + (batchGroup[c]?.total || 0), 0);
+                        const totalRealisasi = codesWithData.filter(c => c !== '4.2.2').reduce((s, c) => s + (batchGroup[c]?.total || 0), 0);
 
                         const borderColor  = isActive ? '#86efac' : '#d1d5db';
                         const headerBg     = isActive ? '#166534' : '#9ca3af';
