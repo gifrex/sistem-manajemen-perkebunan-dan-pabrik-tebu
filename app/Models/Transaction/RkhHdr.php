@@ -2,6 +2,7 @@
 namespace App\Models\Transaction;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class RkhHdr extends Model
 {
