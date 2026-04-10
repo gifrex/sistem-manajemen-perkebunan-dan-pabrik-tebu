@@ -346,53 +346,51 @@
 
   <!-- Kolom kiri: Fill -->
   <div class="space-y-1">
-    <div class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Fill (warna area)</div>
-
+    <div class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Fill — status kesiapan panen</div>
     <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
       <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#fef3c7;border:1px solid #d1d5db;"></span>
       <span>Cream — belum ada activity</span>
     </div>
     <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
       <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#86efac;border:1px solid #d1d5db;"></span>
-      <span>Hijau muda — aktivitas sedang berjalan</span>
+      <span>Hijau muda — activity sedang berjalan</span>
     </div>
     <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
       <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#0f766e;border:1px solid #d1d5db;"></span>
-      <span>Hijau tua — semua aktivitas selesai</span>
-    </div>
-    <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
-      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#3b82f6;border:1px solid #d1d5db;"></span>
-      <span>Biru — siap panen (ZPK 25–35 hari)</span>
+      <span>Hijau tua — semua activity selesai</span>
     </div>
     <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
       <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#fb923c;border:1px solid #d1d5db;"></span>
       <span>Orange — umur ≥ 9 bulan, belum ZPK</span>
     </div>
     <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
-      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#000;border:1px solid #d1d5db;opacity:.30;"></span>
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#3b82f6;border:1px solid #d1d5db;"></span>
+      <span>Biru — siap panen (ZPK 25–35 hari)</span>
+    </div>
+    <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#000;opacity:.30;border:1px solid #d1d5db;"></span>
       <span>Hitam redup — tidak memenuhi filter aktif</span>
     </div>
   </div>
 
   <!-- Kolom kanan: Ring -->
   <div class="space-y-1">
-    <div class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Ring (border area)</div>
-
+    <div class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Ring — peringatan tindakan</div>
     <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
-      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#fef3c7;border:3px solid #f97316;"></span>
-      <span>Ring orange — sudah ZPK &gt; 35 hari</span>
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#e5e7eb;border:3px solid #facc15;"></span>
+      <span>Ring kuning — ZPK &lt; 25 hari (masih tunggu)</span>
     </div>
     <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
-      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#fef3c7;border:3px solid #facc15;"></span>
-      <span>Ring kuning — sudah ZPK &lt; 25 hari</span>
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#e5e7eb;border:3px solid #f97316;"></span>
+      <span>Ring orange — ZPK &gt; 35 hari (terlambat dipanen!)</span>
     </div>
     <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
-      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#fef3c7;border:3px solid #dc2626;"></span>
-      <span>Ring merah — umur ≥ 9 bulan, belum ZPK</span>
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#e5e7eb;border:3px solid #dc2626;"></span>
+      <span>Ring merah — umur ≥ 10 bln belum panen / trash mulcher overdue</span>
     </div>
     <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
-      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#374151;border:2px solid #374151;"></span>
-      <span>Ring abu — normal (tidak ada kondisi khusus)</span>
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#e5e7eb;border:2px solid #374151;"></span>
+      <span>Ring abu — normal</span>
     </div>
   </div>
 
@@ -431,7 +429,9 @@
                                         $detail = $plotActivityDetails[$plotCode] ?? null;
                                         if (!$detail) continue; // Skip kalau tidak ada data
                                         
-                                        $umurText = ($detail['umur_bulan'] ?? 0) >= 0 ? (($detail['umur_bulan'] ?? 0) . ' bln') : '-';
+                                        $umurText = ($detail['umur_bulan'] ?? 0) >= 0
+                                            ? (($detail['umur_bulan'] ?? 0) . ' bln / ' . ($detail['umur_hari'] ?? 0) . ' hr')
+                                            : '-';
                                         $avgPct = $detail['avg_percentage'] ?? 0;
                                         $pctColor = $avgPct >= 100 ? 'text-green-600' : ($avgPct > 0 ? 'text-orange-600' : 'text-gray-500');
                                     @endphp
@@ -601,12 +601,22 @@ function getRingColor(d) {
     }
   }
 
-  // RULE
-  if (hasZpk && daysSinceZpk !== null && daysSinceZpk > 35) return '#f97316';
-  if (hasZpk && daysSinceZpk !== null && daysSinceZpk < 25) return '#facc15';
-  if (!hasZpk && umurBulan >= 9) return '#dc2626';
+  // Ring merah: umur ≥ 10 bulan & belum panen sama sekali
+  if (!hasZpk && umurBulan >= 10 && !d.is_panen) return '#dc2626';
 
-  return '#ffffff'; // default ring putih
+  // Ring post-ZPK timing
+  if (hasZpk && daysSinceZpk > 35) return '#f97316'; // ZPK terlambat dipanen
+  if (hasZpk && daysSinceZpk < 25) return '#facc15'; // ZPK masih tunggu
+
+  // Ring merah: trash mulcher overdue (> 14 hari setelah panen selesai)
+  if (d.last_panen_lkh_date && !d.last_trash_mulcher_date) {
+    const panenDone = new Date(d.last_panen_lkh_date);
+    const today = new Date();
+    const daysSincePanen = (today - panenDone) / (1000 * 60 * 60 * 24);
+    if (daysSincePanen > 14) return '#dc2626';
+  }
+
+  return '#374151'; // default ring abu gelap
 }
 
         
@@ -854,7 +864,75 @@ function getRingColor(d) {
                 const totalSJRit   = suratJalanList.length;
                 const sudahTimbang = suratJalanList.filter(r => r.sudah_timbang).length;
 
+                // ===== TIMELINE ALERT CHECKS =====
+                const d = plotActivityDetails[plot] || {};
+                const today = new Date();
+                const alerts = [];
+
+                // Helper: days diff from date string to today
+                const daysSince = (dateStr) => dateStr ? (today - new Date(dateStr)) / 86400000 : null;
+
+                const umurBulan = d.umur_bulan ?? 0;
+                const umurHari  = d.umur_hari ?? 0;
+                const status    = (d.lifecyclestatus || '').toUpperCase();
+                const isRC      = status.startsWith('RC');
+
+                // 1) Umur ≥ 10 bulan belum panen
+                if (umurBulan >= 10 && !d.is_panen) {
+                    alerts.push({ level: 'red', msg: `⛔ Umur ${umurBulan} bulan (${umurHari} hari) — belum panen! Segera jadwalkan panen.` });
+                }
+
+                // 2) Harvest duration check: panen mulai dari tanggalpanen, selesai di last_panen_lkh_date
+                if (d.tanggal_panen_terakhir && d.last_panen_lkh_date) {
+                    const startPanen = new Date(d.tanggal_panen_terakhir);
+                    const endPanen   = new Date(d.last_panen_lkh_date);
+                    const panenDays  = Math.ceil((endPanen - startPanen) / 86400000) + 1;
+                    const luasRkh    = d.luas_rkh ?? 0;
+                    // Normal: ~3 hari/ha, max: 7 hari untuk plot kecil, max: 14 hari untuk plot besar
+                    const maxDays = luasRkh > 5 ? 14 : 7;
+                    if (panenDays > maxDays) {
+                        alerts.push({ level: 'red', msg: `⛔ Durasi panen ${panenDays} hari (luas ${luasRkh.toFixed(1)} HA) — melebihi batas (max ~${maxDays} hari).` });
+                    } else if (panenDays > 7) {
+                        alerts.push({ level: 'yellow', msg: `⚠️ Durasi panen ${panenDays} hari — perhatikan kecepatan panen.` });
+                    }
+                }
+
+                // 3) Trash mulcher: wajib ≤ 14 hari setelah panen selesai
+                if (d.last_panen_lkh_date) {
+                    const daysSincePanen = daysSince(d.last_panen_lkh_date);
+                    if (!d.last_trash_mulcher_date) {
+                        if (daysSincePanen > 14) {
+                            alerts.push({ level: 'red', msg: `⛔ Panen selesai ${Math.floor(daysSincePanen)} hari lalu — trash mulcher BELUM dilakukan! (wajib ≤ 14 hari)` });
+                        } else if (daysSincePanen > 7) {
+                            alerts.push({ level: 'yellow', msg: `⚠️ Panen selesai ${Math.floor(daysSincePanen)} hari lalu — segera lakukan trash mulcher (sisa ${Math.floor(14 - daysSincePanen)} hari).` });
+                        }
+                    }
+                }
+
+                // 4) RC3 → perlu replanting
+                if (status === 'RC3') {
+                    alerts.push({ level: 'yellow', msg: `⚠️ Status RC3 — plot ini wajib replanting. Pastikan sudah dijadwalkan.` });
+                }
+
+                // 5) Jika belum RC3 tapi ada replanting activity
+                const hasReplanting = (d.activities || []).some(a => a.code && a.code.startsWith('2.'));
+                if (!isRC && hasReplanting) {
+                    alerts.push({ level: 'blue', msg: `ℹ️ Ada activity replanting pada plot non-RC — perlu verifikasi.` });
+                }
+
                 let html = `<div>`;
+
+                // ===== ALERT PANEL =====
+                if (alerts.length > 0) {
+                    html += `<div style="margin-bottom:14px;">`;
+                    alerts.forEach(a => {
+                        const bg  = a.level === 'red' ? '#fef2f2' : a.level === 'yellow' ? '#fefce8' : '#eff6ff';
+                        const bdr = a.level === 'red' ? '#fca5a5' : a.level === 'yellow' ? '#fde047' : '#93c5fd';
+                        const tx  = a.level === 'red' ? '#991b1b' : a.level === 'yellow' ? '#854d0e' : '#1e40af';
+                        html += `<div style="background:${bg};border-left:4px solid ${bdr};border-radius:4px;padding:7px 12px;margin-bottom:6px;font-size:11px;color:${tx};font-weight:600;">${a.msg}</div>`;
+                    });
+                    html += `</div>`;
+                }
 
                 // ===== PANEN SUMMARY CARD =====
                 if (isPanen && batches.length > 0) {
