@@ -3,6 +3,7 @@
 // routes\transaction.php
 
 use App\Http\Controllers\Transaction\AgronomiController;
+use App\Http\Controllers\Transaction\KoreksiSJPanenController;
 use App\Http\Controllers\Transaction\GudangBbmController;
 use App\Http\Controllers\Transaction\GudangController;
 use App\Http\Controllers\Transaction\HPTController;
@@ -296,6 +297,18 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
             Route::post('/pos-in', 'posIn')->name('pos-in');
             Route::post('/external-in', 'externalIn')->name('external-in');
             Route::post('/external-out', 'externalOut')->name('external-out');
+        });
+    });
+
+    // ============================================================================
+    // KOREKSI SJ PANEN
+    // ============================================================================
+    Route::middleware('permission:transaction.koreksisjpanen.view')->group(function () {
+        Route::prefix('koreksi-sj-panen')->name('koreksi-sj-panen.')->group(function () {
+            Route::get('/', [KoreksiSJPanenController::class, 'index'])->name('index');
+            Route::post('/store', [KoreksiSJPanenController::class, 'store'])->name('store');
+            Route::get('/get-sj', [KoreksiSJPanenController::class, 'getSuratJalanDetail'])->name('get-sj');
+            Route::get('/check-plot', [KoreksiSJPanenController::class, 'checkPlot'])->name('check-plot');
         });
     });
 

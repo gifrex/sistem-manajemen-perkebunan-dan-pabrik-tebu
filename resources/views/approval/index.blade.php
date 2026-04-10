@@ -111,7 +111,7 @@
             {{-- Tab Navigation --}}
             <div class="flex items-center gap-2 mb-5 bg-white rounded-xl border border-slate-200 p-1.5">
 
-                @foreach ([['tab' => 'rkh', 'label' => 'RKH', 'count' => $pendingRKH->count()], ['tab' => 'lkh', 'label' => 'LKH', 'count' => $pendingLKH->count()], ['tab' => 'absen', 'label' => 'Absen', 'count' => $pendingAbsen->count()], ['tab' => 'upah', 'label' => 'Upah Mingguan', 'count' => $pendingUpah->count()], ['tab' => 'bbm', 'label' => 'BBM', 'count' => $pendingBBM->count()], ['tab' => 'other', 'label' => 'Lainnya', 'count' => $pendingOther->count()]] as $item)
+                @foreach ([['tab' => 'rkh', 'label' => 'RKH', 'count' => $pendingRKH->count()], ['tab' => 'lkh', 'label' => 'LKH', 'count' => $pendingLKH->count()], ['tab' => 'absen', 'label' => 'Absen', 'count' => $pendingAbsen->count()], ['tab' => 'upah', 'label' => 'Upah Mingguan', 'count' => $pendingUpah->count()], ['tab' => 'bbm', 'label' => 'BBM', 'count' => $pendingBBM->count()], ['tab' => 'panen', 'label' => 'Panen', 'count' => $pendingPanen->count()], ['tab' => 'other', 'label' => 'Lainnya', 'count' => $pendingOther->count()]] as $item)
                     <button @click="activeTab = '{{ $item['tab'] }}'"
                         :class="activeTab === '{{ $item['tab'] }}'
                             ?
@@ -900,6 +900,148 @@
                 @endif
             </div>
 
+            {{-- ==================== PANEN TAB ==================== --}}
+            <div x-show="activeTab === 'panen'" x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
+                {{-- Warning banner --}}
+                <div class="flex items-start gap-3 mb-4 px-4 py-3 bg-red-50 border border-red-300 rounded-xl text-sm text-red-900">
+                    <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                    </svg>
+                    <div>
+                        <p class="font-bold text-red-700 mb-0.5">Perhatian — Koreksi Data Surat Jalan Panen</p>
+                        <p class="text-xs text-red-800 leading-relaxed">
+                            Approval ini akan mengubah data SJ yang sudah terjadi secara historis. Pastikan data seperti
+                            <span class="font-semibold">biaya kontraktor, saldo panen, dan laporan terkait</span> sudah diperiksa dan di-generate ulang setelah disetujui.
+                            Semakin lama jarak waktu SJ terbentuk, semakin tinggi risiko ketidakcocokan data.
+                            Jika ada anomali, <span class="font-semibold">segera hubungi IT</span>.
+                        </p>
+                    </div>
+                </div>
+
+                @if ($pendingPanen->isEmpty())
+                    <div class="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                        <div class="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <p class="text-sm text-slate-400 font-medium">Tidak ada approval Panen yang perlu diproses</p>
+                        <p class="text-xs text-slate-300 mt-1">Semua sudah diproses</p>
+                    </div>
+                @else
+                    <div class="space-y-3">
+                        @foreach ($pendingPanen as $approval)
+                            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-slate-300 hover:shadow-sm transition-all duration-200">
+                                {{-- Header --}}
+                                <div class="px-5 py-3.5 flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                                            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-slate-900 text-sm">{{ $approval->transactionnumber }}</p>
+                                            <div class="flex items-center gap-2 mt-0.5">
+                                                <span class="text-xs text-slate-400">{{ $approval->formatted_date ?? '-' }}</span>
+                                                <span class="text-slate-200">&middot;</span>
+                                                <span class="text-xs text-slate-400">{{ $approval->category }}</span>
+                                                @if ($approval->inputby_name)
+                                                    <span class="text-slate-200">&middot;</span>
+                                                    <span class="text-xs text-slate-400">{{ $approval->inputby_name }}</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200 whitespace-nowrap tracking-wide">
+                                        LEVEL {{ $approval->approval_level }}
+                                    </span>
+                                </div>
+
+                                {{-- Body: detail koreksi SJ --}}
+                                @if ($approval->suratjalanno)
+                                    @php
+                                        $panenFieldLabels = [
+                                            'plot' => 'Plot', 'varietas' => 'Varietas', 'kodetebang' => 'Kode Tebang',
+                                            'langsir' => 'Langsir', 'tebusulit' => 'Tebu Sulit',
+                                            'kendaraankontraktor' => 'Kendaraan Kontraktor', 'muatgl' => 'Muat GL',
+                                            'nomorkendaraan' => 'No. Kendaraan', 'nomorpolisi' => 'No. Polisi',
+                                            'namasupir' => 'Supir', 'namakontraktor' => 'Kontraktor',
+                                            'namasubkontraktor' => 'Sub Kontraktor',
+                                        ];
+                                        $panenPerubahan = $approval->perubahan ? json_decode($approval->perubahan, true) : [];
+                                    @endphp
+                                    <div class="px-5 py-3 border-t border-slate-100 space-y-2">
+                                        <div class="flex items-center gap-3">
+                                            <div>
+                                                <p class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-0.5">No. Surat Jalan</p>
+                                                <p class="font-semibold text-slate-800 font-mono text-xs">{{ $approval->suratjalanno }}</p>
+                                            </div>
+                                            @if ($approval->alasan)
+                                                <div class="ml-6">
+                                                    <p class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-0.5">Alasan</p>
+                                                    <p class="text-slate-600 text-xs">{{ $approval->alasan }}</p>
+                                                </div>
+                                            @endif
+                                        </div>
+                                        @if (!empty($panenPerubahan))
+                                            <div>
+                                                <p class="text-[11px] text-slate-400 font-medium uppercase tracking-wider mb-1.5">Perubahan ({{ count($panenPerubahan) }} field)</p>
+                                                <div class="flex flex-wrap gap-1.5">
+                                                    @foreach ($panenPerubahan as $field => $vals)
+                                                        <span class="inline-flex items-center gap-1 px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-[11px]">
+                                                            <span class="font-semibold text-slate-600">{{ $panenFieldLabels[$field] ?? $field }}:</span>
+                                                            <span class="text-red-600 line-through">{{ $vals['lama'] ?? 'null' }}</span>
+                                                            <svg class="w-2.5 h-2.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+                                                            </svg>
+                                                            <span class="text-green-700 font-bold">{{ $vals['baru'] ?? 'null' }}</span>
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endif
+
+                                {{-- Actions --}}
+                                <div class="px-5 py-3 bg-slate-50/70 border-t border-slate-100 flex gap-2">
+                                    <form action="{{ route('approval.panen.process') }}" method="POST" class="flex-1">
+                                        @csrf
+                                        <input type="hidden" name="approvalno" value="{{ $approval->approvalno }}">
+                                        <input type="hidden" name="action" value="approve">
+                                        <input type="hidden" name="level" value="{{ $approval->approval_level }}">
+                                        <button type="submit"
+                                                onclick="return confirm('Approve {{ $approval->transactionnumber }}?')"
+                                                class="w-full inline-flex items-center justify-center gap-1.5 py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm shadow-emerald-200 active:scale-[0.98]">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                                            </svg>
+                                            Approve
+                                        </button>
+                                    </form>
+                                    <form action="{{ route('approval.panen.process') }}" method="POST" class="flex-1">
+                                        @csrf
+                                        <input type="hidden" name="approvalno" value="{{ $approval->approvalno }}">
+                                        <input type="hidden" name="action" value="decline">
+                                        <input type="hidden" name="level" value="{{ $approval->approval_level }}">
+                                        <button type="submit"
+                                                onclick="return confirm('Decline {{ $approval->transactionnumber }}?')"
+                                                class="w-full inline-flex items-center justify-center gap-1.5 py-2 px-4 bg-white hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg border border-slate-200 transition-colors active:scale-[0.98]">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                            Decline
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+
             {{-- ==================== OTHER TAB ==================== --}}
             <div x-show="activeTab === 'other'" x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
@@ -1141,12 +1283,13 @@
 
         function approvalData() {
             return {
-                activeTab: '{{ $pendingRKH->count() > 0 ? 'rkh' : ($pendingLKH->count() > 0 ? 'lkh' : ($pendingAbsen->count() > 0 ? 'absen' : ($pendingUpah->count() > 0 ? 'upah' : ($pendingBBM->count() > 0 ? 'bbm' : ($pendingOther->count() > 0 ? 'other' : 'rkh'))))) }}',
+                activeTab: '{{ $pendingRKH->count() > 0 ? 'rkh' : ($pendingLKH->count() > 0 ? 'lkh' : ($pendingAbsen->count() > 0 ? 'absen' : ($pendingUpah->count() > 0 ? 'upah' : ($pendingBBM->count() > 0 ? 'bbm' : ($pendingPanen->count() > 0 ? 'panen' : ($pendingOther->count() > 0 ? 'other' : 'rkh')))))) }}',
                 rkhCount: {{ $pendingRKH->count() }},
                 lkhCount: {{ $pendingLKH->count() }},
                 absenCount: {{ $pendingAbsen->count() }},
                 upah: {{ $pendingUpah->count() }},
                 bbmCount: {{ $pendingBBM->count() }},
+                panenCount: {{ $pendingPanen->count() }},
                 otherCount: {{ $pendingOther->count() }},
                 allDateChecked: {{ $allDate ? 'true' : 'false' }},
 

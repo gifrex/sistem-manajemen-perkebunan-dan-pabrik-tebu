@@ -210,6 +210,11 @@ return [
                 'route' => 'transaction.gudang.koreksi',
                 'permission' => 'transaction.gudang.view',
             ],
+            [
+                'name' => 'Koreksi SJ Panen',
+                'route' => 'transaction.koreksi-sj-panen.index',
+                'permission' => 'transaction.koreksisjpanen.view',
+            ],
         ],
     ],
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Approval\AbsenApprovalController;
 use App\Http\Controllers\Approval\ApprovalDashboardController;
 use App\Http\Controllers\Approval\LkhApprovalController;
 use App\Http\Controllers\Approval\OtherApprovalController;
+use App\Http\Controllers\Approval\PanenApprovalController;
 use App\Http\Controllers\Approval\RkhApprovalController;
 use App\Http\Controllers\Approval\UpahMingguanApprovalController;
 use Illuminate\Support\Facades\Route;
@@ -82,4 +83,13 @@ Route::middleware('auth')->prefix('approval')->name('approval.')->group(function
     // Order BBM Approval
     Route::post('/order-bbm/process', [OrderBbmApprovalController::class, 'process'])->name('order-bbm.process');
     Route::get('/order-bbm/{orderno}/detail', [OrderBbmApprovalController::class, 'detail'])->name('order-bbm.detail');
+
+    // ============================================================================
+    // PANEN APPROVALS
+    // Koreksi SJ Panen, dsb.
+    // ============================================================================
+    Route::prefix('panen')->name('panen.')->group(function () {
+        Route::post('/process', [PanenApprovalController::class, 'process'])->name('process');
+        Route::get('/{approvalno}/history', [PanenApprovalController::class, 'history'])->name('history');
+    });
 });
