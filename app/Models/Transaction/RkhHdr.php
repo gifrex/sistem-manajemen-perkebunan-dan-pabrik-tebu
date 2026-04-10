@@ -227,27 +227,32 @@ class RkhHdr extends Model
     {
         // First, let's use the exact query that works in your database
         $query = "
-            SELECT 
-                a.companycode, 
-                a.suratjalanno, 
+            SELECT
+                a.companycode,
+                a.suratjalanno,
                 c.createdat,
-                a.plot, 
-                c.id, 
+                a.plot,
+                c.id,
                 c.grade,
-                c.nilaibersih, 
-                c.nilaisegar, 
-                c.nilaimanis, 
+                c.nilaibersih,
+                c.nilaisegar,
+                c.nilaimanis,
                 c.averagescore,
                 b.lkhno,
                 b.lkhdate,
                 COALESCE(c.keterangan, '') as keterangan
             FROM suratjalanpos a
-            LEFT JOIN lkhhdr b ON a.companycode = b.companycode AND b.rkhno = ?
-            LEFT JOIN lkhdetailbsm c ON b.companycode = c.companycode 
-                AND b.lkhno = c.lkhno 
+            INNER JOIN (
+                SELECT MIN(lkhno) as lkhno, lkhdate, companycode
+                FROM lkhhdr
+                WHERE rkhno = ?
+                GROUP BY lkhdate, companycode
+            ) b ON a.companycode = b.companycode
+                AND LEFT(a.tanggalangkut, 10) = b.lkhdate
+            LEFT JOIN lkhdetailbsm c ON b.companycode = c.companycode
+                AND b.lkhno = c.lkhno
                 AND a.suratjalanno = c.suratjalanno
-            WHERE LEFT(a.tanggalangkut, 10) = b.lkhdate 
-                AND a.companycode = ?
+            WHERE a.companycode = ?
             ORDER BY a.plot
         ";
         
