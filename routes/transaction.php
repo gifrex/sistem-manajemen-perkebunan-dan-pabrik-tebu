@@ -4,6 +4,7 @@
 
 use App\Http\Controllers\Transaction\AgronomiController;
 use App\Http\Controllers\Transaction\KoreksiSJPanenController;
+use App\Http\Controllers\Transaction\SuratJalanNonNfcController;
 use App\Http\Controllers\Transaction\GudangBbmController;
 use App\Http\Controllers\Transaction\GudangController;
 use App\Http\Controllers\Transaction\HPTController;
@@ -311,6 +312,20 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
             Route::post('/store', [KoreksiSJPanenController::class, 'store'])->name('store');
             Route::get('/get-sj', [KoreksiSJPanenController::class, 'getSuratJalanDetail'])->name('get-sj');
             Route::get('/check-plot', [KoreksiSJPanenController::class, 'checkPlot'])->name('check-plot');
+        });
+    });
+
+    // ============================================================================
+    // INPUT SJ NON-NFC
+    // ============================================================================
+    Route::middleware('permission:transaction.surat-jalan-non-nfc.view')->group(function () {
+        Route::prefix('surat-jalan-non-nfc')->name('surat-jalan-non-nfc.')->group(function () {
+            Route::get('/', [SuratJalanNonNfcController::class, 'index'])->name('index');
+            Route::get('/{id}', [SuratJalanNonNfcController::class, 'show'])->name('show');
+            Route::post('/store', [SuratJalanNonNfcController::class, 'store'])->name('store');
+            Route::post('/mark-printed', [SuratJalanNonNfcController::class, 'markPrinted'])->name('mark-printed');
+            Route::get('/form-data', [SuratJalanNonNfcController::class, 'getFormData'])->name('form-data');
+            Route::get('/attachment/{id}', [SuratJalanNonNfcController::class, 'getAttachment'])->name('attachment');
         });
     });
 

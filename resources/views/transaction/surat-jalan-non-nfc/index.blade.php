@@ -1,0 +1,877 @@
+<x-layout>
+  <x-slot:title>{{ $title }}</x-slot:title>
+  <x-slot:navbar>{{ $navbar }}</x-slot:navbar>
+  <x-slot:nav>{{ $nav }}</x-slot:nav>
+
+  <div x-data="sjNonNfcData()">
+
+  {{-- Flash --}}
+  @if(session('success'))
+    <div class="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800">{{ session('success') }}</div>
+  @endif
+  @if(session('error'))
+    <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800">{{ session('error') }}</div>
+  @endif
+
+  <div class="mx-auto py-1 bg-white rounded-md shadow-md">
+
+    {{-- Header --}}
+    <div class="flex items-center justify-between px-4 py-2 border-b">
+      <button @click="openModal()"
+              class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2 text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Tambah SJ Non-NFC
+      </button>
+
+      <div class="flex items-center gap-4">
+        <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-2">
+          <label class="text-xs font-medium text-gray-700">Search:</label>
+          <input type="text" name="search" value="{{ request('search') }}"
+                 class="text-xs border border-gray-300 rounded-md px-2 py-1 w-52 focus:ring-blue-500 focus:border-blue-500"
+                 onkeydown="if(event.key==='Enter') this.form.submit()" />
+        </form>
+        <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-2">
+          <label class="text-xs font-medium text-gray-700">Per halaman:</label>
+          <select name="perPage" onchange="this.form.submit()"
+                  class="text-xs border border-gray-300 rounded-md px-2 py-1 focus:ring-blue-500 focus:border-blue-500">
+            @foreach([10, 20, 50] as $opt)
+              <option value="{{ $opt }}" {{ (int)request('perPage', $perPage) === $opt ? 'selected' : '' }}>{{ $opt }}</option>
+            @endforeach
+          </select>
+        </form>
+      </div>
+    </div>
+
+    {{-- Table --}}
+    <div class="mx-4 my-3">
+      <div class="overflow-x-auto border border-gray-300 rounded-md">
+        <table class="min-w-full bg-white text-xs">
+          <thead>
+            <tr class="bg-gray-100 text-gray-700">
+              <th class="py-2 px-3 border-b text-center w-8">No.</th>
+              <th class="py-2 px-3 border-b text-center">No. Transaksi</th>
+              <th class="py-2 px-3 border-b text-left">No. Surat Jalan</th>
+              <th class="py-2 px-3 border-b text-left">Mandor</th>
+              <th class="py-2 px-3 border-b text-left">Plot</th>
+              <th class="py-2 px-3 border-b text-left">No. Polisi</th>
+              <th class="py-2 px-3 border-b text-left">Supir</th>
+              <th class="py-2 px-3 border-b text-left">Input By</th>
+              <th class="py-2 px-3 border-b text-center">Status</th>
+              <th class="py-2 px-3 border-b text-center">Dibuat</th>
+              <th class="py-2 px-3 border-b text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            @forelse($list as $index => $item)
+              <tr class="hover:bg-gray-50 border-b">
+                <td class="py-2 px-3 text-center text-gray-500">{{ $list->firstItem() + $index }}</td>
+                <td class="py-2 px-3 text-center font-mono font-semibold text-gray-700">{{ $item->transactionnumber ?? '-' }}</td>
+                <td class="py-2 px-3">
+                  <a href="{{ route('transaction.surat-jalan-non-nfc.show', $item->id) }}"
+                     class="font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2">{{ $item->suratjalanno }}</a>
+                </td>
+                <td class="py-2 px-3 text-gray-700">{{ $item->mandorid ?? '-' }}</td>
+                <td class="py-2 px-3 text-gray-700">{{ $item->plot ?? '-' }}</td>
+                <td class="py-2 px-3 text-gray-700">{{ $item->nomorpolisi ?? '-' }}</td>
+                <td class="py-2 px-3 text-gray-700">{{ $item->namasupir ?? '-' }}</td>
+                <td class="py-2 px-3 text-gray-600">{{ $item->nonnfc_createdby ?? '-' }}</td>
+
+                {{-- Status --}}
+                <td class="py-2 px-3 text-center">
+                  @if(is_null($item->approvalstatus))
+                    <span class="px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 text-[11px] font-semibold border border-amber-200">Menunggu Approval</span>
+                  @elseif($item->approvalstatus == 1)
+                    @if($item->nonnfc_printed)
+                      <span class="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[11px] font-semibold border border-blue-200">Sudah Cetak</span>
+                    @else
+                      <span class="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[11px] font-semibold border border-green-200">Approved</span>
+                    @endif
+                  @else
+                    <span class="px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-[11px] font-semibold border border-red-200">Ditolak</span>
+                  @endif
+                </td>
+
+                <td class="py-2 px-3 text-center text-gray-500 whitespace-nowrap">{{ $item->formatted_createdat }}</td>
+
+                {{-- Aksi --}}
+                <td class="py-2 px-3 text-center">
+                  <div class="flex items-center justify-center gap-1.5">
+                    {{-- Detail --}}
+                    <button @click="openDetail({{ json_encode($item) }})"
+                            class="px-2 py-1 text-[11px] font-medium rounded bg-gray-100 text-gray-700 hover:bg-gray-200">
+                      Detail
+                    </button>
+
+                    {{-- Print - hanya jika approved dan belum cetak --}}
+                    @if($item->approvalstatus == 1 && !$item->nonnfc_printed)
+                      <button @click="openPrint({{ json_encode($item) }})"
+                              class="px-2 py-1 text-[11px] font-medium rounded bg-indigo-600 text-white hover:bg-indigo-700">
+                        Print
+                      </button>
+                    @endif
+                  </div>
+                </td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="10" class="py-8 text-center text-gray-400">Belum ada data SJ Non-NFC</td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+      @if($list->hasPages())
+        <div class="mt-3">{{ $list->appends(request()->query())->links() }}</div>
+      @endif
+    </div>
+  </div>
+
+  {{-- ===== MODAL BUAT SJ NON-NFC ===== --}}
+  <div x-show="showModal" x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+       @keydown.escape.window="closeModal()">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col" @click.stop>
+
+      {{-- Modal Header --}}
+      <div class="flex items-center justify-between px-5 py-3 border-b flex-shrink-0">
+        <h2 class="text-sm font-semibold text-gray-800">Input SJ Non-NFC</h2>
+        <button @click="closeModal()" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      {{-- Modal Body --}}
+      <form id="formSJNonNfc" enctype="multipart/form-data">
+        @csrf
+        <div class="px-5 py-3 overflow-y-auto flex-1 space-y-3">
+
+          {{-- Row 1: No SJ + Mandor + Tgl Angkut --}}
+          <div class="grid grid-cols-12 gap-2">
+            <div class="col-span-5">
+              <label class="block text-xs font-medium text-gray-700 mb-1">Nomor Surat Jalan <span class="text-red-500">*</span></label>
+              <input type="text" name="suratjalanno" x-model="form.suratjalanno"
+                     placeholder="SJ-A006-LKH08040126-1-10"
+                     maxlength="30"
+                     class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500 font-mono" />
+              <p x-show="errors.suratjalanno" class="text-red-500 text-[11px] mt-0.5" x-text="errors.suratjalanno"></p>
+            </div>
+            <div class="col-span-4">
+              <label class="block text-xs font-medium text-gray-700 mb-1">Mandor <span class="text-red-500">*</span></label>
+              <select name="mandorid" x-model="form.mandorid"
+                      class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                <option value="">-- pilih mandor --</option>
+                <template x-for="m in formData.mandors" :key="m.mandorid">
+                  <option :value="m.mandorid" x-text="m.mandorid + ' — ' + m.name"></option>
+                </template>
+              </select>
+              <p x-show="errors.mandorid" class="text-red-500 text-[11px] mt-0.5" x-text="errors.mandorid"></p>
+            </div>
+            <div class="col-span-3">
+              <label class="block text-xs font-medium text-gray-700 mb-1">Tgl Angkut</label>
+              <input type="datetime-local" name="tanggalangkut" x-model="form.tanggalangkut"
+                     class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500" />
+            </div>
+          </div>
+
+          <div class="border-t pt-2">
+            <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Plot & Tanaman</p>
+            {{-- Row 2: Plot + Varietas + Kategori + Umur + Kode Tebang + Tgl Tebang --}}
+            <div class="grid grid-cols-6 gap-2">
+              <div class="col-span-1">
+                <label class="block text-xs font-medium text-gray-700 mb-1">Plot <span class="text-red-500">*</span></label>
+                <div class="flex gap-1">
+                  <input type="text" name="plot" x-model="form.plot"
+                         @input="form.plot = form.plot.toUpperCase(); plotValid = null"
+                         maxlength="5" placeholder="A006"
+                         class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500 uppercase" />
+                  <button type="button" @click="validatePlot()" :disabled="loadingPlot"
+                          class="flex-shrink-0 px-1.5 py-1 bg-slate-600 text-white text-[10px] rounded hover:bg-slate-700 disabled:opacity-50">
+                    <span x-show="!loadingPlot">Cek</span>
+                    <span x-show="loadingPlot">...</span>
+                  </button>
+                </div>
+                <div class="flex items-center gap-1 mt-0.5 h-3">
+                  <span x-show="plotValid === true" class="text-green-600 text-[10px]">✓ Valid</span>
+                  <span x-show="plotValid === false" class="text-red-500 text-[10px]">✗ Tidak ada</span>
+                  <span x-show="errors.plot" class="text-red-500 text-[10px]" x-text="errors.plot"></span>
+                </div>
+              </div>
+              <div class="col-span-1">
+                <label class="block text-xs font-medium text-gray-700 mb-1">Varietas <span class="text-red-500">*</span></label>
+                <input type="text" name="varietas" x-model="form.varietas" maxlength="10"
+                       class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500" />
+                <p x-show="errors.varietas" class="text-red-500 text-[10px] mt-0.5" x-text="errors.varietas"></p>
+              </div>
+              <div class="col-span-1">
+                <label class="block text-xs font-medium text-gray-700 mb-1">Kategori</label>
+                <select name="kategori" x-model="form.kategori"
+                        class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                  <option value="">-- pilih --</option>
+                  <option value="PC">PC</option>
+                  <option value="RC1">RC1</option>
+                  <option value="RC2">RC2</option>
+                  <option value="RC3">RC3</option>
+                </select>
+              </div>
+              <div class="col-span-1">
+                <label class="block text-xs font-medium text-gray-700 mb-1">Umur (bln)</label>
+                <select name="umur" x-model="form.umur"
+                        class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                  <option value="">--</option>
+                  @for($i = 1; $i <= 12; $i++)
+                    <option value="{{ $i }}">{{ $i }}</option>
+                  @endfor
+                </select>
+              </div>
+              <div class="col-span-1">
+                <label class="block text-xs font-medium text-gray-700 mb-1">Kode Tebang</label>
+                <input type="text" name="kodetebang" x-model="form.kodetebang" maxlength="15"
+                       class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+              <div class="col-span-1">
+                <label class="block text-xs font-medium text-gray-700 mb-1">Tgl Tebang</label>
+                <input type="date" name="tanggaltebang" x-model="form.tanggaltebang"
+                       class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+            </div>
+          </div>
+
+          {{-- Row 3: Kendaraan & Personil --}}
+          <div class="border-t pt-2">
+            <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Kendaraan & Personil</p>
+            <div class="grid grid-cols-4 gap-2">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">No. Kendaraan</label>
+                <input type="text" name="nomorkendaraan" x-model="form.nomorkendaraan" maxlength="20"
+                       class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">No. Polisi <span class="text-red-500">*</span></label>
+                <input type="text" name="nomorpolisi" x-model="form.nomorpolisi" maxlength="20"
+                       class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500" />
+                <p x-show="errors.nomorpolisi" class="text-red-500 text-[10px] mt-0.5" x-text="errors.nomorpolisi"></p>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Nama Supir <span class="text-red-500">*</span></label>
+                <input type="text" name="namasupir" x-model="form.namasupir" maxlength="25"
+                       class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500" />
+                <p x-show="errors.namasupir" class="text-red-500 text-[10px] mt-0.5" x-text="errors.namasupir"></p>
+              </div>
+              <div>
+                {{-- placeholder for alignment --}}
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Kontraktor</label>
+                <select name="namakontraktor" x-model="form.namakontraktor"
+                        class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                  <option value="">-- pilih --</option>
+                  <template x-for="k in formData.kontraktors" :key="k.id">
+                    <option :value="k.id" x-text="k.id + ' — ' + k.namakontraktor"></option>
+                  </template>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Sub Kontraktor</label>
+                <select name="namasubkontraktor" x-model="form.namasubkontraktor"
+                        class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                  <option value="">-- pilih --</option>
+                  <template x-for="sk in formData.subkontraktors" :key="sk.id">
+                    <option :value="sk.id" x-text="sk.id + ' — ' + sk.namasubkontraktor"></option>
+                  </template>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {{-- Row 4: Info Teknis (4 checkbox-style) + Keterangan + Lampiran --}}
+          <div class="border-t pt-2 grid grid-cols-2 gap-4">
+            {{-- Info Teknis --}}
+            <div>
+              <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Info Teknis</p>
+              <div class="grid grid-cols-2 gap-2">
+                @foreach(['langsir' => 'Langsir', 'tebusulit' => 'Tebu Sulit', 'kendaraankontraktor' => 'Kend. Kontraktor', 'muatgl' => 'Muat GL'] as $field => $label)
+                <div class="flex items-center gap-2">
+                  <select name="{{ $field }}" x-model="form.{{ $field }}"
+                          class="text-xs border border-gray-300 rounded-md px-2 py-1 focus:ring-blue-500 focus:border-blue-500 w-16">
+                    <option value="0">Tidak</option>
+                    <option value="1">Ya</option>
+                  </select>
+                  <label class="text-xs text-gray-600">{{ $label }}</label>
+                </div>
+                @endforeach
+              </div>
+            </div>
+            {{-- Keterangan & Lampiran --}}
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Keterangan</label>
+                <textarea name="keterangan" x-model="form.keterangan" rows="3"
+                          class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 resize-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Lampiran <span class="text-gray-400 font-normal">(opsional)</span></label>
+                <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.pdf"
+                       class="w-full text-[11px] border border-gray-300 rounded-md px-2 py-1.5" />
+                <p class="text-[10px] text-gray-400 mt-1">JPG, PNG, PDF · maks 5MB</p>
+              </div>
+            </div>
+          </div>
+
+          {{-- General error --}}
+          <div x-show="generalError" class="px-3 py-2 bg-red-50 border border-red-200 rounded-md text-xs text-red-700" x-text="generalError"></div>
+
+        </div>
+
+        {{-- Modal Footer --}}
+        <div class="px-5 py-3 border-t flex justify-end items-center gap-2 bg-gray-50 rounded-b-xl flex-shrink-0">
+          <button type="button" @click="closeModal()" class="px-4 py-1.5 text-xs text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+            Batal
+          </button>
+          <button type="button" @click="submitForm()"
+                  :disabled="submitting"
+                  class="px-4 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+            <svg x-show="submitting" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            <span x-text="submitting ? 'Menyimpan...' : 'Simpan & Ajukan'"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {{-- ===== MODAL DETAIL ===== --}}
+  <div x-show="showDetail" x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+       @keydown.escape.window="showDetail = false">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col" @click.stop>
+      <div class="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
+        <h2 class="text-base font-semibold text-gray-800">Detail SJ Non-NFC</h2>
+        <button @click="showDetail = false" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="px-5 py-4 overflow-y-auto flex-1 text-sm space-y-1" x-show="detailItem">
+        <template x-if="detailItem">
+          <div class="space-y-1.5 text-xs">
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
+              <div><span class="text-gray-500">No. SJ:</span> <span class="font-semibold font-mono" x-text="detailItem.suratjalanno"></span></div>
+              <div><span class="text-gray-500">Mandor:</span> <span class="font-medium" x-text="detailItem.mandorid ?? '-'"></span></div>
+              <div><span class="text-gray-500">Plot:</span> <span x-text="detailItem.plot ?? '-'"></span></div>
+              <div><span class="text-gray-500">Varietas:</span> <span x-text="detailItem.varietas ?? '-'"></span></div>
+              <div><span class="text-gray-500">Kategori:</span> <span x-text="detailItem.kategori ?? '-'"></span></div>
+              <div><span class="text-gray-500">Umur:</span> <span x-text="detailItem.umur ? detailItem.umur + ' bln' : '-'"></span></div>
+              <div><span class="text-gray-500">Kode Tebang:</span> <span x-text="detailItem.kodetebang ?? '-'"></span></div>
+              <div><span class="text-gray-500">Tgl Tebang:</span> <span x-text="detailItem.tanggaltebang ?? '-'"></span></div>
+              <div><span class="text-gray-500">Tgl Angkut:</span> <span x-text="detailItem.tanggalangkut ?? '-'"></span></div>
+              <div><span class="text-gray-500">No. Kendaraan:</span> <span x-text="detailItem.nomorkendaraan ?? '-'"></span></div>
+              <div><span class="text-gray-500">No. Polisi:</span> <span class="font-semibold" x-text="detailItem.nomorpolisi ?? '-'"></span></div>
+              <div><span class="text-gray-500">Supir:</span> <span x-text="detailItem.namasupir ?? '-'"></span></div>
+              <div><span class="text-gray-500">Kontraktor:</span> <span x-text="detailItem.namakontraktor ?? '-'"></span></div>
+              <div><span class="text-gray-500">Sub Kontraktor:</span> <span x-text="detailItem.namasubkontraktor ?? '-'"></span></div>
+              <div><span class="text-gray-500">Langsir:</span> <span x-text="detailItem.langsir == 1 ? 'Ya' : 'Tidak'"></span></div>
+              <div><span class="text-gray-500">Tebu Sulit:</span> <span x-text="detailItem.tebusulit == 1 ? 'Ya' : 'Tidak'"></span></div>
+              <div><span class="text-gray-500">Kend. Kontraktor:</span> <span x-text="detailItem.kendaraankontraktor == 1 ? 'Ya' : 'Tidak'"></span></div>
+              <div><span class="text-gray-500">Muat GL:</span> <span x-text="detailItem.muatgl == 1 ? 'Ya' : 'Tidak'"></span></div>
+            </div>
+            <div x-show="detailItem.keterangan" class="pt-1 border-t">
+              <span class="text-gray-500">Keterangan:</span> <span x-text="detailItem.keterangan"></span>
+            </div>
+            <div x-show="detailItem.rejection_reason" class="px-3 py-2 bg-red-50 border border-red-200 rounded-md mt-2">
+              <span class="text-red-600 font-medium">Alasan Ditolak:</span> <span class="text-red-700" x-text="detailItem.rejection_reason"></span>
+            </div>
+          </div>
+        </template>
+      </div>
+      <div class="px-5 py-3 border-t flex justify-end bg-gray-50 rounded-b-xl flex-shrink-0">
+        <button @click="showDetail = false" class="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {{-- ===== MODAL PRINT ===== --}}
+  <div x-show="showPrint" x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+       @keydown.escape.window="showPrint = false">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4" @click.stop>
+      <div class="flex items-center justify-between px-5 py-4 border-b">
+        <h2 class="text-base font-semibold text-gray-800">Print Surat Jalan</h2>
+        <button @click="showPrint = false" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="px-5 py-4 space-y-4">
+
+        {{-- Info SJ --}}
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs">
+          <div class="grid grid-cols-2 gap-1.5">
+            <div><span class="text-gray-500">No. SJ:</span> <span class="font-semibold font-mono" x-text="printItem?.suratjalanno"></span></div>
+            <div><span class="text-gray-500">No. Polisi:</span> <span class="font-semibold" x-text="printItem?.nomorpolisi"></span></div>
+            <div><span class="text-gray-500">Supir:</span> <span x-text="printItem?.namasupir"></span></div>
+            <div><span class="text-gray-500">Plot:</span> <span x-text="printItem?.plot"></span></div>
+          </div>
+        </div>
+
+        {{-- Status Bluetooth --}}
+        <div>
+          <p class="text-xs font-medium text-gray-700 mb-2">Printer Bluetooth</p>
+          <div x-show="!btConnected" class="space-y-2">
+            <p class="text-xs text-gray-500">Pastikan printer menyala dan sudah di-pair dengan perangkat ini.</p>
+            <button @click="connectBluetooth()"
+                    :disabled="btConnecting"
+                    class="w-full py-2 px-4 bg-slate-700 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center justify-center gap-2">
+              <svg x-show="btConnecting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              <svg x-show="!btConnecting" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/>
+              </svg>
+              <span x-text="btConnecting ? 'Menghubungkan...' : 'Cari & Hubungkan Printer'"></span>
+            </button>
+          </div>
+          <div x-show="btConnected" class="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-xs text-green-700">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span>Printer terhubung: <strong x-text="btDeviceName"></strong></span>
+            <button @click="disconnectBluetooth()" class="ml-auto text-gray-400 hover:text-gray-600 underline">Putus</button>
+          </div>
+        </div>
+
+        <div x-show="btError" class="px-3 py-2 bg-red-50 border border-red-200 rounded-md text-xs text-red-700" x-text="btError"></div>
+        <div x-show="printSuccess" class="px-3 py-2 bg-green-50 border border-green-200 rounded-md text-xs text-green-700">
+          Surat jalan berhasil dicetak.
+        </div>
+      </div>
+
+      <div class="px-5 py-3 border-t flex justify-end gap-2 bg-gray-50 rounded-b-xl">
+        <button @click="showPrint = false" class="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+          Tutup
+        </button>
+        <button @click="doPrint()"
+                :disabled="!btConnected || printing"
+                class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2">
+          <svg x-show="printing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+          <span x-text="printing ? 'Mencetak...' : 'Cetak'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  </div>{{-- end x-data --}}
+
+  <script>
+  const _routeStore       = '{{ route('transaction.surat-jalan-non-nfc.store') }}';
+  const _routeFormData    = '{{ route('transaction.surat-jalan-non-nfc.form-data') }}';
+  const _routeCheckPlot   = '{{ route('transaction.koreksi-sj-panen.check-plot') }}';
+  const _routeMarkPrinted = '{{ route('transaction.surat-jalan-non-nfc.mark-printed') }}';
+  const _routeAttachment  = '{{ route('transaction.surat-jalan-non-nfc.attachment', ':id') }}';
+
+  function sjNonNfcData() {
+    return {
+      // Modal state
+      showModal:   false,
+      showDetail:  false,
+      showPrint:   false,
+      submitting:  false,
+      loadingPlot: false,
+      plotValid:   null,
+      generalError: null,
+      errors: {},
+
+      // Form data
+      form: {
+        suratjalanno: '', mandorid: '', plot: '', varietas: '',
+        kategori: '', umur: '', kodetebang: 'Premium',
+        langsir: '0', tebusulit: '0', kendaraankontraktor: '0', muatgl: '0',
+        nomorkendaraan: '', nomorpolisi: '', namasupir: '',
+        namakontraktor: '', namasubkontraktor: '',
+        tanggaltebang: '', tanggalangkut: '',
+        keterangan: '',
+      },
+
+      // Form dropdown data
+      formData: { mandors: [], kontraktors: [], subkontraktors: [] },
+
+      // Detail & print
+      detailItem:  null,
+      printItem:   null,
+
+      // Bluetooth
+      btConnected:  false,
+      btConnecting: false,
+      btDeviceName: '',
+      btDevice:     null,
+      btCharacteristic: null,
+      btError:      null,
+      printing:     false,
+      printSuccess: false,
+
+      async openModal() {
+        this.resetForm();
+        this.showModal = true;
+        if (!this.formData.mandors.length) {
+          await this.loadFormData();
+        }
+      },
+
+      closeModal() {
+        this.showModal = false;
+        this.resetForm();
+      },
+
+      resetForm() {
+        this.form = {
+          suratjalanno: '', mandorid: '', plot: '', varietas: '',
+          kategori: '', umur: '', kodetebang: 'Premium',
+          langsir: '0', tebusulit: '0', kendaraankontraktor: '0', muatgl: '0',
+          nomorkendaraan: '', nomorpolisi: '', namasupir: '',
+          namakontraktor: '', namasubkontraktor: '',
+          tanggaltebang: '', tanggalangkut: '',
+          keterangan: '',
+        };
+        this.plotValid   = null;
+        this.generalError = null;
+        this.errors      = {};
+        this.submitting  = false;
+      },
+
+      async loadFormData() {
+        try {
+          const res  = await fetch(_routeFormData, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+          const data = await res.json();
+          if (data.success) {
+            this.formData.mandors       = data.mandors;
+            this.formData.kontraktors   = data.kontraktors;
+            this.formData.subkontraktors= data.subkontraktors;
+          }
+        } catch (e) { console.error('loadFormData failed', e); }
+      },
+
+      async validatePlot() {
+        const plot = (this.form.plot ?? '').trim().toUpperCase();
+        if (!plot) return;
+        this.loadingPlot = true;
+        this.plotValid   = null;
+        try {
+          const res  = await fetch(`${_routeCheckPlot}?plot=${encodeURIComponent(plot)}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+          const data = await res.json();
+          this.plotValid = data.exists === true;
+        } catch (e) { this.plotValid = null; }
+        finally     { this.loadingPlot = false; }
+      },
+
+      async submitForm() {
+        this.errors       = {};
+        this.generalError = null;
+
+        // Client-side required
+        if (!this.form.suratjalanno.trim()) { this.errors.suratjalanno = 'Nomor SJ wajib diisi'; return; }
+        if (!this.form.mandorid)            { this.errors.mandorid = 'Mandor wajib dipilih'; return; }
+        if (!this.form.plot.trim())         { this.errors.plot = 'Plot wajib diisi'; return; }
+        if (!this.form.varietas.trim())     { this.errors.varietas = 'Varietas wajib diisi'; return; }
+        if (!this.form.nomorpolisi.trim())  { this.errors.nomorpolisi = 'No. Polisi wajib diisi'; return; }
+        if (!this.form.namasupir.trim())    { this.errors.namasupir = 'Nama Supir wajib diisi'; return; }
+
+        if (this.plotValid !== true) {
+          this.errors.plot = 'Plot belum divalidasi. Klik tombol "Cek".';
+          return;
+        }
+
+        this.submitting = true;
+        try {
+          const formEl  = document.getElementById('formSJNonNfc');
+          const fd      = new FormData(formEl);
+
+          // Sync alpine model values ke FormData
+          Object.entries(this.form).forEach(([k, v]) => {
+            if (v !== null && v !== undefined && v !== '') fd.set(k, v);
+          });
+
+          const res  = await fetch(_routeStore, {
+            method : 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body   : fd,
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            this.closeModal();
+            window.location.reload();
+          } else {
+            this.generalError = data.message;
+          }
+        } catch (e) {
+          this.generalError = 'Terjadi kesalahan, coba lagi.';
+        } finally {
+          this.submitting = false;
+        }
+      },
+
+      openDetail(item) {
+        this.detailItem = item;
+        this.showDetail = true;
+      },
+
+      async openAttachment(id) {
+        const url = _routeAttachment.replace(':id', id);
+        try {
+          const res  = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+          const data = await res.json();
+          if (data.url) window.open(data.url, '_blank');
+        } catch (e) { alert('Gagal membuka lampiran.'); }
+      },
+
+      openPrint(item) {
+        this.printItem   = item;
+        this.btError     = null;
+        this.printSuccess= false;
+        this.showPrint   = true;
+      },
+
+      // =================== BLUETOOTH ===================
+      async connectBluetooth() {
+        if (!navigator.bluetooth) {
+          this.btError = 'Browser ini tidak mendukung Web Bluetooth. Gunakan Chrome/Edge versi terbaru.';
+          return;
+        }
+
+        this.btConnecting = true;
+        this.btError      = null;
+
+        try {
+          const device = await navigator.bluetooth.requestDevice({
+            filters: [
+              { namePrefix: 'printer' }, { namePrefix: 'Printer' },
+              { namePrefix: 'POS' },     { namePrefix: 'pos' },
+              { namePrefix: 'RPP' },     { namePrefix: 'rpp' },
+              { namePrefix: 'MTP' },     { namePrefix: 'PRJ' },
+              { namePrefix: 'Panda' },   { namePrefix: 'thermal' },
+              { namePrefix: '80BT' },    { namePrefix: 'THERMAL' },
+            ],
+            optionalServices: [
+              '000018f0-0000-1000-8000-00805f9b34fb',
+              'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+              '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+            ],
+          });
+
+          const server  = await device.gatt.connect();
+          let   service = null;
+
+          const serviceUUIDs = [
+            '000018f0-0000-1000-8000-00805f9b34fb',
+            'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+            '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+          ];
+
+          for (const uuid of serviceUUIDs) {
+            try   { service = await server.getPrimaryService(uuid); break; }
+            catch { /* try next */ }
+          }
+
+          if (!service) throw new Error('Service printer BLE tidak ditemukan. Pastikan printer mendukung BLE.');
+
+          const characteristics = await service.getCharacteristics();
+          // Ambil characteristic yang bisa write
+          const writable = characteristics.find(c =>
+            c.properties.write || c.properties.writeWithoutResponse
+          );
+
+          if (!writable) throw new Error('Write characteristic tidak ditemukan pada printer.');
+
+          this.btDevice         = device;
+          this.btCharacteristic = writable;
+          this.btDeviceName     = device.name || 'Unknown Printer';
+          this.btConnected      = true;
+
+          device.addEventListener('gattserverdisconnected', () => {
+            this.btConnected      = false;
+            this.btCharacteristic = null;
+            this.btDevice         = null;
+          });
+
+        } catch (e) {
+          if (e.name !== 'NotFoundError') {
+            this.btError = 'Gagal menghubungkan: ' + e.message;
+          }
+        } finally {
+          this.btConnecting = false;
+        }
+      },
+
+      disconnectBluetooth() {
+        if (this.btDevice && this.btDevice.gatt.connected) {
+          this.btDevice.gatt.disconnect();
+        }
+        this.btConnected      = false;
+        this.btCharacteristic = null;
+        this.btDevice         = null;
+      },
+
+      async writeToCharacteristic(data) {
+        const CHUNK = 512;
+        for (let i = 0; i < data.length; i += CHUNK) {
+          const chunk = data.slice(i, i + CHUNK);
+          if (this.btCharacteristic.properties.writeWithoutResponse) {
+            await this.btCharacteristic.writeValueWithoutResponse(chunk);
+          } else {
+            await this.btCharacteristic.writeValue(chunk);
+          }
+          await new Promise(r => setTimeout(r, 60));
+        }
+      },
+
+      async doPrint() {
+        if (!this.btConnected || !this.btCharacteristic || !this.printItem) return;
+
+        this.printing = true;
+        this.btError  = null;
+
+        try {
+          const sj    = this.printItem;
+          const bytes = this.buildEscPosData(sj);
+          await this.writeToCharacteristic(bytes);
+
+          // Mark printed di server
+          const res  = await fetch(_routeMarkPrinted, {
+            method : 'POST',
+            headers: {
+              'Content-Type'    : 'application/json',
+              'X-CSRF-TOKEN'    : document.querySelector('meta[name="csrf-token"]').content,
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ suratjalanno: sj.suratjalanno }),
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            this.printSuccess = true;
+            setTimeout(() => { this.showPrint = false; window.location.reload(); }, 1500);
+          } else {
+            this.btError = 'Print berhasil, tapi gagal update status: ' + data.message;
+          }
+        } catch (e) {
+          this.btError = 'Gagal mencetak: ' + e.message;
+        } finally {
+          this.printing = false;
+        }
+      },
+
+      buildEscPosData(sj) {
+        const enc = new TextEncoder();
+
+        // ESC/POS helper
+        const bytes   = [];
+        const addBytes = b => b.forEach(v => bytes.push(v));
+        const addText  = t => enc.encode(t).forEach(v => bytes.push(v));
+        const LF       = 0x0A;
+        const CR       = 0x0D;
+        const CRLF     = () => { bytes.push(CR); bytes.push(LF); };
+
+        const ESC_INIT     = [0x1B, 0x40];
+        const ALIGN_LEFT   = [0x1B, 0x61, 0x00];
+        const ALIGN_CENTER = [0x1B, 0x61, 0x01];
+        const BOLD_ON      = [0x1B, 0x45, 0x01];
+        const BOLD_OFF     = [0x1B, 0x45, 0x00];
+        const SIZE_2X      = [0x1D, 0x21, 0x22];
+        const SIZE_NORMAL  = [0x1D, 0x21, 0x00];
+        const CUT          = [0x1D, 0x56, 0x00];
+        const SEP          = '--------------------------------';
+
+        const yesNo = v => v == 1 ? 'Ya' : 'Tidak';
+        const label = (l, v) => {
+          const line = (l + ' ').padEnd(16, ' ') + ': ' + (v ?? '-');
+          addText(line); CRLF();
+        };
+
+        // Init
+        addBytes(ESC_INIT);
+        addBytes(ALIGN_CENTER);
+        addBytes(BOLD_ON); addBytes(SIZE_2X);
+        addText('SURAT JALAN'); bytes.push(LF);
+        addBytes(SIZE_NORMAL); addBytes(BOLD_OFF);
+        bytes.push(LF);
+
+        // NON-NFC marker
+        addBytes(BOLD_ON);
+        addText('[NON-NFC / WEB INPUT]'); bytes.push(LF);
+        addBytes(BOLD_OFF);
+        bytes.push(LF);
+
+        // Nomor & Polisi
+        addBytes(BOLD_ON);
+        addText('Nomor :'); bytes.push(LF);
+        addText(sj.suratjalanno ?? '-'); bytes.push(LF);
+        bytes.push(LF);
+        addText('No. Polisi :'); bytes.push(LF);
+        addText(sj.nomorpolisi ?? '-'); bytes.push(LF);
+        addBytes(BOLD_OFF);
+        bytes.push(LF);
+
+        // Separator
+        addBytes(ALIGN_LEFT);
+        addText(SEP); CRLF();
+        bytes.push(LF);
+
+        // Detail
+        addBytes(ALIGN_CENTER); addBytes(BOLD_ON);
+        addText('DETAIL DATA'); bytes.push(LF);
+        addBytes(BOLD_OFF); addBytes(ALIGN_LEFT);
+        bytes.push(LF);
+
+        label('Mandor',        sj.mandorid);
+        label('Plot',          sj.plot);
+        label('Varietas',      sj.varietas);
+        label('Kategori',      sj.kategori);
+        label('Umur',          sj.umur ? sj.umur + ' bulan' : null);
+        label('Kode Tebang',   sj.kodetebang);
+        label('Langsir',       yesNo(sj.langsir));
+        label('Tebu Sulit',    yesNo(sj.tebusulit));
+        label('Kend. Kontr.',  yesNo(sj.kendaraankontraktor));
+        label('Muat GL',       yesNo(sj.muatgl));
+        label('Tgl Tebang',    sj.tanggaltebang ? sj.tanggaltebang.split('T')[0] : null);
+        label('Tgl Angkut',    sj.tanggalangkut ? sj.tanggalangkut.split('T')[0] : null);
+        label('No Kendaraan',  sj.nomorkendaraan);
+        label('No Polisi',     sj.nomorpolisi);
+        label('Nama Supir',    sj.namasupir);
+        label('Kontraktor',    sj.namakontraktor);
+        label('Sub Kontr.',    sj.namasubkontraktor);
+        label('Dibuat Oleh',   sj.nonnfc_createdby);
+
+        bytes.push(LF);
+        addText(SEP); CRLF();
+        bytes.push(LF);
+
+        // Footer
+        addBytes(ALIGN_CENTER);
+        addText('DiPrint: ' + new Date().toLocaleString('id-ID')); bytes.push(LF);
+        addText('(Web - Non NFC)'); bytes.push(LF);
+
+        // Feed & cut
+        bytes.push(LF); bytes.push(LF); bytes.push(LF);
+        addBytes(CUT);
+
+        return new Uint8Array(bytes);
+      },
+    };
+  }
+  </script>
+</x-layout>
