@@ -349,6 +349,101 @@ class PiasController extends Controller
 }
     
 
+    public function report(Request $request)
+    {
+        $title     = 'Pias - Report';
+        $search    = $request->input('search');
+        $startDate = $request->input('start_date', now()->subDays(7)->format('Y-m-d'));
+        $endDate   = $request->input('end_date', now()->format('Y-m-d'));
+        $company   = session('companycode');
+
+        $rows = DB::table('piaslst as pl')
+            ->join('piashdr as ph', function ($j) {
+                $j->on('ph.rkhno', '=', 'pl.rkhno')
+                  ->on('ph.companycode', '=', 'pl.companycode');
+            })
+            ->join('rkhhdr as r', function ($j) {
+                $j->on('r.rkhno', '=', 'pl.rkhno')
+                  ->on('r.companycode', '=', 'pl.companycode');
+            })
+            ->join('lkhhdr as lh', function ($j) {
+                $j->on('lh.lkhno', '=', 'pl.lkhno')
+                  ->on('lh.companycode', '=', 'pl.companycode');
+            })
+            ->join('lkhdetailplot as ldp', function ($j) {
+                $j->on('ldp.lkhno', '=', 'pl.lkhno')
+                  ->on('ldp.companycode', '=', 'pl.companycode')
+                  ->on('ldp.plot', '=', 'pl.plot')
+                  ->on('ldp.blok', '=', 'pl.blok');
+            })
+            ->join('masterlist as ml', function ($j) {
+                $j->on('ml.companycode', '=', 'pl.companycode')
+                  ->on('ml.blok', '=', 'pl.blok')
+                  ->on('ml.plot', '=', 'pl.plot');
+            })
+            ->join('batch as b', function ($j) {
+                $j->on('b.companycode', '=', 'ml.companycode')
+                  ->on('b.plot', '=', 'ml.plot')
+                  ->on('b.batchno', '=', 'ml.activebatchno');
+            })
+            ->where('pl.companycode', $company)
+            ->whereDate('r.rkhdate', '>=', $startDate)
+            ->whereDate('r.rkhdate', '<=', $endDate)
+            ->when($search, fn($q) =>
+                $q->where(fn($qq) =>
+                    $qq->where('pl.rkhno', 'like', "%{$search}%")
+                       ->orWhere('pl.blok', 'like', "%{$search}%")
+                       ->orWhere('pl.plot', 'like', "%{$search}%")
+                )
+            )
+            ->select(
+                'r.rkhdate as tgl',
+                'pl.blok',
+                'pl.plot',
+                'ldp.luasrkh as ha',
+                'b.tanggalpanen as tgl_tanam',
+                'b.lifecyclestatus as kategori',
+                'b.kodevarietas as varietas',
+                'pl.tj',
+                'pl.tc',
+                'pl.tv'
+            )
+            ->orderBy('r.rkhdate')
+            ->orderBy('pl.blok')
+            ->orderBy('pl.plot')
+            ->get()
+            ->map(function ($row) {
+                $tanam = $row->tgl_tanam ? Carbon::parse($row->tgl_tanam) : null;
+                $tgl   = Carbon::parse($row->tgl);
+                $bulan = $tanam ? (int) ceil(abs($tgl->diffInDays($tanam)) / 30) : '-';
+
+                return (object) [
+                    'tgl'      => $row->tgl,
+                    'blok'     => $row->blok,
+                    'plot'     => $row->plot,
+                    'ha'       => $row->ha,
+                    'tgl_tanam'=> $row->tgl_tanam,
+                    'bulan'    => $bulan,
+                    'kategori' => $row->kategori,
+                    'varietas' => $row->varietas,
+                    'tj'       => (int) ($row->tj ?? 0),
+                    'tc'       => (int) ($row->tc ?? 0),
+                    'tv'       => (int) ($row->tv ?? 0),
+                ];
+            });
+
+        // Group per tanggal untuk rowspan
+        $grouped = $rows->groupBy('tgl');
+
+        return view('transaction.pias.report')->with([
+            'title'     => $title,
+            'grouped'   => $grouped,
+            'search'    => $search,
+            'startDate' => $startDate,
+            'endDate'   => $endDate,
+        ]);
+    }
+
 /**
  * Equal-first + Group-fair (CRC32; target = sum(round(need)))
  */
