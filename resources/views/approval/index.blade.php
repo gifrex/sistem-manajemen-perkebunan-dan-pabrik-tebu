@@ -960,7 +960,7 @@
                                 </div>
 
                                 {{-- Body: detail koreksi SJ --}}
-                                @if ($approval->suratjalanno)
+                                @if (strtoupper($approval->category) === 'APPROVAL KOREKSI SURAT JALAN PANEN' && $approval->suratjalanno)
                                     @php
                                         $panenFieldLabels = [
                                             'plot' => 'Plot', 'varietas' => 'Varietas', 'kodetebang' => 'Kode Tebang',
@@ -1002,6 +1002,30 @@
                                                 </div>
                                             </div>
                                         @endif
+                                    </div>
+                                @elseif (strtoupper($approval->category) === 'INPUT SJ NON-NFC' && $approval->nonnfc_suratjalanno)
+                                    <div class="px-5 py-3 border-t border-slate-100">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 mb-2 rounded-full bg-indigo-50 text-indigo-600 text-[11px] font-semibold border border-indigo-200">
+                                            NON-NFC / WEB INPUT
+                                        </span>
+                                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                            <div>
+                                              <span class="text-slate-400">No. SJ:</span>
+                                              @if($approval->nonnfc_temp_id)
+                                                <a href="{{ route('transaction.surat-jalan-non-nfc.show', $approval->nonnfc_temp_id) }}"
+                                                   class="font-semibold font-mono text-blue-600 hover:text-blue-800 underline underline-offset-2">{{ $approval->nonnfc_suratjalanno }}</a>
+                                              @else
+                                                <span class="font-semibold font-mono text-slate-800">{{ $approval->nonnfc_suratjalanno }}</span>
+                                              @endif
+                                            </div>
+                                            <div><span class="text-slate-400">Plot:</span> <span class="font-medium text-slate-700">{{ $approval->nonnfc_plot ?? '-' }}</span></div>
+                                            <div><span class="text-slate-400">Varietas:</span> <span class="text-slate-700">{{ $approval->nonnfc_varietas ?? '-' }}</span></div>
+                                            <div><span class="text-slate-400">No. Polisi:</span> <span class="text-slate-700">{{ $approval->nonnfc_nomorpolisi ?? '-' }}</span></div>
+                                            <div class="col-span-2"><span class="text-slate-400">Supir:</span> <span class="text-slate-700">{{ $approval->nonnfc_namasupir ?? '-' }}</span></div>
+                                            @if($approval->nonnfc_keterangan)
+                                                <div class="col-span-2"><span class="text-slate-400">Keterangan:</span> <span class="text-slate-600">{{ $approval->nonnfc_keterangan }}</span></div>
+                                            @endif
+                                        </div>
                                     </div>
                                 @endif
 

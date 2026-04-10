@@ -97,6 +97,10 @@ class PanenApprovalService
                 return $this->executeKoreksiSJPanen($approval, $companycode);
             }
 
+            if ($category === 'INPUT SJ NON-NFC') {
+                return $this->executeInputSJNonNfc($approval, $companycode);
+            }
+
             return ['success' => true, 'message' => ''];
 
         } catch (\Exception $e) {
@@ -150,6 +154,72 @@ class PanenApprovalService
         return [
             'success' => true,
             'message' => ". SJ {$koreksi->suratjalanno} berhasil dikoreksi ({$fieldCount} field: {$fieldNames})",
+        ];
+    }
+
+    private function executeInputSJNonNfc(object $approval, string $companycode): array
+    {
+        $staging = $this->repository->getSJNonNfcDetail($companycode, $approval->transactionnumber);
+
+        if (!$staging) {
+            throw new \Exception('Data staging SJ Non-NFC tidak ditemukan untuk transaksi ' . $approval->transactionnumber);
+        }
+
+        // Cek duplikat di suratjalanpos
+        $alreadyExists = DB::table('suratjalanpos')
+            ->where('companycode', $companycode)
+            ->where('suratjalanno', $staging->suratjalanno)
+            ->exists();
+
+        if ($alreadyExists) {
+            throw new \Exception("SJ {$staging->suratjalanno} sudah ada di suratjalanpos.");
+        }
+
+        DB::table('suratjalanpos')->insert([
+            'companycode'         => $companycode,
+            'suratjalanno'        => $staging->suratjalanno,
+            'mandorid'            => $staging->mandorid,
+            'plot'                => $staging->plot,
+            'varietas'            => $staging->varietas,
+            'kategori'            => $staging->kategori,
+            'umur'                => $staging->umur,
+            'kodetebang'          => $staging->kodetebang,
+            'langsir'             => $staging->langsir,
+            'tebusulit'           => $staging->tebusulit,
+            'kendaraankontraktor' => $staging->kendaraankontraktor,
+            'muatgl'              => $staging->muatgl,
+            'nomorkendaraan'      => $staging->nomorkendaraan,
+            'nomorpolisi'         => $staging->nomorpolisi,
+            'namasupir'           => $staging->namasupir,
+            'namakontraktor'      => $staging->namakontraktor,
+            'namasubkontraktor'   => $staging->namasubkontraktor,
+            'tanggaltebang'       => $staging->tanggaltebang,
+            'tanggalangkut'       => $staging->tanggalangkut,
+            'flagprocessed'       => 0,
+            'keterangan'          => $staging->keterangan,
+            'koreksi'             => 0,
+            'is_nonnfc'           => 1,
+            'nonnfc_createdby'    => $staging->nonnfc_createdby,
+            'nonnfc_printed'      => 0,
+        ]);
+
+        // Update staging: approved
+        DB::table('suratjalanpostemp')
+            ->where('id', $staging->id)
+            ->update([
+                'approvalstatus' => 1,
+                'approved_by'    => $approval->approval1userid ?? $approval->approval2userid ?? $approval->approval3userid,
+                'approved_at'    => now(),
+            ]);
+
+        Log::info('InputSJNonNfc executed successfully', [
+            'transactionnumber' => $approval->transactionnumber,
+            'suratjalanno'      => $staging->suratjalanno,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => ". SJ {$staging->suratjalanno} berhasil diinput ke suratjalanpos (Non-NFC)",
         ];
     }
 }
