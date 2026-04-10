@@ -242,9 +242,9 @@
                          :class="isChanged('plot') ? 'bg-yellow-50 border-yellow-400' : ''" />
                   <button @click="validatePlot()"
                           :disabled="loadingPlot"
-                          class="px-2 py-1.5 bg-slate-500 text-white text-xs rounded hover:bg-slate-600 disabled:opacity-50">
+                          class="px-2 py-1.5 bg-slate-700 text-white text-xs font-medium rounded hover:bg-slate-800 disabled:opacity-50 border border-slate-700">
                     <span x-show="!loadingPlot">Cek</span>
-                    <span x-show="loadingPlot">...</span>
+                    <span x-show="loadingPlot" style="display:none">...</span>
                   </button>
                   <span x-show="plotValid === true" class="flex items-center text-green-600 text-xs">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -375,7 +375,7 @@
                         :class="isChanged('namakontraktor') ? 'bg-yellow-50 border-yellow-400' : ''">
                   <option value="">-- pilih --</option>
                   <template x-for="k in kontraktors" :key="k.id">
-                    <option :value="k.id" x-text="k.namakontraktor"></option>
+                    <option :value="k.id" x-text="k.id + ' — ' + k.namakontraktor"></option>
                   </template>
                 </select>
                 <p class="text-[11px] text-gray-400 mt-0.5">Saat ini: <span class="font-semibold" x-text="sjDetail?.namakontraktor ? (sjDetail.namakontraktor + ' – ' + (kontraktors.find(k => k.id === sjDetail.namakontraktor)?.namakontraktor ?? '?')) : '-'"></span></p>
@@ -389,7 +389,7 @@
                         :class="isChanged('namasubkontraktor') ? 'bg-yellow-50 border-yellow-400' : ''">
                   <option value="">-- pilih --</option>
                   <template x-for="sk in subkontraktors" :key="sk.id">
-                    <option :value="sk.id" x-text="sk.namasubkontraktor"></option>
+                    <option :value="sk.id" x-text="sk.id + ' — ' + sk.namasubkontraktor"></option>
                   </template>
                 </select>
                 <p class="text-[11px] text-gray-400 mt-0.5">Saat ini: <span class="font-semibold" x-text="sjDetail?.namasubkontraktor ? (sjDetail.namasubkontraktor + ' – ' + (subkontraktors.find(sk => sk.id === sjDetail.namasubkontraktor)?.namasubkontraktor ?? '?')) : '-'"></span></p>
