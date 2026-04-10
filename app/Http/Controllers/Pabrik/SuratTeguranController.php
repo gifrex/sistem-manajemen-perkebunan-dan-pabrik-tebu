@@ -76,7 +76,7 @@ class SuratTeguranController extends Controller
         $companycode = session('companycode');
         $now         = now();
         $user        = Auth::user()->userid;
-        $stgno       = $this->generateStgNo($companycode, $now->year);
+        $stgno = $this->generateStgNo($now->year);
 
         $lampiranPath = $this->uploadLampiran($request, $companycode, $request->input('targetcompany'), $stgno, $now);
 
@@ -106,7 +106,6 @@ class SuratTeguranController extends Controller
 
         $surat = DB::table('suratteguran')
             ->where('id', $id)
-            ->where('companycode', $companycode)
             ->first();
 
         abort_if(!$surat, 404);
@@ -283,13 +282,12 @@ class SuratTeguranController extends Controller
         return $path;
     }
 
-    private function generateStgNo(string $companycode, int $year): string
+    private function generateStgNo(int $year): string
     {
         $yearShort = substr((string) $year, 2);
         $prefix    = "STG/{$yearShort}/";
 
         $last = DB::table('suratteguran')
-            ->where('companycode', $companycode)
             ->where('stgno', 'like', $prefix . '%')
             ->orderBy('stgno', 'desc')
             ->value('stgno');
