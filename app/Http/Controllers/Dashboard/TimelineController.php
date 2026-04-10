@@ -487,6 +487,41 @@ class TimelineController extends Controller
                     ->keyBy('plot');
             }
 
+            // ✅ Query: tanggal terakhir panen LKH dan trash mulcher per plot (untuk alert timeline)
+            $panenLastDatePerPlot = DB::table('lkhdetailplot as ldp')
+                ->join('lkhhdr as lh', function ($j) {
+                    $j->on('ldp.lkhno', '=', 'lh.lkhno')
+                      ->on('ldp.companycode', '=', 'lh.companycode');
+                })
+                ->join('masterlist as m', function ($j) {
+                    $j->on('ldp.plot', '=', 'm.plot')
+                      ->on('ldp.companycode', '=', 'm.companycode');
+                })
+                ->where('ldp.companycode', $companyCode)
+                ->whereRaw('ldp.batchno = m.activebatchno')
+                ->whereIn('lh.activitycode', ['4.3.3', '4.4.3', '4.5.2'])
+                ->whereIn('ldp.plot', $filteredPlots)
+                ->select('ldp.plot', DB::raw('MAX(lh.lkhdate) as last_panen_date'))
+                ->groupBy('ldp.plot')
+                ->get()->keyBy('plot');
+
+            $trashMulcherLastDatePerPlot = DB::table('lkhdetailplot as ldp')
+                ->join('lkhhdr as lh', function ($j) {
+                    $j->on('ldp.lkhno', '=', 'lh.lkhno')
+                      ->on('ldp.companycode', '=', 'lh.companycode');
+                })
+                ->join('masterlist as m', function ($j) {
+                    $j->on('ldp.plot', '=', 'm.plot')
+                      ->on('ldp.companycode', '=', 'm.companycode');
+                })
+                ->where('ldp.companycode', $companyCode)
+                ->whereRaw('ldp.batchno = m.activebatchno')
+                ->where('lh.activitycode', '3.2.1')
+                ->whereIn('ldp.plot', $filteredPlots)
+                ->select('ldp.plot', DB::raw('MAX(lh.lkhdate) as last_trash_date'))
+                ->groupBy('ldp.plot')
+                ->get()->keyBy('plot');
+
             // ✅ GABUNG: Process plotHeadersForMap + plotActivityDetails sekaligus
             $plotHeadersForMap = [];
             $plotActivityDetails = [];
@@ -602,6 +637,9 @@ class TimelineController extends Controller
                 'is_panen'                 => $hasPanen ? 1 : 0,
                 'tanggal_panen_terakhir'   => $lastPanen,
                 'is_match' => $match,
+                // timeline alert data
+                'last_panen_lkh_date'   => $panenLastDatePerPlot->get($plotCode)?->last_panen_date ?? null,
+                'last_trash_mulcher_date' => $trashMulcherLastDatePerPlot->get($plotCode)?->last_trash_date ?? null,
                 // panen tonase
                 'total_rit'       => (int)($tonasePerPlot->get($plotCode)?->total_rit ?? 0),
                 'sudah_timbang'   => (int)($tonasePerPlot->get($plotCode)?->sudah_timbang ?? 0),
@@ -629,6 +667,9 @@ class TimelineController extends Controller
                 'is_panen' => $hasPanen ? 1 : 0,
                 'tanggal_panen_terakhir' => $lastPanen,
                 'is_match' => $match,
+                // timeline alert data
+                'last_panen_lkh_date'    => $panenLastDatePerPlot->get($plotCode)?->last_panen_date ?? null,
+                'last_trash_mulcher_date' => $trashMulcherLastDatePerPlot->get($plotCode)?->last_trash_date ?? null,
                 // panen tonase
                 'total_rit'       => (int)($tonasePerPlot->get($plotCode)?->total_rit ?? 0),
                 'sudah_timbang'   => (int)($tonasePerPlot->get($plotCode)?->sudah_timbang ?? 0),
@@ -655,7 +696,8 @@ class TimelineController extends Controller
                 // Header (plot info + activity + lkh)
                 $mapHdr = ['Plot','Blok',
                     'Luas RKH (HA)', $cropType === 'p' ? 'Total Realisasi Panen (HA)' : 'Total Hasil (HA)', 'Progress (%)','Marker',
-                    'Status','Umur (bulan)','Is Panen','Tgl Panen Terakhir',
+                    'Status','Umur (Hari)','Umur (Bulan)','Is Panen','Tgl Panen Terakhir',
+                    'Tgl Panen LKH Terakhir','Tgl Trash Mulcher Terakhir',
                 ];
                 if ($cropType === 'p') {
                     $mapHdr = array_merge($mapHdr, ['Estimasi Tonase (Ton)','Realisasi Tonase/Netto (Ton)','% Tonase','Total Rit','Sudah Timbang']);
@@ -690,6 +732,8 @@ class TimelineController extends Controller
 
                     $tglPanen = $detail['tanggal_panen_terakhir'] ?? null;
 
+                    $lastPanenLkh  = $detail['last_panen_lkh_date'] ?? null;
+                    $lastTrashDate = $detail['last_trash_mulcher_date'] ?? null;
                     $base = [
                         $plotCode,
                         $blok,
@@ -698,9 +742,12 @@ class TimelineController extends Controller
                         (float)($detail['avg_percentage'] ?? 0),
                         $detail['marker_color'] ?? 'black',
                         $detail['lifecyclestatus'] ?? '-',
+                        (int)($detail['umur_hari'] ?? 0),
                         (int)($detail['umur_bulan'] ?? 0),
                         (int)($detail['is_panen'] ?? 0),
-                        $tglPanen ? \Carbon\Carbon::parse($tglPanen)->format('Y-m-d') : '-',
+                        $tglPanen    ? \Carbon\Carbon::parse($tglPanen)->format('Y-m-d')    : '-',
+                        $lastPanenLkh  ? \Carbon\Carbon::parse($lastPanenLkh)->format('Y-m-d')  : '-',
+                        $lastTrashDate ? \Carbon\Carbon::parse($lastTrashDate)->format('Y-m-d') : '-',
                     ];
                     if ($cropType === 'p') {
                         $estTonMap  = (float)($detail['estimasi_ton'] ?? 0);
