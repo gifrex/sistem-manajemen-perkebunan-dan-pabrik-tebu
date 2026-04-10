@@ -135,14 +135,15 @@ function showDetailModal(rkhno) {
 }
 
 function buildEditableTable(data, rkhno) {
-    const hasEditableRows = data.some(item => !item.grade || item.grade.trim() === '');
+    const isBsmEmpty = item => (!item.nilaibersih || item.nilaibersih == 0) && (!item.nilaisegar || item.nilaisegar == 0) && (!item.nilaimanis || item.nilaimanis == 0);
+    const hasEditableRows = data.some(item => isBsmEmpty(item));
     
     let tableHTML = `
         <div class="mb-4">
             <div class="flex justify-between items-center mb-3">
                 <div class="text-sm text-gray-600">
                     Total: <span class="font-medium text-indigo-600">${data.length}</span> surat jalan ditemukan
-                    ${hasEditableRows ? `<span class="ml-4 text-amber-600 font-medium">⚠️ ${data.filter(item => !item.grade || item.grade.trim() === '').length} data dapat diedit</span>` : ''}
+                    ${hasEditableRows ? `<span class="ml-4 text-amber-600 font-medium">⚠️ ${data.filter(item => isBsmEmpty(item)).length} data dapat diedit</span>` : ''}
                 </div>
                 <div class="text-sm text-gray-500">
                     Data BSM untuk RKH: <span class="font-medium">${rkhno}</span>
@@ -201,7 +202,7 @@ function buildEditableTable(data, rkhno) {
     `;
     
     data.forEach((item, index) => {
-        const isEditable = !item.grade || item.grade.trim() === '';
+        const isEditable = isBsmEmpty(item);
         const rowClass = isEditable ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50';
         const hasParent = item.parentbsm && item.parentbsm > 0;
         
