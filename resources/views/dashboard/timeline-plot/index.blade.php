@@ -342,50 +342,60 @@
             <div id="map" class="border border-gray-300 rounded-lg"></div>
 
 <!-- LEGEND -->
-<div class="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-  <!-- Fill legend -->
-  <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
-    <span class="inline-block w-4 h-4 rounded-full" style="background:#fef3c7;border:2px solid #fff;"></span>
-    <span>Belum ada activity (fill cream)</span>
+<div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+
+  <!-- Kolom kiri: Fill -->
+  <div class="space-y-1">
+    <div class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Fill (warna area)</div>
+
+    <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#fef3c7;border:1px solid #d1d5db;"></span>
+      <span>Cream — belum ada activity</span>
+    </div>
+    <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#86efac;border:1px solid #d1d5db;"></span>
+      <span>Hijau muda — aktivitas sedang berjalan</span>
+    </div>
+    <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#0f766e;border:1px solid #d1d5db;"></span>
+      <span>Hijau tua — semua aktivitas selesai</span>
+    </div>
+    <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#3b82f6;border:1px solid #d1d5db;"></span>
+      <span>Biru — siap panen (ZPK 25–35 hari)</span>
+    </div>
+    <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#fb923c;border:1px solid #d1d5db;"></span>
+      <span>Orange — umur ≥ 9 bulan, belum ZPK</span>
+    </div>
+    <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#000;border:1px solid #d1d5db;opacity:.30;"></span>
+      <span>Hitam redup — tidak memenuhi filter aktif</span>
+    </div>
   </div>
 
-  <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
-    <span class="inline-block w-4 h-4 rounded-full" style="background:#86efac;border:2px solid #fff;"></span>
-    <span>Activitas sudah dilakukan (fill hijau muda)</span>
+  <!-- Kolom kanan: Ring -->
+  <div class="space-y-1">
+    <div class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Ring (border area)</div>
+
+    <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#fef3c7;border:3px solid #f97316;"></span>
+      <span>Ring orange — sudah ZPK &gt; 35 hari</span>
+    </div>
+    <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#fef3c7;border:3px solid #facc15;"></span>
+      <span>Ring kuning — sudah ZPK &lt; 25 hari</span>
+    </div>
+    <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#fef3c7;border:3px solid #dc2626;"></span>
+      <span>Ring merah — umur ≥ 9 bulan, belum ZPK</span>
+    </div>
+    <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
+      <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#374151;border:2px solid #374151;"></span>
+      <span>Ring abu — normal (tidak ada kondisi khusus)</span>
+    </div>
   </div>
 
-  <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
-    <span class="inline-block w-4 h-4 rounded-full" style="background:#0f766e;border:2px solid #fff;"></span>
-    <span>Aktivitas selesai dilakukan (fill hijau tua)</span>
-  </div>
-
-  <!-- Ring legend -->
-  <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
-    <span class="inline-block w-4 h-4 rounded-full" style="background:#fef3c7;border:3px solid #f97316;"></span>
-    <span>Ring orange: sudah ZPK &gt; 35 hari</span>
-  </div>
-  
-  <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
-    <span class="inline-block w-4 h-4 rounded-full" style="background:#3b82f6;border:2px solid #fff;"></span>
-    <span>Siap panen (ZPK 25–35 hari)</span>
-  </div>
-
-  <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
-    <span class="inline-block w-4 h-4 rounded-full" style="background:#fef3c7;border:3px solid #facc15;"></span>
-    <span>Ring kuning: sudah ZPK &lt; 25 hari</span>
-  </div>
-
-  <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
-    <span class="inline-block w-4 h-4 rounded-full" style="background:#fb923c;border:3px solid #dc2626;"></span>
-    <span>Fill orange + ring merah: umur ≥ 9 bulan, belum ZPK</span>
-  </div>
-
-  <!-- Filter legend -->
-  <div class="flex items-center gap-2 bg-white border rounded px-2 py-1 md:col-span-3">
-    <span class="inline-block w-4 h-4 rounded-full" style="background:#000;border:2px solid #fff;opacity:.30;"></span>
-    <span>Hitam redup: belum memenuhi kriteria aktivitas</span>
-  </div>
-  
 </div>
 
 
