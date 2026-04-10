@@ -195,12 +195,12 @@ class PerhitunganUpahApiMobile extends Controller
                 ->where('lkhno', $validated['lkhno'])
                 ->sum('luashasil');
             
-            if ($totalArea <= 0) {
-                return response()->json([
-                    'status' => 0,
-                    'description' => 'Tidak ada data plot atau luas hasil = 0'
-                ], 400);
-            }
+            // if ($totalArea <= 0) {
+            //     return response()->json([
+            //         'status' => 0,
+            //         'description' => 'Tidak ada data plot atau luas hasil = 0'
+            //     ], 400);
+            // }
             
             $rate = DB::table('upahborongan')
                 ->where('companycode', $validated['companycode'])
