@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Repositories\Approval\AbsenApprovalRepository;
 use App\Repositories\Approval\LkhApprovalRepository;
 use App\Repositories\Approval\OtherApprovalRepository;
+use App\Repositories\Approval\PanenApprovalRepository;
 use App\Repositories\Approval\RkhApprovalRepository;
 use App\Repositories\Approval\UpahMingguanApprovalRepository;
 use App\Http\Controllers\Approval\OrderBbmApprovalController;
@@ -27,19 +28,22 @@ class ApprovalDashboardController extends Controller
     protected $otherRepository;
     protected $absenRepository;
     protected $upahRepository;
+    protected $panenRepository;
 
     public function __construct(
         RkhApprovalRepository $rkhRepository,
         LkhApprovalRepository $lkhRepository,
         OtherApprovalRepository $otherRepository,
         AbsenApprovalRepository $absenRepository,
-        UpahMingguanApprovalRepository $upahRepository
+        UpahMingguanApprovalRepository $upahRepository,
+        PanenApprovalRepository $panenRepository
     ) {
-        $this->rkhRepository = $rkhRepository;
-        $this->lkhRepository = $lkhRepository;
+        $this->rkhRepository   = $rkhRepository;
+        $this->lkhRepository   = $lkhRepository;
         $this->otherRepository = $otherRepository;
         $this->absenRepository = $absenRepository;
-        $this->upahRepository = $upahRepository;
+        $this->upahRepository  = $upahRepository;
+        $this->panenRepository = $panenRepository;
     }
 
     /**
@@ -64,10 +68,11 @@ class ApprovalDashboardController extends Controller
             'all_date' => $allDate
         ];
 
-        $pendingRKH = $this->getPendingRKHWithDetails($companycode, $currentUser, $filters);
-        $pendingLKH = $this->getPendingLKHWithDetails($companycode, $currentUser, $filters);
+        $pendingRKH   = $this->getPendingRKHWithDetails($companycode, $currentUser, $filters);
+        $pendingLKH   = $this->getPendingLKHWithDetails($companycode, $currentUser, $filters);
         $pendingAbsen = $this->getPendingAbsenWithDetails($companycode, $currentUser, $filters);
         $pendingOther = $this->getPendingOtherWithDetails($companycode, $currentUser, $filters);
+        $pendingPanen = $this->getPendingPanenWithDetails($companycode, $currentUser, $filters);
         $othersDetail = $this->setOtherDetail($pendingOther);
         $pendingUpah = $this->getPendingUpahWithDetails($companycode, $currentUser, $filters);
         $pendingBBM = OrderBbmApprovalController::getPendingApprovals(
@@ -87,20 +92,21 @@ class ApprovalDashboardController extends Controller
             ->get();
 
         return view('approval.index', [
-            'title' => 'Approval Center',
-            'navbar' => 'Input',
-            'nav' => 'Approval',
-            'pendingRKH' => $pendingRKH,
-            'pendingLKH' => $pendingLKH,
-            'pendingOther' => $pendingOther,
-            'pendingAbsen' => $pendingAbsen,
-            'pendingUpah' => $pendingUpah,
-            'pendingBBM' => $pendingBBM,
-            'userInfo' => $this->getUserInfo($currentUser),
-            'filterDate' => $filterDate,
-            'allDate' => $allDate,
-            'otherDetail' => $othersDetail,
-            'userActivityGroups' => $userActivityGroups, // <-- tambah ini
+            'title'              => 'Approval Center',
+            'navbar'             => 'Input',
+            'nav'                => 'Approval',
+            'pendingRKH'         => $pendingRKH,
+            'pendingLKH'         => $pendingLKH,
+            'pendingOther'       => $pendingOther,
+            'pendingAbsen'       => $pendingAbsen,
+            'pendingUpah'        => $pendingUpah,
+            'pendingBBM'         => $pendingBBM,
+            'pendingPanen'       => $pendingPanen,
+            'userInfo'           => $this->getUserInfo($currentUser),
+            'filterDate'         => $filterDate,
+            'allDate'            => $allDate,
+            'otherDetail'        => $othersDetail,
+            'userActivityGroups' => $userActivityGroups,
         ]);
     }
 
@@ -319,6 +325,15 @@ class ApprovalDashboardController extends Controller
                 ])->values(),
             ];
         })->values();
+    }
+
+    private function getPendingPanenWithDetails(string $companycode, object $currentUser, array $filters)
+    {
+        return $this->panenRepository->getPendingApprovals(
+            $companycode,
+            $currentUser->idjabatan,
+            $filters
+        );
     }
 
     private function setOtherDetail($otherDetail)

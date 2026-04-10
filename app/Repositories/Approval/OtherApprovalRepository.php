@@ -37,6 +37,7 @@ class OtherApprovalRepository
             ->leftJoin('user as u', 'at.inputby', '=', 'u.userid')
             ->where('at.companycode', $companycode)
             ->where('am.category', '!=', 'Approval Pembayaran Upah Mingguan')
+            ->where('am.category', '!=', 'Approval Koreksi Surat Jalan Panen')
             ->where(function ($query) use ($idjabatan) {
                 // Level 1: Waiting for first approval
                 $query->where(function ($q) use ($idjabatan) {
