@@ -376,8 +376,8 @@
   </div>
 
   <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
-    <span class="inline-block w-4 h-4 rounded-full" style="background:#fef3c7;border:3px solid #dc2626;"></span>
-    <span>Ring merah: umur ≥ 9 bulan & belum ZPK</span>
+    <span class="inline-block w-4 h-4 rounded-full" style="background:#fb923c;border:3px solid #dc2626;"></span>
+    <span>Fill orange + ring merah: umur ≥ 9 bulan, belum ZPK</span>
   </div>
 
   <!-- Filter legend -->
@@ -556,11 +556,17 @@ function getPlotColor(d) {
     return '#3b82f6'; // biru (tailwind blue-500)
   }
 
-  // 2) kalau SEMUA activity sudah 100% → hijau tua
+  // ✅ 2) belum ZPK tapi umur ≥ 9 bulan → fill orange (siap panen belum ZPK)
+  const umurBulan = d.umur_bulan ?? 0;
+  if (daysSinceZpk === null && umurBulan >= 9) {
+    return '#fb923c'; // orange-400
+  }
+
+  // 3) kalau SEMUA activity sudah 100% → hijau tua
   const allDone = d.activities.every(a => (parseFloat(a.percentage || 0) >= 100));
   if (allDone) return '#0f766e';
 
-  // 3) selain itu → hijau muda
+  // 4) selain itu → hijau muda
   return '#86efac';
 }
 
