@@ -324,6 +324,7 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
         Route::post('update-bsm-bulk', [MappingBsmController::class, 'updateBsmBulk'])->name('mapping-bsm.update-bsm-bulk');
         Route::get('get-bsm-for-copy', [MappingBsmController::class, 'getBsmForCopy'])->name('mapping-bsm.get-bsm-for-copy');
         Route::post('copy-bsm', [MappingBsmController::class, 'copyBsm'])->name('mapping-bsm.copy-bsm');
+        Route::post('remap-bsm', [MappingBsmController::class, 'remapBsm'])->name('mapping-bsm.remap-bsm');
     });
 
 
