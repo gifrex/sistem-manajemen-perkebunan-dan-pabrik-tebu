@@ -249,8 +249,7 @@ class RkhHdr extends Model
                 GROUP BY lkhdate, companycode
             ) b ON a.companycode = b.companycode
                 AND LEFT(a.tanggalangkut, 10) = b.lkhdate
-            LEFT JOIN lkhdetailbsm c ON b.companycode = c.companycode
-                AND b.lkhno = c.lkhno
+            LEFT JOIN lkhdetailbsm c ON a.companycode = c.companycode
                 AND a.suratjalanno = c.suratjalanno
             WHERE a.companycode = ?
             ORDER BY a.plot
