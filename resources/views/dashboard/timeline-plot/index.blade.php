@@ -73,6 +73,12 @@
     class="py-2 px-4 bg-green-600 hover:bg-green-700 text-white rounded font-medium text-sm flex items-center gap-2">
     📊 Export Excel
     </button>
+
+    <button type="button"
+    onclick="openPanenEfisiensiModal()"
+    class="py-2 px-4 bg-orange-500 hover:bg-orange-600 text-white rounded font-medium text-sm flex items-center gap-2">
+    🌾 Proporsi Panen
+    </button>
   
 
     <label class="text-sm font-medium text-gray-700">Filter Activity:</label>
@@ -336,6 +342,28 @@
         </div>
         {{-- ===== /MODAL ===== --}}
 
+        {{-- ===== MODAL PROPORSI PANEN ===== --}}
+        <div id="panen-efisiensi-overlay"
+             onclick="closePanenEfisiensiModal(event)"
+             style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9999; padding:16px; align-items:flex-start; justify-content:center;">
+            <div id="panen-efisiensi-box"
+                 style="background:white; border-radius:10px; width:99vw; max-width:1400px; max-height:95vh; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,.35); overflow:hidden; animation:modalIn .2s ease;">
+
+                <div style="background:#92400e; color:white; padding:12px 18px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+                    <div style="font-size:15px; font-weight:700; letter-spacing:.3px;">🌾 Proporsi Panen — Status Kesiapan & Efisiensi</div>
+                    <button onclick="closePanenEfisiensiModal(null)"
+                            style="background:rgba(255,255,255,.2); border:none; color:white; border-radius:5px; width:28px; height:28px; cursor:pointer; font-size:16px; line-height:1;"
+                            onmouseover="this.style.background='rgba(255,255,255,.35)'"
+                            onmouseout="this.style.background='rgba(255,255,255,.2)'">✕</button>
+                </div>
+
+                <div id="panen-efisiensi-body" style="padding:16px; font-size:12px; color:#374151; overflow-y:auto; flex:1;">
+                    <div style="text-align:center; padding:40px; color:#6b7280;">Memuat data...</div>
+                </div>
+            </div>
+        </div>
+        {{-- ===== /MODAL PROPORSI PANEN ===== --}}
+
         <div x-show="activeTab==='map'" x-transition class="bg-white shadow-md rounded-lg p-6">
             <!-- MAP SECTION (EXISTING) -->
             <h3 class="text-xl font-bold mb-4">Peta Lokasi Plot</h3>
@@ -361,7 +389,7 @@
     </div>
     <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
       <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#fb923c;border:1px solid #d1d5db;"></span>
-      <span>Orange — umur ≥ 9 bulan, belum ZPK</span>
+      <span>Orange — <strong>siap panen</strong> (umur ≥ 9 bln, belum ZPK)</span>
     </div>
     <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
       <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#3b82f6;border:1px solid #d1d5db;"></span>
@@ -1119,8 +1147,269 @@ function getRingColor(d) {
 
         
 
+    // ===== PROPORSI PANEN MODAL =====
+    function openPanenEfisiensiModal() {
+        const overlay = document.getElementById('panen-efisiensi-overlay');
+        overlay.style.display = 'flex';
+        renderPanenEfisiensi();
+    }
+
+    function closePanenEfisiensiModal(e) {
+        if (e && e.target !== document.getElementById('panen-efisiensi-overlay')) return;
+        document.getElementById('panen-efisiensi-overlay').style.display = 'none';
+    }
+
+    function renderPanenEfisiensi() {
+        const cats = { siap: [], ready: [], panen: [], proses: [] };
+
+        Object.entries(plotActivityDetails).forEach(([plot, d]) => {
+            const color = getPlotColor(d);
+            const blok  = plot.charAt(0);
+            const zpkAct = (d.activities || []).find(a => a.code === '4.2.2');
+            const item  = {
+                plot,
+                blok,
+                luas     : parseFloat(d.luas_rkh || 0),
+                umur     : d.umur_bulan ?? 0,
+                status   : d.lifecyclestatus || '-',
+                zpkDate  : zpkAct?.tanggal || null,
+                lastPanen: d.last_panen_lkh_date || null
+            };
+            if (d.is_panen)              cats.panen.push({...item, cat:'panen'});
+            else if (color === '#3b82f6') cats.ready.push({...item, cat:'ready'});
+            else if (color === '#fb923c') cats.siap.push({...item, cat:'siap'});
+            else                          cats.proses.push({...item, cat:'proses'});
+        });
+
+        const totalSiap      = cats.siap.reduce((s,p)  => s+p.luas, 0);
+        const totalReady     = cats.ready.reduce((s,p) => s+p.luas, 0);
+        const totalPanen     = cats.panen.reduce((s,p) => s+p.luas, 0);
+        const totalProses    = cats.proses.reduce((s,p)=> s+p.luas, 0);
+        const totalAll       = totalSiap + totalReady + totalPanen + totalProses;
+        const totalSiapReady = totalSiap + totalReady;
+
+        const STORAGE_KEY = 'panen_snapshots_{{ session("companycode") ?? "default" }}';
+        const snapshots   = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+        const pctSiapReady = totalAll > 0 ? (totalSiapReady / totalAll * 100).toFixed(1) : '0.0';
+        const pctPanen     = totalAll > 0 ? (totalPanen     / totalAll * 100).toFixed(1) : '0.0';
+
+        let html = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:16px;">
+            <div style="background:#fff7ed;border:2px solid #fb923c;border-radius:8px;padding:10px;text-align:center;">
+                <div style="font-size:10px;color:#92400e;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Siap Panen (belum ZPK)</div>
+                <div style="font-size:22px;font-weight:800;color:#ea580c;">${totalSiap.toFixed(2)} HA</div>
+                <div style="font-size:11px;color:#9a3412;">${cats.siap.length} plot</div>
+            </div>
+            <div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:8px;padding:10px;text-align:center;">
+                <div style="font-size:10px;color:#1e40af;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Ready Panen (ZPK aktif)</div>
+                <div style="font-size:22px;font-weight:800;color:#2563eb;">${totalReady.toFixed(2)} HA</div>
+                <div style="font-size:11px;color:#1e3a8a;">${cats.ready.length} plot</div>
+            </div>
+            <div style="background:#fef9c3;border:2px solid #facc15;border-radius:8px;padding:10px;text-align:center;">
+                <div style="font-size:10px;color:#854d0e;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Total Siap + Ready</div>
+                <div style="font-size:22px;font-weight:800;color:#d97706;">${totalSiapReady.toFixed(2)} HA</div>
+                <div style="font-size:11px;color:#92400e;">${pctSiapReady}% dr total lahan</div>
+            </div>
+            <div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:8px;padding:10px;text-align:center;">
+                <div style="font-size:10px;color:#166534;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Sudah Panen</div>
+                <div style="font-size:22px;font-weight:800;color:#16a34a;">${totalPanen.toFixed(2)} HA</div>
+                <div style="font-size:11px;color:#14532d;">${cats.panen.length} plot · ${pctPanen}%</div>
+            </div>
+            <div style="background:#f9fafb;border:1px solid #d1d5db;border-radius:8px;padding:10px;text-align:center;">
+                <div style="font-size:10px;color:#6b7280;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Total Lahan</div>
+                <div style="font-size:22px;font-weight:800;color:#374151;">${totalAll.toFixed(2)} HA</div>
+                <div style="font-size:11px;color:#6b7280;">${Object.keys(plotActivityDetails).length} plot aktif</div>
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+        <div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#374151;border-bottom:2px solid #e5e7eb;padding-bottom:6px;">
+            📋 Rincian per Blok & Plot
+            <span style="font-size:10px;font-weight:400;color:#6b7280;margin-left:6px;">Per ${new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}</span>
+        </div>
+        <div style="overflow-x:auto;max-height:500px;overflow-y:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+            <thead style="position:sticky;top:0;z-index:2;">
+                <tr style="background:#92400e;color:white;">
+                    <th style="padding:6px 8px;border:1px solid #d1d5db;min-width:40px;">Blok</th>
+                    <th style="padding:6px 8px;border:1px solid #d1d5db;min-width:55px;">Plot</th>
+                    <th style="padding:6px 8px;border:1px solid #d1d5db;text-align:right;min-width:65px;">Luas HA</th>
+                    <th style="padding:6px 8px;border:1px solid #d1d5db;text-align:center;min-width:50px;">Umur</th>
+                    <th style="padding:6px 8px;border:1px solid #d1d5db;text-align:center;min-width:110px;">Kategori</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        const allPlots = [...cats.siap, ...cats.ready, ...cats.panen, ...cats.proses];
+        allPlots.sort((a,b) => a.plot.localeCompare(b.plot));
+
+        const byBlok = {};
+        allPlots.forEach(p => { if (!byBlok[p.blok]) byBlok[p.blok]=[]; byBlok[p.blok].push(p); });
+
+        const catLabels = {
+            siap  : { label:'🟠 Siap Panen',  bg:'#fff7ed', color:'#ea580c', border:'#fed7aa' },
+            ready : { label:'🔵 Ready Panen',  bg:'#eff6ff', color:'#2563eb', border:'#bfdbfe' },
+            panen : { label:'✅ Sudah Panen',  bg:'#f0fdf4', color:'#16a34a', border:'#bbf7d0' },
+            proses: { label:'⬜ Dalam Proses', bg:'#fafafa', color:'#6b7280', border:'#e5e7eb' },
+        };
+
+        Object.keys(byBlok).sort().forEach(blok => {
+            const plots    = byBlok[blok];
+            const blokLuas = plots.reduce((s,p) => s+p.luas, 0);
+            plots.forEach((p, i) => {
+                const c = catLabels[p.cat];
+                const zpkInfo = p.zpkDate
+                    ? (() => { const days=Math.round((Date.now()-new Date(p.zpkDate))/ 86400000); return `ZPK ${days}hr`; })()
+                    : '';
+                html += `<tr style="background:${c.bg};">`;
+                if (i === 0) {
+                    html += `<td rowspan="${plots.length}" style="border:1px solid #d1d5db;padding:6px;font-weight:700;background:#0f766e;color:white;text-align:center;vertical-align:middle;">
+                        ${blok}<br><span style="font-size:9px;font-weight:400;opacity:.85;">${blokLuas.toFixed(1)}</span></td>`;
+                }
+                html += `
+                    <td style="border:1px solid #d1d5db;padding:5px 8px;font-weight:700;text-align:center;">${p.plot}</td>
+                    <td style="border:1px solid #d1d5db;padding:5px 8px;text-align:right;">${p.luas.toFixed(2)}</td>
+                    <td style="border:1px solid #d1d5db;padding:5px 8px;text-align:center;">${p.umur} bln</td>
+                    <td style="border:1px solid ${c.border};padding:4px 8px;text-align:center;">
+                        <span style="color:${c.color};font-weight:700;font-size:10px;">${c.label}</span>
+                        ${zpkInfo ? `<br><span style="font-size:9px;color:#6b7280;">${zpkInfo}</span>` : ''}
+                    </td>
+                </tr>`;
+            });
+        });
+
+        html += `</tbody>
+            <tfoot><tr style="background:#fef3c7;font-weight:700;position:sticky;bottom:0;">
+                <td colspan="2" style="border:1px solid #d1d5db;padding:5px 8px;text-align:right;color:#92400e;">TOTAL</td>
+                <td style="border:1px solid #d1d5db;padding:5px 8px;text-align:right;color:#92400e;">${totalAll.toFixed(2)}</td>
+                <td colspan="2" style="border:1px solid #d1d5db;padding:5px 8px;font-size:10px;color:#6b7280;">
+                    Siap: ${totalSiap.toFixed(1)} · Ready: ${totalReady.toFixed(1)} · Panen: ${totalPanen.toFixed(1)} · Proses: ${totalProses.toFixed(1)}
+                </td>
+            </tr></tfoot>
+        </table></div>
+        </div>
+
+        <div>
+            <div style="border:2px solid #fb923c;border-radius:8px;padding:14px;margin-bottom:14px;background:#fffbf7;">
+                <div style="font-weight:700;font-size:13px;color:#92400e;margin-bottom:10px;">📝 Catat Snapshot Berkala</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+                    <div>
+                        <label style="font-size:10px;font-weight:600;color:#6b7280;display:block;margin-bottom:2px;">Tanggal</label>
+                        <input id="snap-tanggal" type="date" value="${new Date().toISOString().split('T')[0]}"
+                            style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;">
+                    </div>
+                    <div>
+                        <label style="font-size:10px;font-weight:600;color:#6b7280;display:block;margin-bottom:2px;">Harapan Panen (HA) <span style="color:#dc2626;">*</span></label>
+                        <input id="snap-harapan" type="number" step="0.01" placeholder="Target HA..."
+                            style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;">
+                    </div>
+                    <div>
+                        <label style="font-size:10px;font-weight:600;color:#6b7280;display:block;margin-bottom:2px;">
+                            Realisasi Panen (HA)
+                            <span style="color:#16a34a;font-style:italic;">(data: ${totalPanen.toFixed(2)})</span>
+                        </label>
+                        <input id="snap-realisasi" type="number" step="0.01" value="${totalPanen.toFixed(2)}"
+                            style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;">
+                    </div>
+                    <div>
+                        <label style="font-size:10px;font-weight:600;color:#6b7280;display:block;margin-bottom:2px;">
+                            Siap Panen (HA)
+                            <span style="color:#ea580c;font-style:italic;">(data: ${totalSiapReady.toFixed(2)})</span>
+                        </label>
+                        <input id="snap-siap" type="number" step="0.01" value="${totalSiapReady.toFixed(2)}"
+                            style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;">
+                    </div>
+                </div>
+                <div style="margin-bottom:8px;">
+                    <label style="font-size:10px;font-weight:600;color:#6b7280;display:block;margin-bottom:2px;">Catatan</label>
+                    <textarea id="snap-catatan" rows="2" placeholder="Catatan tambahan..."
+                        style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;resize:vertical;"></textarea>
+                </div>
+                <button onclick="savePanenSnapshot('${STORAGE_KEY}')"
+                    style="width:100%;padding:7px;background:#ea580c;color:white;border:none;border-radius:5px;font-weight:700;font-size:12px;cursor:pointer;"
+                    onmouseover="this.style.background='#c2410c'" onmouseout="this.style.background='#ea580c'">
+                    💾 Simpan Snapshot
+                </button>
+            </div>
+
+            <div>
+                <div style="font-weight:700;font-size:12px;color:#374151;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+                    📊 Riwayat Snapshot
+                    ${snapshots.length > 0 ? `<button onclick="clearPanenSnapshots('${STORAGE_KEY}')" style="font-size:10px;background:#fee2e2;color:#dc2626;border:none;border-radius:3px;padding:2px 6px;cursor:pointer;">Hapus Semua</button>` : ''}
+                </div>`;
+
+        if (snapshots.length === 0) {
+            html += `<div style="color:#9ca3af;font-style:italic;font-size:11px;padding:12px;text-align:center;background:#f9fafb;border-radius:6px;">Belum ada snapshot. Isi form di atas lalu klik Simpan.</div>`;
+        } else {
+            html += `<div style="max-height:320px;overflow-y:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                <thead style="position:sticky;top:0;">
+                    <tr style="background:#374151;color:white;">
+                        <th style="padding:5px 8px;border:1px solid #e5e7eb;">Tgl</th>
+                        <th style="padding:5px 8px;border:1px solid #e5e7eb;text-align:right;">Harapan</th>
+                        <th style="padding:5px 8px;border:1px solid #e5e7eb;text-align:right;">Realisasi</th>
+                        <th style="padding:5px 8px;border:1px solid #e5e7eb;text-align:right;">Siap</th>
+                        <th style="padding:5px 8px;border:1px solid #e5e7eb;text-align:right;">Efisiensi</th>
+                        <th style="padding:5px 8px;border:1px solid #e5e7eb;">Catatan</th>
+                        <th style="padding:5px 8px;border:1px solid #e5e7eb;"></th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            [...snapshots].reverse().forEach((s, idx) => {
+                const realIdx   = snapshots.length - 1 - idx;
+                const efisiensi = s.harapan_ha > 0 ? (s.realisasi_ha / s.harapan_ha * 100).toFixed(1) : '-';
+                const efColor   = s.harapan_ha > 0 ? (s.realisasi_ha >= s.harapan_ha ? '#16a34a' : '#dc2626') : '#6b7280';
+                const rowBg     = idx % 2 === 0 ? '#ffffff' : '#f9fafb';
+                html += `<tr style="background:${rowBg};">
+                    <td style="border:1px solid #e5e7eb;padding:4px 8px;white-space:nowrap;">${s.tanggal}</td>
+                    <td style="border:1px solid #e5e7eb;padding:4px 8px;text-align:right;font-weight:600;">${s.harapan_ha>0 ? Number(s.harapan_ha).toFixed(2) : '-'}</td>
+                    <td style="border:1px solid #e5e7eb;padding:4px 8px;text-align:right;color:#16a34a;font-weight:600;">${Number(s.realisasi_ha).toFixed(2)}</td>
+                    <td style="border:1px solid #e5e7eb;padding:4px 8px;text-align:right;color:#ea580c;">${Number(s.siap_ha).toFixed(2)}</td>
+                    <td style="border:1px solid #e5e7eb;padding:4px 8px;text-align:right;font-weight:700;color:${efColor};">${efisiensi !== '-' ? efisiensi+'%' : '-'}</td>
+                    <td style="border:1px solid #e5e7eb;padding:4px 8px;color:#6b7280;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(s.catatan||'').replace(/"/g,'&quot;')}">${s.catatan||'-'}</td>
+                    <td style="border:1px solid #e5e7eb;padding:4px 8px;text-align:center;">
+                        <button onclick="deletePanenSnapshot('${STORAGE_KEY}',${realIdx})" style="font-size:10px;background:#fee2e2;color:#dc2626;border:none;border-radius:3px;padding:1px 5px;cursor:pointer;">✕</button>
+                    </td>
+                </tr>`;
+            });
+            html += `</tbody></table></div>`;
+        }
+
+        html += `</div></div></div>`;
+        document.getElementById('panen-efisiensi-body').innerHTML = html;
+    }
+
+    function savePanenSnapshot(storageKey) {
+        const tanggal      = document.getElementById('snap-tanggal').value;
+        const harapan_ha   = parseFloat(document.getElementById('snap-harapan').value)   || 0;
+        const realisasi_ha = parseFloat(document.getElementById('snap-realisasi').value) || 0;
+        const siap_ha      = parseFloat(document.getElementById('snap-siap').value)      || 0;
+        const catatan      = document.getElementById('snap-catatan').value.trim();
+        const snapshots    = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        snapshots.push({ tanggal, harapan_ha, realisasi_ha, siap_ha, catatan, saved_at: new Date().toISOString() });
+        localStorage.setItem(storageKey, JSON.stringify(snapshots));
+        renderPanenEfisiensi();
+    }
+
+    function deletePanenSnapshot(storageKey, idx) {
+        const snapshots = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        snapshots.splice(idx, 1);
+        localStorage.setItem(storageKey, JSON.stringify(snapshots));
+        renderPanenEfisiensi();
+    }
+
+    function clearPanenSnapshots(storageKey) {
+        if (!confirm('Hapus semua riwayat snapshot?')) return;
+        localStorage.removeItem(storageKey);
+        renderPanenEfisiensi();
+    }
+    // ===== /PROPORSI PANEN MODAL =====
+
 
     </script>
-    
+
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCc2vFD26wD5ox_5EwLJhR6U1jcfKibxBQ&callback=initMapIfNeeded"></script>
 </x-layout>
