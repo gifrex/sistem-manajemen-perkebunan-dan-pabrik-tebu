@@ -237,6 +237,7 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
         Route::get('pias/detail', [PiasController::class, 'detail'])->name('pias.detail');
         Route::post('pias/submit', [PiasController::class, 'submit'])->name('pias.submit');
         Route::get('pias/report', [PiasController::class, 'report'])->name('pias.report');
+        Route::get('pias/export', [PiasController::class, 'exportExcel'])->name('pias.export');
     });
 
 
