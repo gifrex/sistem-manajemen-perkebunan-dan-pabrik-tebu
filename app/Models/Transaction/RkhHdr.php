@@ -301,6 +301,63 @@ class RkhHdr extends Model
         }
     }
 
+    public function getOrphanBsmByRkh($companycode, $rkhno)
+    {
+        $query = "
+            SELECT
+                c.id,
+                c.suratjalanno as wrong_suratjalanno,
+                c.plot,
+                c.lkhno,
+                c.nilaibersih,
+                c.nilaisegar,
+                c.nilaimanis,
+                c.averagescore,
+                c.grade,
+                c.createdat,
+                COALESCE(c.keterangan, '') as keterangan
+            FROM lkhdetailbsm c
+            INNER JOIN lkhhdr b ON c.lkhno = b.lkhno AND b.companycode = c.companycode
+            WHERE b.rkhno = ?
+                AND c.companycode = ?
+                AND (
+                    c.suratjalanno IS NULL
+                    OR NOT EXISTS (
+                        SELECT 1 FROM suratjalanpos a
+                        WHERE a.companycode = c.companycode
+                        AND a.suratjalanno = c.suratjalanno
+                    )
+                )
+            ORDER BY c.createdat DESC
+        ";
+
+        try {
+            $results = DB::select($query, [$rkhno, $companycode]);
+            return collect($results)->map(function ($item) {
+                return (object) [
+                    'id'                  => $item->id,
+                    'wrong_suratjalanno'  => $item->wrong_suratjalanno ?? '',
+                    'plot'                => $item->plot ?? '',
+                    'lkhno'               => $item->lkhno ?? '',
+                    'nilaibersih'         => (float) ($item->nilaibersih ?? 0),
+                    'nilaisegar'          => (float) ($item->nilaisegar ?? 0),
+                    'nilaimanis'          => (float) ($item->nilaimanis ?? 0),
+                    'averagescore'        => (float) ($item->averagescore ?? 0),
+                    'grade'               => $item->grade ?? '',
+                    'createdat'           => $item->createdat ?? '',
+                    'keterangan'          => $item->keterangan ?? '',
+                ];
+            });
+        } catch (\Exception $e) {
+            \Log::error('Error in getOrphanBsmByRkh', [
+                'message'  => $e->getMessage(),
+                'rkhno'    => $rkhno,
+                'companycode' => $companycode,
+            ]);
+            return collect([]);
+        }
+    }
+
     public function getBsmDataForCopy($companycode, $rkhno, $plot)
     {
         try {
