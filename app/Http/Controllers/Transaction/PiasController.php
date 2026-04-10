@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 use App\Models\usematerialhdr;
 use App\Models\usemateriallst;
@@ -441,6 +446,195 @@ class PiasController extends Controller
             'search'    => $search,
             'startDate' => $startDate,
             'endDate'   => $endDate,
+        ]);
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $startDate = $request->input('start_date', now()->subDays(7)->format('Y-m-d'));
+        $endDate   = $request->input('end_date', now()->format('Y-m-d'));
+        $search    = $request->input('search');
+        $company   = session('companycode');
+
+        $rows = DB::table('piaslst as pl')
+            ->join('piashdr as ph', fn($j) => $j->on('ph.rkhno','=','pl.rkhno')->on('ph.companycode','=','pl.companycode'))
+            ->join('rkhhdr as r',   fn($j) => $j->on('r.rkhno','=','pl.rkhno')->on('r.companycode','=','pl.companycode'))
+            ->join('lkhhdr as lh',  fn($j) => $j->on('lh.lkhno','=','pl.lkhno')->on('lh.companycode','=','pl.companycode'))
+            ->join('lkhdetailplot as ldp', fn($j) =>
+                $j->on('ldp.lkhno','=','pl.lkhno')
+                  ->on('ldp.companycode','=','pl.companycode')
+                  ->on('ldp.plot','=','pl.plot')
+                  ->on('ldp.blok','=','pl.blok')
+            )
+            ->join('masterlist as ml', fn($j) =>
+                $j->on('ml.companycode','=','pl.companycode')
+                  ->on('ml.blok','=','pl.blok')
+                  ->on('ml.plot','=','pl.plot')
+            )
+            ->join('batch as b', fn($j) =>
+                $j->on('b.companycode','=','ml.companycode')
+                  ->on('b.plot','=','ml.plot')
+                  ->on('b.batchno','=','ml.activebatchno')
+            )
+            ->where('pl.companycode', $company)
+            ->whereDate('r.rkhdate', '>=', $startDate)
+            ->whereDate('r.rkhdate', '<=', $endDate)
+            ->when($search, fn($q) =>
+                $q->where(fn($qq) =>
+                    $qq->where('pl.rkhno','like',"%{$search}%")
+                       ->orWhere('pl.blok','like',"%{$search}%")
+                       ->orWhere('pl.plot','like',"%{$search}%")
+                )
+            )
+            ->select('r.rkhdate as tgl','pl.blok','pl.plot','ldp.luasrkh as ha',
+                     'b.tanggalpanen as tgl_tanam','b.lifecyclestatus as kategori',
+                     'b.kodevarietas as varietas','pl.tj','pl.tc','pl.tv')
+            ->orderBy('r.rkhdate')->orderBy('pl.blok')->orderBy('pl.plot')
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada data untuk diekspor.');
+        }
+
+        $grouped = $rows->groupBy('tgl');
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Pias Report');
+
+        // ── Style helpers ──
+        $center  = ['alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER]];
+        $right   = ['alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT,  'vertical' => Alignment::VERTICAL_CENTER]];
+        $bold    = ['font' => ['bold' => true]];
+        $borders = ['borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]];
+
+        $hdrStyle = fn(string $hex) => [
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $hex]],
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
+            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+        ];
+
+        $lastCol = 'K';
+
+        // ── Judul ──
+        $sheet->mergeCells("A1:{$lastCol}1");
+        $sheet->setCellValue('A1', 'LAPORAN PIAS HARIAN');
+        $sheet->getStyle('A1')->applyFromArray(['font' => ['bold' => true, 'size' => 14], 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]]);
+
+        $sheet->mergeCells("A2:{$lastCol}2");
+        $sheet->setCellValue('A2', 'Periode: ' . date('d/m/Y', strtotime($startDate)) . ' s/d ' . date('d/m/Y', strtotime($endDate)));
+        $sheet->getStyle('A2')->applyFromArray($center);
+
+        $sheet->mergeCells("A3:{$lastCol}3");
+        $sheet->setCellValue('A3', 'Dicetak: ' . now()->format('d/m/Y H:i'));
+        $sheet->getStyle('A3')->applyFromArray($center);
+
+        // ── Column widths ──
+        $widths = ['A'=>14,'B'=>8,'C'=>10,'D'=>8,'E'=>13,'F'=>8,'G'=>10,'H'=>12,'I'=>8,'J'=>8,'K'=>8];
+        foreach ($widths as $col => $w) {
+            $sheet->getColumnDimension($col)->setWidth($w);
+        }
+
+        $row = 5;
+
+        // ── Grand totals ──
+        $grandTJ = 0; $grandTC = 0; $grandTV = 0;
+
+        foreach ($grouped as $tgl => $items) {
+            // ── Tanggal header ──
+            $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
+            $sheet->setCellValue("A{$row}", 'TANGGAL: ' . date('d/m/Y', strtotime($tgl)));
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($hdrStyle('3B5998'));
+            $sheet->getRowDimension($row)->setRowHeight(18);
+            $row++;
+
+            // ── Column headers ──
+            $headers = ['TANGGAL','BLOK','PLOT','HA','TGL TANAM','BULAN','KATEGORI','VARIETAS','TJ','TC','TV'];
+            foreach ($headers as $ci => $h) {
+                $sheet->setCellValue([$ci + 1, $row], $h);
+            }
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($hdrStyle('374151'));
+            $sheet->getRowDimension($row)->setRowHeight(24);
+            $row++;
+
+            $dayTJ = 0; $dayTC = 0; $dayTV = 0;
+
+            foreach ($items as $item) {
+                $tanam = $item->tgl_tanam ? \Carbon\Carbon::parse($item->tgl_tanam) : null;
+                $t     = \Carbon\Carbon::parse($item->tgl);
+                $bulan = $tanam ? (int) ceil(abs($t->diffInDays($tanam)) / 30) : '-';
+
+                $sheet->setCellValue("A{$row}", date('d/m/Y', strtotime($item->tgl)));
+                $sheet->setCellValue("B{$row}", $item->blok);
+                $sheet->setCellValue("C{$row}", $item->plot);
+                $sheet->setCellValue("D{$row}", (float) $item->ha);
+                $sheet->setCellValue("E{$row}", $item->tgl_tanam ? date('d/m/Y', strtotime($item->tgl_tanam)) : '-');
+                $sheet->setCellValue("F{$row}", $bulan);
+                $sheet->setCellValue("G{$row}", $item->kategori ?? '-');
+                $sheet->setCellValue("H{$row}", $item->varietas ?? '-');
+                $sheet->setCellValue("I{$row}", (int) ($item->tj ?? 0));
+                $sheet->setCellValue("J{$row}", (int) ($item->tc ?? 0));
+                $sheet->setCellValue("K{$row}", (int) ($item->tv ?? 0));
+
+                $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($borders);
+                $sheet->getStyle("A{$row}:H{$row}")->applyFromArray($center);
+                $sheet->getStyle("D{$row}")->applyFromArray($right);
+                $sheet->getStyle("I{$row}:K{$row}")->applyFromArray($right);
+
+                // Warna kolom TJ/TC/TV
+                $sheet->getStyle("I{$row}")->applyFromArray(['fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DBEAFE']]]);
+                $sheet->getStyle("J{$row}")->applyFromArray(['fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DCFCE7']]]);
+                $sheet->getStyle("K{$row}")->applyFromArray(['fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FEF9C3']]]);
+
+                $dayTJ += (int)($item->tj ?? 0);
+                $dayTC += (int)($item->tc ?? 0);
+                $dayTV += (int)($item->tv ?? 0);
+                $row++;
+            }
+
+            // ── Subtotal per tanggal ──
+            $sheet->mergeCells("A{$row}:H{$row}");
+            $sheet->setCellValue("A{$row}", 'Subtotal ' . date('d/m/Y', strtotime($tgl)));
+            $sheet->setCellValue("I{$row}", $dayTJ);
+            $sheet->setCellValue("J{$row}", $dayTC);
+            $sheet->setCellValue("K{$row}", $dayTV);
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray(array_merge($borders, $bold));
+            $sheet->getStyle("A{$row}:H{$row}")->applyFromArray($right);
+            $sheet->getStyle("I{$row}:K{$row}")->applyFromArray($right);
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'BFDBFE']],
+            ]);
+            $row++;
+
+            $grandTJ += $dayTJ;
+            $grandTC += $dayTC;
+            $grandTV += $dayTV;
+        }
+
+        // ── Grand total ──
+        $sheet->mergeCells("A{$row}:H{$row}");
+        $sheet->setCellValue("A{$row}", 'GRAND TOTAL');
+        $sheet->setCellValue("I{$row}", $grandTJ);
+        $sheet->setCellValue("J{$row}", $grandTC);
+        $sheet->setCellValue("K{$row}", $grandTV);
+        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray(array_merge($borders, $bold, [
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '374151']],
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ]));
+        $sheet->getStyle("I{$row}:K{$row}")->applyFromArray($right);
+
+        $filename = 'Pias_Report_' . $startDate . '_' . $endDate . '.xlsx';
+
+        $writer = new Xlsx($spreadsheet);
+        ob_start();
+        $writer->save('php://output');
+        $content = ob_get_clean();
+
+        return response($content, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
     }
 

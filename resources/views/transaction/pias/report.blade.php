@@ -45,15 +45,19 @@
             <label class="absolute left-2 top-1 text-xs text-gray-600 peer-focus:text-blue-600">End Date</label>
           </div>
 
-          <div class="md:col-span-2 flex gap-2">
+          <div class="md:col-span-2 flex gap-2 flex-wrap">
             <button type="submit"
-              class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-md">
+              class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-md">
               Cari
             </button>
             <button type="button" onclick="window.print()"
-              class="w-full bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium py-2 px-4 rounded-md">
+              class="flex-1 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium py-2 px-3 rounded-md">
               Print
             </button>
+            <a id="exportLink" href="#"
+              class="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-3 rounded-md text-center whitespace-nowrap">
+              Export Excel
+            </a>
           </div>
 
         </div>
@@ -171,4 +175,20 @@
     @endif
 
   </div>
+
+  <script>
+    (function () {
+      var base = "{{ route('transaction.pias.export') }}";
+      function updateExport() {
+        var s = document.querySelector('[name=start_date]')?.value || '';
+        var e = document.querySelector('[name=end_date]')?.value || '';
+        var q = document.querySelector('[name=search]')?.value || '';
+        var params = new URLSearchParams({ start_date: s, end_date: e, search: q });
+        document.getElementById('exportLink').href = base + '?' + params.toString();
+      }
+      document.querySelectorAll('[name=start_date],[name=end_date],[name=search]')
+        .forEach(el => el.addEventListener('change', updateExport));
+      updateExport();
+    })();
+  </script>
 </x-layout>
