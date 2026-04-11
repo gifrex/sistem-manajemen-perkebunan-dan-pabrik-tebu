@@ -829,9 +829,16 @@ class TrashController extends Controller
 
             if ($company !== 'all' && !empty($company)) {
                 if ($reportType === 'mingguan') {
-                    if ($company === 'BNIL')       $query->where('t.companycode', 'LIKE', 'BNL%');
-                    elseif ($company === 'SILVA')  $query->where('t.companycode', 'LIKE', 'SIL%');
-                    else                           $query->where('t.companycode', 'LIKE', $company . '%');
+                    // company bisa berupa comma-separated string hasil implode dari array (blade)
+                    if (strpos($company, ',') !== false) {
+                        $query->whereIn('t.companycode', explode(',', $company));
+                    } elseif ($company === 'BNIL') {
+                        $query->where('t.companycode', 'LIKE', 'BNL%');
+                    } elseif ($company === 'SILVA') {
+                        $query->where('t.companycode', 'LIKE', 'SIL%');
+                    } else {
+                        $query->where('t.companycode', 'LIKE', $company . '%');
+                    }
                 } else {
                     $query->where('t.companycode', $company);
                 }
@@ -840,7 +847,7 @@ class TrashController extends Controller
             $data = $query->orderBy('sj.tanggalangkut')->orderBy('t.companycode')->get();
 
             if ($data->isEmpty()) {
-                return redirect()->back()->with('error', 'Tidak ada data untuk diekspor.');
+                return redirect()->route('pabrik.trash.index')->with('error', 'Tidak ada data untuk diekspor.');
             }
 
             $rows = [];
@@ -1176,7 +1183,7 @@ class TrashController extends Controller
             }, 200, $headers);
 
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Gagal export Excel: ' . $e->getMessage());
+            return redirect()->route('pabrik.trash.index')->with('error', 'Gagal export Excel: ' . $e->getMessage());
         }
     }
 
