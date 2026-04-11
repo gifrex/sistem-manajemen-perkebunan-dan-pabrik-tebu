@@ -321,11 +321,12 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
     Route::middleware('permission:transaction.surat-jalan-non-nfc.view')->group(function () {
         Route::prefix('surat-jalan-non-nfc')->name('surat-jalan-non-nfc.')->group(function () {
             Route::get('/', [SuratJalanNonNfcController::class, 'index'])->name('index');
-            Route::get('/{id}', [SuratJalanNonNfcController::class, 'show'])->name('show');
             Route::post('/store', [SuratJalanNonNfcController::class, 'store'])->name('store');
             Route::post('/mark-printed', [SuratJalanNonNfcController::class, 'markPrinted'])->name('mark-printed');
             Route::get('/form-data', [SuratJalanNonNfcController::class, 'getFormData'])->name('form-data');
+            Route::get('/plot-data', [SuratJalanNonNfcController::class, 'getPlotData'])->name('plot-data');
             Route::get('/attachment/{id}', [SuratJalanNonNfcController::class, 'getAttachment'])->name('attachment');
+            Route::get('/{id}', [SuratJalanNonNfcController::class, 'show'])->name('show');
         });
     });
 

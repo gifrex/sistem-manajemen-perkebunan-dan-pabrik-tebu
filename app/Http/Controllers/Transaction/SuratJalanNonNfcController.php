@@ -285,6 +285,37 @@ class SuratJalanNonNfcController extends Controller
         ]);
     }
 
+    public function getPlotData(Request $request)
+    {
+        $companycode = Session::get('companycode');
+        $plot        = strtoupper(trim($request->input('plot', '')));
+
+        if (!$plot) {
+            return response()->json(['exists' => false, 'varietas' => null]);
+        }
+
+        $masterlist = DB::table('masterlist')
+            ->where('companycode', $companycode)
+            ->where('plot', $plot)
+            ->select(['activebatchno'])
+            ->first();
+
+        if (!$masterlist || !$masterlist->activebatchno) {
+            return response()->json(['exists' => false, 'varietas' => null]);
+        }
+
+        $batch = DB::table('batch')
+            ->where('companycode', $companycode)
+            ->where('batchno', $masterlist->activebatchno)
+            ->select(['kodevarietas'])
+            ->first();
+
+        return response()->json([
+            'exists'   => true,
+            'varietas' => $batch->kodevarietas ?? null,
+        ]);
+    }
+
     public function getAttachment($id)
     {
         $companycode = Session::get('companycode');
