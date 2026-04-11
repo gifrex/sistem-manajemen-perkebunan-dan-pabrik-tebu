@@ -873,13 +873,15 @@
         addBytes(BOLD_OFF);
         bytes.push(LF);
 
-        // QR Code (native ESC/POS GS ( k — printer renders internally)
-        addBytes(ALIGN_CENTER);
-        addBytes(this.buildQRNative(this.buildQRData(sj)));
-        bytes.push(LF);
-        addBytes(ALIGN_CENTER); addBytes(BOLD_OFF);
-        addText('Scan untuk detail lengkap'); bytes.push(LF);
-        bytes.push(LF);
+        // QR Code (GS v 0 raster — required for Panda PRJ-R80B)
+        try {
+          addBytes(ALIGN_CENTER);
+          addBytes(this.buildQRRaster(this.buildQRData(sj)));
+          bytes.push(LF);
+          addBytes(ALIGN_CENTER); addBytes(BOLD_OFF);
+          addText('Scan untuk detail lengkap'); bytes.push(LF);
+          bytes.push(LF);
+        } catch(e) { console.warn('QR failed', e); bytes.push(LF); }
 
         // Separator
         addBytes(ALIGN_LEFT);
@@ -1041,31 +1043,39 @@
         ].join('::');
       },
 
-      buildQRNative(data) {
-        const enc      = new TextEncoder();
-        const dataBytes = enc.encode(data);
-        const n        = dataBytes.length;
-        const bytes    = [];
-        const add      = b => b.forEach(v => bytes.push(v));
+      buildQRRaster(data) {
+        const qr = qrcode(0, 'M');
+        qr.addData(data);
+        qr.make();
+        const mc         = qr.getModuleCount();
+        const quiet      = 4;
+        const total      = mc + quiet * 2;
+        const scale      = 10;
+        const totalPx    = total * scale;
+        const widthBytes = Math.ceil(totalPx / 8);
+        const raster     = new Uint8Array(widthBytes * totalPx);
 
-        // 1. Select model 2
-        add([0x1D,0x28,0x6B, 0x04,0x00, 0x31,0x41,0x32,0x00]);
+        for (let py = 0; py < totalPx; py++) {
+          const mr = Math.floor(py / scale) - quiet;
+          for (let bIdx = 0; bIdx < widthBytes; bIdx++) {
+            let byte = 0;
+            for (let bit = 0; bit < 8; bit++) {
+              const px  = bIdx * 8 + bit;
+              const mc2 = Math.floor(px / scale) - quiet;
+              const dark = (mr >= 0 && mr < mc && mc2 >= 0 && mc2 < mc && px < totalPx)
+                           ? qr.isDark(mr, mc2) : false;
+              byte = (byte << 1) | (dark ? 1 : 0);
+            }
+            raster[py * widthBytes + bIdx] = byte;
+          }
+        }
 
-        // 2. Set module size (6 = readable on 80mm paper)
-        add([0x1D,0x28,0x6B, 0x03,0x00, 0x31,0x43,0x06]);
-
-        // 3. Error correction level M
-        add([0x1D,0x28,0x6B, 0x03,0x00, 0x31,0x45,0x32]);
-
-        // 4. Store data  (pL pH = n+3)
-        const sLen = n + 3;
-        add([0x1D,0x28,0x6B, sLen & 0xFF, (sLen >> 8) & 0xFF, 0x31,0x50,0x30]);
-        dataBytes.forEach(v => bytes.push(v));
-
-        // 5. Print
-        add([0x1D,0x28,0x6B, 0x03,0x00, 0x31,0x51,0x30]);
-
-        return new Uint8Array(bytes);
+        const xL = widthBytes & 0xFF, xH = (widthBytes >> 8) & 0xFF;
+        const yL = totalPx   & 0xFF, yH = (totalPx   >> 8) & 0xFF;
+        const header = new Uint8Array([0x1D,0x76,0x30,0x00,xL,xH,yL,yH]);
+        const out = new Uint8Array(header.length + raster.length);
+        out.set(header); out.set(raster, header.length);
+        return out;
       },
     };
   }
