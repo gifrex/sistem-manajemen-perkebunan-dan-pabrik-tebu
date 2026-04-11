@@ -202,8 +202,8 @@
               </div>
               <div class="col-span-1">
                 <label class="block text-xs font-medium text-gray-700 mb-1">Varietas <span class="text-red-500">*</span></label>
-                <input type="text" name="varietas" x-model="form.varietas" maxlength="10"
-                       class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500" />
+                <input type="text" name="varietas" x-model="form.varietas" maxlength="10" readonly
+                       class="w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-gray-100 text-gray-500 cursor-not-allowed" />
                 <p x-show="errors.varietas" class="text-red-500 text-[10px] mt-0.5" x-text="errors.varietas"></p>
               </div>
               <div class="col-span-1">
@@ -296,7 +296,7 @@
                 @foreach(['langsir' => 'Langsir', 'tebusulit' => 'Tebu Sulit', 'kendaraankontraktor' => 'Kend. Kontraktor', 'muatgl' => 'Muat GL'] as $field => $label)
                 <div class="flex items-center gap-2">
                   <select name="{{ $field }}" x-model="form.{{ $field }}"
-                          class="text-xs border border-gray-300 rounded-md px-2 py-1 focus:ring-blue-500 focus:border-blue-500 w-16">
+                          class="text-xs border border-gray-300 rounded-md px-2 py-1 focus:ring-blue-500 focus:border-blue-500 w-20">
                     <option value="0">Tidak</option>
                     <option value="1">Ya</option>
                   </select>
@@ -478,7 +478,7 @@
   <script>
   const _routeStore       = '{{ route('transaction.surat-jalan-non-nfc.store') }}';
   const _routeFormData    = '{{ route('transaction.surat-jalan-non-nfc.form-data') }}';
-  const _routeCheckPlot   = '{{ route('transaction.koreksi-sj-panen.check-plot') }}';
+  const _routePlotData    = '{{ route('transaction.surat-jalan-non-nfc.plot-data') }}';
   const _routeMarkPrinted = '{{ route('transaction.surat-jalan-non-nfc.mark-printed') }}';
   const _routeAttachment  = '{{ route('transaction.surat-jalan-non-nfc.attachment', ':id') }}';
 
@@ -569,11 +569,14 @@
         this.loadingPlot = true;
         this.plotValid   = null;
         try {
-          const res  = await fetch(`${_routeCheckPlot}?plot=${encodeURIComponent(plot)}`, {
+          const res  = await fetch(`${_routePlotData}?plot=${encodeURIComponent(plot)}`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
           });
           const data = await res.json();
           this.plotValid = data.exists === true;
+          if (data.exists && data.varietas) {
+            this.form.varietas = data.varietas;
+          }
         } catch (e) { this.plotValid = null; }
         finally     { this.loadingPlot = false; }
       },
