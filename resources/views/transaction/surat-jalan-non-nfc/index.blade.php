@@ -774,15 +774,28 @@
       },
 
       async writeToCharacteristic(data) {
-        const CHUNK = 512;
+        const CHUNK = 256;
+
+        // Temukan akhir blok raster QR (GS v 0 = 1D 76 30 00) untuk drain delay
+        let rasterEndIdx = -1;
+        for (let i = 0; i < data.length - 7; i++) {
+          if (data[i]===0x1D && data[i+1]===0x76 && data[i+2]===0x30 && data[i+3]===0x00) {
+            const wBytes = data[i+4] + (data[i+5] << 8);
+            const rows   = data[i+6] + (data[i+7] << 8);
+            rasterEndIdx = i + 8 + wBytes * rows;
+            break;
+          }
+        }
+
         for (let i = 0; i < data.length; i += CHUNK) {
           const chunk = data.slice(i, i + CHUNK);
-          if (this.btCharacteristic.properties.writeWithoutResponse) {
-            await this.btCharacteristic.writeValueWithoutResponse(chunk);
-          } else {
-            await this.btCharacteristic.writeValue(chunk);
+          // writeValue (with response) lebih reliable untuk printer SPP
+          await this.btCharacteristic.writeValue(chunk);
+          await new Promise(r => setTimeout(r, 20));
+          // Drain 500ms tepat setelah seluruh raster terkirim
+          if (rasterEndIdx > 0 && i < rasterEndIdx && (i + CHUNK) >= rasterEndIdx) {
+            await new Promise(r => setTimeout(r, 500));
           }
-          await new Promise(r => setTimeout(r, 60));
         }
       },
 
@@ -877,7 +890,12 @@
         try {
           addBytes(ALIGN_CENTER);
           addBytes(this.buildQRRaster(this.buildQRData(sj)));
-          bytes.push(LF);
+          // Post-raster recovery — sama seperti softFlushAfterGraphic() di Android
+          bytes.push(0x0A);                          // LF — release print head
+          addBytes([0x1B, 0x64, 0x01]);              // ESC d 1 — force head advance
+          addBytes([0x1B, 0x32]);                    // restore default line spacing
+          addBytes([0x1D, 0x21, 0x00]);              // GS ! 0 — normal char size
+          addBytes([0x1B, 0x21, 0x00]);              // ESC ! 0 — cancel double-size
           addBytes(ALIGN_CENTER); addBytes(BOLD_OFF);
           addText('Scan untuk detail lengkap'); bytes.push(LF);
           bytes.push(LF);
@@ -1050,7 +1068,8 @@
         const mc         = qr.getModuleCount();
         const quiet      = 4;
         const total      = mc + quiet * 2;
-        const scale      = 10;
+        // Adaptive scale: max 320px (safe margin for 80mm printer any firmware), min 3px/module
+        const scale      = Math.max(3, Math.min(7, Math.floor(320 / total)));
         const totalPx    = total * scale;
         const widthBytes = Math.ceil(totalPx / 8);
         const raster     = new Uint8Array(widthBytes * totalPx);
