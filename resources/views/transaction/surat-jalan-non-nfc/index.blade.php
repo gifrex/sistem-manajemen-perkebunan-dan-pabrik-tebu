@@ -1073,7 +1073,7 @@
         const quiet   = 4;
         const total   = mc + quiet * 2;
         // Target max 200px — ~3.5KB raster, aman via BLE, min 2px/module
-        const scale   = Math.max(2, Math.min(5, Math.floor(200 / total)));
+        const scale   = Math.max(2, Math.min(5, Math.floor(340 / total)));
         const totalPx = total * scale;
         // Width HARUS kelipatan 8 agar raster alignment benar
         const widthPx    = Math.ceil(totalPx / 8) * 8;
