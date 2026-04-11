@@ -246,12 +246,12 @@
             <div class="grid grid-cols-4 gap-2">
               <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">No. Kendaraan</label>
-                <input type="text" name="nomorkendaraan" x-model="form.nomorkendaraan" maxlength="20"
+                <input type="text" name="nomorkendaraan" x-model="form.nomorkendaraan" maxlength="6"
                        class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500" />
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">No. Polisi <span class="text-red-500">*</span></label>
-                <input type="text" name="nomorpolisi" x-model="form.nomorpolisi" maxlength="20"
+                <input type="text" name="nomorpolisi" x-model="form.nomorpolisi" maxlength="11"
                        class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500" />
                 <p x-show="errors.nomorpolisi" class="text-red-500 text-[10px] mt-0.5" x-text="errors.nomorpolisi"></p>
               </div>
@@ -456,18 +456,58 @@
         </div>
       </div>
 
-      <div class="px-5 py-3 border-t flex justify-end gap-2 bg-gray-50 rounded-b-xl">
-        <button @click="showPrint = false" class="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
-          Tutup
-        </button>
-        <button @click="doPrint()"
-                :disabled="!btConnected || printing"
-                class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2">
-          <svg x-show="printing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+      <div class="px-5 py-3 border-t flex justify-between gap-2 bg-gray-50 rounded-b-xl">
+        <button @click="openPreview()" class="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
           </svg>
-          <span x-text="printing ? 'Mencetak...' : 'Cetak'"></span>
+          Preview
+        </button>
+        <div class="flex gap-2">
+          <button @click="showPrint = false" class="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+            Tutup
+          </button>
+          <button @click="doPrint()"
+                  :disabled="!btConnected || printing"
+                  class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2">
+            <svg x-show="printing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            <span x-text="printing ? 'Mencetak...' : 'Cetak'"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {{-- ===== MODAL PRINT PREVIEW ===== --}}
+  <div x-show="showPreview" x-cloak
+       class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+       @keydown.escape.window="showPreview = false">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 max-h-[90vh] flex flex-col" @click.stop>
+      <div class="flex items-center justify-between px-5 py-3 border-b flex-shrink-0">
+        <h2 class="text-sm font-semibold text-gray-800">Preview Struk Cetak</h2>
+        <button @click="showPreview = false" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="overflow-y-auto flex-1 p-4">
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 shadow-inner">
+          <pre class="font-mono text-[11px] leading-snug text-gray-800 whitespace-pre-wrap" x-html="previewHtml"></pre>
+          <div class="flex justify-center my-2">
+            <canvas id="qrPreviewCanvas" style="image-rendering:pixelated;width:160px;height:160px;"></canvas>
+          </div>
+          <pre class="font-mono text-[11px] leading-snug text-gray-800 whitespace-pre-wrap" x-html="previewHtmlAfterQr"></pre>
+        </div>
+        <p class="text-[10px] text-gray-400 text-center mt-2">* Simulasi tampilan thermal printer 32 karakter</p>
+      </div>
+      <div class="px-5 py-3 border-t flex justify-end bg-gray-50 rounded-b-xl flex-shrink-0">
+        <button @click="showPreview = false" class="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+          Tutup
         </button>
       </div>
     </div>
@@ -481,6 +521,7 @@
   const _routePlotData    = '{{ route('transaction.surat-jalan-non-nfc.plot-data') }}';
   const _routeMarkPrinted = '{{ route('transaction.surat-jalan-non-nfc.mark-printed') }}';
   const _routeAttachment  = '{{ route('transaction.surat-jalan-non-nfc.attachment', ':id') }}';
+  const _companycode      = '{{ Session::get('companycode') }}';
 
   function sjNonNfcData() {
     return {
@@ -488,6 +529,9 @@
       showModal:   false,
       showDetail:  false,
       showPrint:   false,
+      showPreview: false,
+      previewHtml: '',
+      previewHtmlAfterQr: '',
       submitting:  false,
       loadingPlot: false,
       plotValid:   null,
@@ -829,6 +873,14 @@
         addBytes(BOLD_OFF);
         bytes.push(LF);
 
+        // QR Code (native ESC/POS GS ( k — printer renders internally)
+        addBytes(ALIGN_CENTER);
+        addBytes(this.buildQRNative(this.buildQRData(sj)));
+        bytes.push(LF);
+        addBytes(ALIGN_CENTER); addBytes(BOLD_OFF);
+        addText('Scan untuk detail lengkap'); bytes.push(LF);
+        bytes.push(LF);
+
         // Separator
         addBytes(ALIGN_LEFT);
         addText(SEP); CRLF();
@@ -874,7 +926,149 @@
 
         return new Uint8Array(bytes);
       },
+
+      openPreview() {
+        const sj = this.printItem;
+        if (!sj) return;
+
+        const esc = t => String(t ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const W = 32;
+        const center = t => { const s=String(t??''); const pad=Math.max(0,Math.floor((W-s.length)/2)); return ' '.repeat(pad)+s; };
+        const sep = '-'.repeat(W);
+        const label = (l,v) => (l+' ').padEnd(16,' ')+': '+(v??'-');
+        const yesNo = v => v==1?'Ya':'Tidak';
+        const ln = (lines, t) => lines.push(esc(t??''));
+
+        // Before-QR section
+        const before = [];
+        ln(before, center('SURAT JALAN'));
+        ln(before, '');
+        ln(before, center('[NON-NFC / WEB INPUT]'));
+        ln(before, '');
+        ln(before, center('Nomor :'));
+        ln(before, center(sj.suratjalanno??'-'));
+        ln(before, '');
+        ln(before, center('No. Polisi :'));
+        ln(before, center(sj.nomorpolisi??'-'));
+        ln(before, '');
+        this.previewHtml = before.join('\n');
+
+        // After-QR section
+        const after = [];
+        ln(after, center('Scan untuk detail lengkap'));
+        ln(after, '');
+        ln(after, sep);
+        ln(after, '');
+        ln(after, center('DETAIL DATA'));
+        ln(after, '');
+        ln(after, label('Mandor',       sj.mandorid));
+        ln(after, label('Plot',         sj.plot));
+        ln(after, label('Varietas',     sj.varietas));
+        ln(after, label('Kategori',     sj.kategori));
+        ln(after, label('Umur',         sj.umur ? sj.umur+' bulan' : null));
+        ln(after, label('Kode Tebang',  sj.kodetebang));
+        ln(after, label('Langsir',      yesNo(sj.langsir)));
+        ln(after, label('Tebu Sulit',   yesNo(sj.tebusulit)));
+        ln(after, label('Kend. Kontr.', yesNo(sj.kendaraankontraktor)));
+        ln(after, label('Muat GL',      yesNo(sj.muatgl)));
+        ln(after, label('Tgl Tebang',   sj.tanggaltebang ? sj.tanggaltebang.split('T')[0] : null));
+        ln(after, label('Tgl Angkut',   sj.tanggalangkut ? sj.tanggalangkut.split('T')[0] : null));
+        ln(after, label('No Kendaraan', sj.nomorkendaraan));
+        ln(after, label('No Polisi',    sj.nomorpolisi));
+        ln(after, label('Nama Supir',   sj.namasupir));
+        ln(after, label('Kontraktor',   sj.namakontraktor));
+        ln(after, label('Sub Kontr.',   sj.namasubkontraktor));
+        ln(after, label('Dibuat Oleh',  sj.nonnfc_createdby));
+        ln(after, '');
+        ln(after, sep);
+        ln(after, '');
+        ln(after, center('DiPrint: '+new Date().toLocaleString('id-ID')));
+        ln(after, center('(Web - Non NFC)'));
+        this.previewHtmlAfterQr = after.join('\n');
+
+        this.showPreview = true;
+
+        // Draw QR on canvas after modal renders
+        this.$nextTick(() => {
+          try {
+            const canvas = document.getElementById('qrPreviewCanvas');
+            if (!canvas || typeof qrcode === 'undefined') return;
+            const qr = qrcode(0, 'M');
+            qr.addData(this.buildQRData(sj));
+            qr.make();
+            const mc = qr.getModuleCount();
+            const quiet = 4;
+            const total = mc + quiet * 2;
+            const scale = Math.floor(160 / total) || 1;
+            canvas.width  = total * scale;
+            canvas.height = total * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000000';
+            for (let r = 0; r < mc; r++) {
+              for (let c = 0; c < mc; c++) {
+                if (qr.isDark(r, c)) {
+                  ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+                }
+              }
+            }
+          } catch(e) { console.warn('QR preview draw failed', e); }
+        });
+      },
+
+      buildQRData(sj) {
+        return [
+          _companycode,
+          sj.suratjalanno   ?? '',
+          sj.plot           ?? '',
+          sj.varietas       ?? '',
+          sj.kategori       ?? '',
+          sj.umur           ?? '',
+          sj.kodetebang     ?? '',
+          sj.langsir        ?? '0',
+          sj.tebusulit      ?? '0',
+          sj.kendaraankontraktor ?? '0',
+          sj.muatgl         ?? '0',
+          sj.tanggaltebang  ?? '',
+          sj.tanggalangkut  ?? '',
+          sj.nomorkendaraan ?? '',
+          sj.nomorpolisi    ?? '',
+          sj.namasupir      ?? '',
+          sj.namakontraktor ?? '',
+          sj.namasubkontraktor ?? '',
+          sj.mandorid       ?? '',
+        ].join('::');
+      },
+
+      buildQRNative(data) {
+        const enc      = new TextEncoder();
+        const dataBytes = enc.encode(data);
+        const n        = dataBytes.length;
+        const bytes    = [];
+        const add      = b => b.forEach(v => bytes.push(v));
+
+        // 1. Select model 2
+        add([0x1D,0x28,0x6B, 0x04,0x00, 0x31,0x41,0x32,0x00]);
+
+        // 2. Set module size (6 = readable on 80mm paper)
+        add([0x1D,0x28,0x6B, 0x03,0x00, 0x31,0x43,0x06]);
+
+        // 3. Error correction level M
+        add([0x1D,0x28,0x6B, 0x03,0x00, 0x31,0x45,0x32]);
+
+        // 4. Store data  (pL pH = n+3)
+        const sLen = n + 3;
+        add([0x1D,0x28,0x6B, sLen & 0xFF, (sLen >> 8) & 0xFF, 0x31,0x50,0x30]);
+        dataBytes.forEach(v => bytes.push(v));
+
+        // 5. Print
+        add([0x1D,0x28,0x6B, 0x03,0x00, 0x31,0x51,0x30]);
+
+        return new Uint8Array(bytes);
+      },
     };
   }
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </x-layout>
