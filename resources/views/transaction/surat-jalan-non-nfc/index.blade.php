@@ -171,7 +171,7 @@
               <p x-show="errors.mandorid" class="text-red-500 text-[11px] mt-0.5" x-text="errors.mandorid"></p>
             </div>
             <div class="col-span-3">
-              <label class="block text-xs font-medium text-gray-700 mb-1">Tgl Angkut</label>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Tgl Angkut <span class="text-red-500">*</span></label>
               <input type="datetime-local" name="tanggalangkut" x-model="form.tanggalangkut"
                      class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500" />
             </div>
@@ -207,7 +207,7 @@
                 <p x-show="errors.varietas" class="text-red-500 text-[10px] mt-0.5" x-text="errors.varietas"></p>
               </div>
               <div class="col-span-1">
-                <label class="block text-xs font-medium text-gray-700 mb-1">Kategori</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Kategori <span class="text-red-500">*</span></label>
                 <select name="kategori" x-model="form.kategori"
                         class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
                   <option value="">-- pilih --</option>
@@ -218,7 +218,7 @@
                 </select>
               </div>
               <div class="col-span-1">
-                <label class="block text-xs font-medium text-gray-700 mb-1">Umur (bln)</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Umur (bln) <span class="text-red-500">*</span></label>
                 <select name="umur" x-model="form.umur"
                         class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
                   <option value="">--</option>
@@ -228,12 +228,12 @@
                 </select>
               </div>
               <div class="col-span-1">
-                <label class="block text-xs font-medium text-gray-700 mb-1">Kode Tebang</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Kode Tebang <span class="text-red-500">*</span></label>
                 <input type="text" name="kodetebang" x-model="form.kodetebang" maxlength="15"
                        class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500" />
               </div>
               <div class="col-span-1">
-                <label class="block text-xs font-medium text-gray-700 mb-1">Tgl Tebang</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Tgl Tebang <span class="text-red-500">*</span></label>
                 <input type="date" name="tanggaltebang" x-model="form.tanggaltebang"
                        class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500" />
               </div>
@@ -245,7 +245,7 @@
             <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Kendaraan & Personil</p>
             <div class="grid grid-cols-4 gap-2">
               <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">No. Kendaraan</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">No. Kendaraan <span class="text-red-500">*</span></label>
                 <input type="text" name="nomorkendaraan" x-model="form.nomorkendaraan" maxlength="6"
                        class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500" />
               </div>
@@ -265,7 +265,7 @@
                 {{-- placeholder for alignment --}}
               </div>
               <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Kontraktor</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Kontraktor <span class="text-red-500">*</span></label>
                 <select name="namakontraktor" x-model="form.namakontraktor"
                         class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
                   <option value="">-- pilih --</option>
@@ -275,7 +275,7 @@
                 </select>
               </div>
               <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Sub Kontraktor</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Sub Kontraktor <span class="text-red-500">*</span></label>
                 <select name="namasubkontraktor" x-model="form.namasubkontraktor"
                         class="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
                   <option value="">-- pilih --</option>
@@ -630,12 +630,20 @@
         this.generalError = null;
 
         // Client-side required
-        if (!this.form.suratjalanno.trim()) { this.errors.suratjalanno = 'Nomor SJ wajib diisi'; return; }
-        if (!this.form.mandorid)            { this.errors.mandorid = 'Mandor wajib dipilih'; return; }
-        if (!this.form.plot.trim())         { this.errors.plot = 'Plot wajib diisi'; return; }
-        if (!this.form.varietas.trim())     { this.errors.varietas = 'Varietas wajib diisi'; return; }
-        if (!this.form.nomorpolisi.trim())  { this.errors.nomorpolisi = 'No. Polisi wajib diisi'; return; }
-        if (!this.form.namasupir.trim())    { this.errors.namasupir = 'Nama Supir wajib diisi'; return; }
+        if (!this.form.suratjalanno.trim())     { this.errors.suratjalanno = 'Wajib diisi'; return; }
+        if (!this.form.mandorid)                { this.errors.mandorid = 'Wajib dipilih'; return; }
+        if (!this.form.tanggalangkut)           { this.generalError = 'Tgl Angkut wajib diisi'; return; }
+        if (!this.form.plot.trim())             { this.errors.plot = 'Wajib diisi'; return; }
+        if (!this.form.varietas.trim())         { this.errors.varietas = 'Varietas wajib diisi'; return; }
+        if (!this.form.kategori)                { this.generalError = 'Kategori wajib dipilih'; return; }
+        if (!this.form.umur)                    { this.generalError = 'Umur wajib dipilih'; return; }
+        if (!this.form.kodetebang?.trim())      { this.generalError = 'Kode Tebang wajib diisi'; return; }
+        if (!this.form.tanggaltebang)           { this.generalError = 'Tgl Tebang wajib diisi'; return; }
+        if (!this.form.nomorkendaraan?.trim())  { this.generalError = 'No. Kendaraan wajib diisi'; return; }
+        if (!this.form.nomorpolisi.trim())      { this.errors.nomorpolisi = 'Wajib diisi'; return; }
+        if (!this.form.namasupir.trim())        { this.errors.namasupir = 'Wajib diisi'; return; }
+        if (!this.form.namakontraktor)          { this.generalError = 'Kontraktor wajib dipilih'; return; }
+        if (!this.form.namasubkontraktor)       { this.generalError = 'Sub Kontraktor wajib dipilih'; return; }
 
         if (this.plotValid !== true) {
           this.errors.plot = 'Plot belum divalidasi. Klik tombol "Cek".';
@@ -1072,8 +1080,8 @@
         const mc      = qr.getModuleCount();
         const quiet   = 4;
         const total   = mc + quiet * 2;
-        // Target max 200px — ~3.5KB raster, aman via BLE, min 2px/module
-        const scale   = Math.max(2, Math.min(5, Math.floor(340 / total)));
+        const maxPx = 376; // 47 bytes × 8 = 376, aman di bawah 384
+        const scale = Math.max(3, Math.floor(maxPx / total));
         const totalPx = total * scale;
         // Width HARUS kelipatan 8 agar raster alignment benar
         const widthPx    = Math.ceil(totalPx / 8) * 8;
