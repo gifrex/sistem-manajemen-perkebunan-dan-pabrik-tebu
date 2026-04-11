@@ -774,9 +774,11 @@
       },
 
       async writeToCharacteristic(data) {
-        const CHUNK = 256;
+        const CHUNK        = 100;
+        const DELAY        = 30;
+        const RASTER_DRAIN = 800;
 
-        // Temukan akhir blok raster QR (GS v 0 = 1D 76 30 00) untuk drain delay
+        // Cari akhir blok raster (GS v 0 = 1D 76 30 00)
         let rasterEndIdx = -1;
         for (let i = 0; i < data.length - 7; i++) {
           if (data[i]===0x1D && data[i+1]===0x76 && data[i+2]===0x30 && data[i+3]===0x00) {
@@ -789,12 +791,14 @@
 
         for (let i = 0; i < data.length; i += CHUNK) {
           const chunk = data.slice(i, i + CHUNK);
-          // writeValue (with response) lebih reliable untuk printer SPP
-          await this.btCharacteristic.writeValue(chunk);
-          await new Promise(r => setTimeout(r, 20));
-          // Drain 500ms tepat setelah seluruh raster terkirim
+          try {
+            await this.btCharacteristic.writeValue(chunk);
+          } catch (e) {
+            await this.btCharacteristic.writeValueWithoutResponse(chunk);
+          }
+          await new Promise(r => setTimeout(r, DELAY));
           if (rasterEndIdx > 0 && i < rasterEndIdx && (i + CHUNK) >= rasterEndIdx) {
-            await new Promise(r => setTimeout(r, 500));
+            await new Promise(r => setTimeout(r, RASTER_DRAIN));
           }
         }
       },
@@ -1062,16 +1066,18 @@
       },
 
       buildQRRaster(data) {
-        const qr = qrcode(0, 'M');
+        const qr = qrcode(0, 'L');
         qr.addData(data);
         qr.make();
-        const mc         = qr.getModuleCount();
-        const quiet      = 4;
-        const total      = mc + quiet * 2;
-        // Adaptive scale: max 320px (safe margin for 80mm printer any firmware), min 3px/module
-        const scale      = Math.max(3, Math.min(7, Math.floor(320 / total)));
-        const totalPx    = total * scale;
-        const widthBytes = Math.ceil(totalPx / 8);
+        const mc      = qr.getModuleCount();
+        const quiet   = 4;
+        const total   = mc + quiet * 2;
+        // Target max 200px — ~3.5KB raster, aman via BLE, min 2px/module
+        const scale   = Math.max(2, Math.min(5, Math.floor(200 / total)));
+        const totalPx = total * scale;
+        // Width HARUS kelipatan 8 agar raster alignment benar
+        const widthPx    = Math.ceil(totalPx / 8) * 8;
+        const widthBytes = widthPx / 8;
         const raster     = new Uint8Array(widthBytes * totalPx);
 
         for (let py = 0; py < totalPx; py++) {
@@ -1081,6 +1087,7 @@
             for (let bit = 0; bit < 8; bit++) {
               const px  = bIdx * 8 + bit;
               const mc2 = Math.floor(px / scale) - quiet;
+              // px < widthPx (bukan totalPx) karena row sudah di-pad ke multiple of 8
               const dark = (mr >= 0 && mr < mc && mc2 >= 0 && mc2 < mc && px < totalPx)
                            ? qr.isDark(mr, mc2) : false;
               byte = (byte << 1) | (dark ? 1 : 0);
