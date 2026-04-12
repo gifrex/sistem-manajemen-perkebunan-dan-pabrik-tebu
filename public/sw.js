@@ -1,5 +1,5 @@
 // SW.js - Fixed version untuk production dengan subdirectory
-const CACHE_VERSION = 'v10';
+const CACHE_VERSION = 'v11';
 const CACHE_NAME = `sb-tebu-${CACHE_VERSION}`;
 const STATIC_CACHE = `sb-tebu-static-${CACHE_VERSION}`;
 
@@ -212,6 +212,57 @@ self.addEventListener('fetch', event => {
         );
         return;
     }
+});
+
+// =============================================
+// INSTALL: Pre-cache offline fallback assets
+// =============================================
+self.addEventListener('install', event => {
+    logSW('SW installing, version:', CACHE_VERSION);
+    event.waitUntil(
+        caches.open(STATIC_CACHE)
+            .then(cache => {
+                logSW('Caching static assets:', STATIC_ASSETS);
+                // addAll gagal total jika salah satu asset 404
+                // pakai add satu-satu supaya tidak blocking
+                return Promise.allSettled(
+                    STATIC_ASSETS.map(asset =>
+                        cache.add(asset).catch(err => {
+                            logSW(`Failed to cache asset: ${asset}`, err.message, 'warn');
+                        })
+                    )
+                );
+            })
+            .then(() => {
+                logSW('Install complete, calling skipWaiting');
+                return self.skipWaiting();
+            })
+    );
+});
+
+// =============================================
+// ACTIVATE: Cleanup old caches, claim clients
+// =============================================
+self.addEventListener('activate', event => {
+    logSW('SW activating, cleaning old caches...');
+    event.waitUntil(
+        caches.keys()
+            .then(cacheNames => {
+                const validCaches = [CACHE_NAME, STATIC_CACHE];
+                return Promise.all(
+                    cacheNames
+                        .filter(name => name.startsWith('sb-tebu-') && !validCaches.includes(name))
+                        .map(name => {
+                            logSW('Deleting old cache:', name);
+                            return caches.delete(name);
+                        })
+                );
+            })
+            .then(() => {
+                logSW('Activate complete, claiming clients');
+                return self.clients.claim();
+            })
+    );
 });
 
 // Tambahkan message handler untuk debugging
