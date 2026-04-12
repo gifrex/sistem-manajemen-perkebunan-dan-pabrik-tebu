@@ -62,10 +62,10 @@
                                 <th class="px-3 py-2 text-left">No. Absen</th>
                                 <th class="px-3 py-2 text-left">ID Tenaga Kerja</th>
                                 <th class="px-3 py-2 text-left">Nama</th>
-                                <th class="px-3 py-2 text-left">NIK</th>
-                                <th class="px-3 py-2 text-center">Gender</th>
                                 <th class="px-3 py-2 text-center">Jenis TK</th>
-                                <th class="px-3 py-2 text-left">Mandor</th>
+                                <th class="px-3 py-2 text-center">Jam Masuk</th>
+                                <th class="px-3 py-2 text-left">ID Mandor</th>
+                                <th class="px-3 py-2 text-left">Nama Mandor</th>
                                 <th class="px-3 py-2 text-center">Status</th>
                             </tr>
                         </thead>
@@ -80,18 +80,23 @@
                                     </td>
                                     <td class="border px-3 py-2 font-mono text-xs" x-text="person.tenagakerjaid"></td>
                                     <td class="border px-3 py-2" x-text="person.nama"></td>
-                                    <td class="border px-3 py-2 font-mono text-xs" x-text="person.nik || '-'"></td>
-                                    <td class="border px-3 py-2 text-center" x-text="person.gender === 'L' ? 'Laki-laki' : 'Perempuan'"></td>
                                     <td class="border px-3 py-2 text-center" x-text="{
                                         1: 'Harian',
                                         2: 'Borongan',
                                         3: 'Operator',
                                         4: 'Helper'
-                                    }[person.jenistenagakerja] || 'Unknown'"></td>
-                                    <td class="border px-3 py-2" x-text="person.mandorid"></td>
+                                    }[person.jenistenagakerja] || '-'"></td>
+                                    <td class="border px-3 py-2 text-center font-mono text-xs" x-text="person.jam_masuk ? person.jam_masuk.substring(0, 5) : '-'"></td>
+                                    <td class="border px-3 py-2 font-mono text-xs" x-text="person.mandorid"></td>
+                                    <td class="border px-3 py-2" x-text="person.mandor_name || '-'"></td>
                                     <td class="border px-3 py-2 text-center">
-                                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 font-medium">
-                                            APPROVED
+                                        <span class="px-2 py-1 text-xs rounded-full font-medium"
+                                              :class="{
+                                                  'bg-green-100 text-green-800': person.approvalstatus === '1',
+                                                  'bg-red-100 text-red-800':    person.approvalstatus === '0',
+                                                  'bg-yellow-100 text-yellow-800': person.approvalstatus !== '1' && person.approvalstatus !== '0'
+                                              }"
+                                              x-text="person.approvalstatus === '1' ? 'Approved' : person.approvalstatus === '0' ? 'Rejected' : 'Pending'">
                                         </span>
                                     </td>
                                 </tr>
