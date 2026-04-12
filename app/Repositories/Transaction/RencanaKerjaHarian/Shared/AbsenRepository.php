@@ -42,6 +42,7 @@ class AbsenRepository
         }
 
         return $query->select([
+                'h.absenno',
                 'h.mandorid',
                 'l.tenagakerjaid',
                 't.nama',
