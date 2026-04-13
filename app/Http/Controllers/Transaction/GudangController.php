@@ -1331,7 +1331,7 @@ public function submit(Request $request)
     }
     Cache::put($lockKey, true, 20);
     //tambahan locked
-    $releaseLockAndBack = function(string $type, string $msg, int $step) use ($lockKey) {
+    $releaseLockAndBack = function(string $type, string $msg, int $step) use ($lockKey, $request) {
         Cache::forget($lockKey);
         Log::warning('SUBMIT_EARLY_EXIT', [
             'step' => $step,
@@ -1339,9 +1339,9 @@ public function submit(Request $request)
             'type' => $type,
             'msg' => $msg,
             'companycode' => session('companycode'),
-            'rkhno' => request()->rkhno ?? null,
+            'rkhno' => $request->rkhno ?? null,
         ]);
-        return back()->with($type, $msg);
+        return redirect()->route('transaction.gudang.detail', ['rkhno' => $request->rkhno])->with($type, $msg);
     };
     
     //
@@ -1654,7 +1654,7 @@ public function submit(Request $request)
 
             if (!$approvalMaster) {
                 Cache::forget($lockKey);
-                return back()->with('error', 'Approval master "Use Material" belum di-setup');
+                return redirect()->route('transaction.gudang.detail', ['rkhno' => $request->rkhno])->with('error', 'Approval master "Use Material" belum di-setup');
             }
 
             $approvalNo = $request->rkhno; // approvalno = rkhno
@@ -1669,7 +1669,7 @@ public function submit(Request $request)
                 if ($exists) {
                     DB::rollBack();
                     Cache::forget($lockKey);
-                    return back()->with('warning', "RKH {$request->rkhno} sudah punya approval. Tidak boleh buat lagi.");
+                    return redirect()->route('transaction.gudang.detail', ['rkhno' => $request->rkhno])->with('warning', "RKH {$request->rkhno} sudah punya approval. Tidak boleh buat lagi.");
                 }
 
 
@@ -1725,13 +1725,13 @@ public function submit(Request $request)
 
             // optional: tampilkan alasan ringkas
             $msg = "Butuh approval. ApprovalNo: {$approvalNo}";
-            return back()->with('warning', $msg);
+            return redirect()->route('transaction.gudang.detail', ['rkhno' => $request->rkhno])->with('warning', $msg);
 
         } catch (\Exception $e) {
             DB::rollBack();
             Cache::forget($lockKey);
             Log::error('Create approval failed', ['error' => $e->getMessage(),'trace' => $e->getTraceAsString(),]);
-            return back()->with('error', 'Gagal membuat approval: ' . $e->getMessage());
+            return redirect()->route('transaction.gudang.detail', ['rkhno' => $request->rkhno])->with('error', 'Gagal membuat approval: ' . $e->getMessage());
         }
     }
     //
@@ -1824,7 +1824,7 @@ public function submit(Request $request)
             'message' => $e->getMessage(),
             'trace' => $e->getTraceAsString()
         ]);
-        return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+        return redirect()->route('transaction.gudang.detail', ['rkhno' => $request->rkhno])->with('error', 'Error: ' . $e->getMessage());
     }
 
     // ✅ API Call - SETELAH COMMIT
@@ -2057,7 +2057,7 @@ public function submit(Request $request)
             'rkhno' => $request->rkhno
         ]);
         
-        return redirect()->back()->with('warning', 'Data tersimpan, tapi error pada proses API: ' . $e->getMessage());
+        return redirect()->route('transaction.gudang.detail', ['rkhno' => $request->rkhno])->with('warning', 'Data tersimpan, tapi error pada proses API: ' . $e->getMessage());
     }
 }
 
