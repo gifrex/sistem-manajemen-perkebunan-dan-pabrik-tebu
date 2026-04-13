@@ -1,0 +1,62 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: tebu-dev
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+      - "5173:5173" # Vite HMR
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Jakarta
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor # exclude vendor dari mount (pakai container's vendor)
+      - /var/www/html/node_modules # exclude node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - tebu-dev
+
+  db:
+    image: mariadb:11
+    container_name: tebu-db
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=katmai
+      - MYSQL_DATABASE=tebu
+      - TZ=Asia/Jakarta
+    ports:
+      - "3306:3306"
+    volumes:
+      - tebu-db-data:/var/lib/mysql
+      - ./docker/dev/init-db:/docker-entrypoint-initdb.d # dump SQL masuk sini
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tebu-dev
+
+  redis:
+    image: redis:7-alpine
+    container_name: tebu-redis
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Jakarta
+    networks:
+      - tebu-dev
+
+volumes:
+  tebu-db-data:
+
+networks:
+  tebu-dev:
+    driver: bridge
