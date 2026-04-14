@@ -155,14 +155,15 @@ class GudangController extends Controller
                     ->orWhere('u.itemcode', 'like', "%{$search}%");
                 });
             })
-            ->groupBy('u.itemcode', 'u.nouse', 'b.rkhdate', 'hg.activitycode', 'hg.herbisidagroupname')
+            ->groupBy('u.itemcode', 'u.nouse', 'b.rkhdate', 'hg.activitycode', 'hg.herbisidagroupname', 'u.costcenter')
             ->selectRaw("
                 u.itemcode,
                 u.nouse as docno,
                 b.rkhdate as dt,
                 SUM(u.qty) as qty,
                 hg.activitycode,
-                hg.herbisidagroupname
+                hg.herbisidagroupname,
+                u.costcenter
             ")
             ->get()
             ->map(function ($r) use ($itemMaster) {
@@ -179,6 +180,7 @@ class GudangController extends Controller
                     'keluar'             => (float) $r->qty,
                     'activitycode'       => $r->activitycode,
                     'herbisidagroupname' => $r->herbisidagroupname,
+                    'costcenter'         => $r->costcenter,
                 ];
             });
 
@@ -207,14 +209,15 @@ class GudangController extends Controller
                     ->orWhere('u.itemcode', 'like', "%{$search}%");
                 });
             })
-            ->groupBy('u.itemcode', 'u.noretur', 'b.rkhdate', 'hg.activitycode', 'hg.herbisidagroupname')
+            ->groupBy('u.itemcode', 'u.noretur', 'b.rkhdate', 'hg.activitycode', 'hg.herbisidagroupname', 'u.costcenter')
             ->selectRaw("
                 u.itemcode,
                 u.noretur as docno,
                 b.rkhdate as dt,
                 SUM(u.qtyretur) as qty,
                 hg.activitycode,
-                hg.herbisidagroupname
+                hg.herbisidagroupname,
+                u.costcenter
             ")
             ->get()
             ->map(function ($r) use ($itemMaster) {
@@ -231,6 +234,7 @@ class GudangController extends Controller
                     'keluar'             => null,
                     'activitycode'       => $r->activitycode,
                     'herbisidagroupname' => $r->herbisidagroupname,
+                    'costcenter'         => $r->costcenter,
                 ];
             });
 
@@ -267,21 +271,30 @@ class GudangController extends Controller
                 $first = $actRows->first();
                 $rows = $actRows->map(function ($ev) {
                     return (object) [
-                        'tgl'      => $ev->dt,
-                        'ket'      => $ev->docno,
-                        'masuk'    => $ev->masuk,
-                        'keluar'   => $ev->keluar,
-                        'type'     => $ev->type,
-                        'itemcode' => $ev->itemcode,
-                        'itemname' => $ev->itemname,
-                        'unit'     => $ev->unit,
+                        'tgl'        => $ev->dt,
+                        'ket'        => $ev->docno,
+                        'masuk'      => $ev->masuk,
+                        'keluar'     => $ev->keluar,
+                        'type'       => $ev->type,
+                        'itemcode'   => $ev->itemcode,
+                        'itemname'   => $ev->itemname,
+                        'unit'       => $ev->unit,
+                        'costcenter' => $ev->costcenter,
                     ];
                 })->values();
+
+                // Deteksi conflict: itemcode sama tapi costcenter beda dalam 1 activity block
+                $conflictItemcodes = $rows
+                    ->groupBy('itemcode')
+                    ->filter(fn($grp) => $grp->pluck('costcenter')->filter()->unique()->count() > 1)
+                    ->keys()
+                    ->all();
                 
                 $report[] = (object) [
                     'activitycode'       => $first->activitycode ?? '-',
                     'herbisidagroupname' => $first->herbisidagroupname ?? '-',
                     'rows'               => $rows,
+                    'conflictItemcodes'  => $conflictItemcodes,
                 ];
             }
 

@@ -1228,12 +1228,11 @@ function getRingColor(d) {
         
 
     // ===== PROGRESS WIDGET =====
-    function updatePanenProgressWidget() {
-        let totalSiapReady = 0, totalPanen = 0, totalAll = 0;
+    function updatePanenProgressWidget(harapanOverride) {
+        let totalSiapReady = 0, totalPanen = 0;
         Object.values(plotActivityDetails).forEach(d => {
             const luas  = parseFloat(d.luas_rkh || 0);
             const color = getPlotColor(d);
-            totalAll += luas;
             if (d.is_panen)              totalPanen     += luas;
             else if (color === '#fb923c' || color === '#3b82f6') totalSiapReady += luas;
         });
@@ -1241,14 +1240,17 @@ function getRingColor(d) {
         const STORAGE_KEY = 'panen_snapshots_{{ session("companycode") ?? "default" }}';
         const snapshots   = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         const lastTarget  = snapshots.length > 0 ? parseFloat(snapshots[snapshots.length-1].harapan_ha || 0) : 0;
-        const harapan     = lastTarget > 0 ? lastTarget : totalAll;
+        const harapan     = (harapanOverride > 0) ? harapanOverride : lastTarget;
 
-        document.getElementById('widget-harapan').textContent   = lastTarget > 0 ? lastTarget.toFixed(2) + ' HA' : '— HA';
+        document.getElementById('widget-harapan').textContent   = harapan > 0 ? harapan.toFixed(2) + ' HA' : '— HA';
         document.getElementById('widget-siap-text').textContent = totalSiapReady.toFixed(2) + ' HA';
         document.getElementById('widget-real-text').textContent = totalPanen.toFixed(2) + ' HA';
         if (harapan > 0) {
             document.getElementById('widget-siap-bar').style.width = Math.min(totalSiapReady / harapan * 100, 100) + '%';
             document.getElementById('widget-real-bar').style.width = Math.min(totalPanen     / harapan * 100, 100) + '%';
+        } else {
+            document.getElementById('widget-siap-bar').style.width = '0%';
+            document.getElementById('widget-real-bar').style.width = '0%';
         }
     }
     document.addEventListener('DOMContentLoaded', updatePanenProgressWidget);
@@ -1404,7 +1406,8 @@ function getRingColor(d) {
                     <div>
                         <label style="font-size:10px;font-weight:600;color:#6b7280;display:block;margin-bottom:2px;">Harapan Panen (HA) <span style="color:#dc2626;">*</span></label>
                         <input id="snap-harapan" type="number" step="0.01" placeholder="Target HA..."
-                            style="width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;">
+                            oninput="updatePanenProgressWidget(parseFloat(this.value)||0)"
+                            style="width:100%;padding:5px 8px;border:1px solid #fb923c;border-radius:4px;font-size:12px;font-weight:700;">
                     </div>
                     <div>
                         <label style="font-size:10px;font-weight:600;color:#6b7280;display:block;margin-bottom:2px;">

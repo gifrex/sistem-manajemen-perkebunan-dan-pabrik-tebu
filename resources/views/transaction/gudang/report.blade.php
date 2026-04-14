@@ -67,19 +67,29 @@
 
   @forelse($report as $block)
     @php
-      $totalMasuk  = collect($block->rows)->sum(fn($r) => (float)($r->masuk ?? 0));
-      $totalKeluar = collect($block->rows)->sum(fn($r) => (float)($r->keluar ?? 0));
+      $totalMasuk        = collect($block->rows)->sum(fn($r) => (float)($r->masuk ?? 0));
+      $totalKeluar       = collect($block->rows)->sum(fn($r) => (float)($r->keluar ?? 0));
+      $conflictItemcodes = $block->conflictItemcodes ?? [];
+      $hasConflict       = count($conflictItemcodes) > 0;
     @endphp
 
-    <div x-data="{ open: false }" class="bg-white rounded-xl shadow-sm mb-3 overflow-hidden">
+    <div x-data="{ open: false }" class="bg-white rounded-xl shadow-sm mb-3 overflow-hidden {{ $hasConflict ? 'ring-2 ring-amber-400' : '' }}">
 
       {{-- Header activity / collapse button --}}
       <div @click="open = !open"
-           class="px-4 py-3 cursor-pointer hover:bg-gray-50 flex items-center justify-between gap-4 no-print">
+           class="px-4 py-3 cursor-pointer hover:bg-gray-50 flex items-center justify-between gap-4 no-print {{ $hasConflict ? 'bg-amber-50' : '' }}">
         <div class="min-w-0">
-          <div class="text-sm text-gray-900">
-            <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-xs text-gray-600 mr-1">{{ $block->activitycode ?? '-' }}</span>
+          <div class="text-sm text-gray-900 flex items-center gap-2 flex-wrap">
+            <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-xs text-gray-600">{{ $block->activitycode ?? '-' }}</span>
             <b>{{ $block->herbisidagroupname ?? '-' }}</b>
+            @if($hasConflict)
+              <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-0.5 rounded-full border border-amber-300">
+                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+                Cost Center Beda: {{ implode(', ', $conflictItemcodes) }}
+              </span>
+            @endif
           </div>
           <div class="text-xs text-gray-500 mt-1">
             Periode: {{ $startDate }} s/d {{ $endDate }}
@@ -111,6 +121,9 @@
           <div class="text-sm text-gray-900 min-w-0">
             <span class="font-mono text-xs text-gray-600 mr-1">{{ $block->activitycode ?? '-' }}</span>
             <b>{{ $block->herbisidagroupname ?? '-' }}</b>
+            @if($hasConflict)
+              <span class="text-xs text-amber-700 font-semibold ml-2">[! Cost Center Beda: {{ implode(', ', $conflictItemcodes) }}]</span>
+            @endif
           </div>
 
           <div class="text-xs text-gray-600 text-right whitespace-nowrap">
@@ -133,6 +146,7 @@
               <th class="py-2 px-3 border border-gray-300">ITEM CODE</th>
               <th class="py-2 px-3 border border-gray-300">ITEM NAME</th>
               <th class="py-2 px-3 border border-gray-300">UNIT</th>
+              <th class="py-2 px-3 border border-gray-300">COST CENTER</th>
               <th class="py-2 px-3 border border-gray-300 text-right">MASUK</th>
               <th class="py-2 px-3 border border-gray-300 text-right">KELUAR</th>
             </tr>
@@ -140,26 +154,28 @@
 
           <tbody>
             @foreach($block->rows as $r)
-              <tr class="hover:bg-gray-50">
+              @php $isConflictRow = in_array($r->itemcode, $conflictItemcodes); @endphp
+              <tr class="{{ $isConflictRow ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-gray-50' }}">
                 <td class="py-2 px-3 border border-gray-300 text-center font-semibold
                 {{ strtoupper(trim($r->type ?? '')) === 'R' ? 'text-green-700' : (strtoupper(trim($r->type ?? '')) === 'U' ? 'text-red-700' : 'text-gray-600') }}">
                   {{ strtoupper(trim($r->type ?? '')) === 'R' ? 'RT' : (strtoupper(trim($r->type ?? '')) === 'U' ? 'USE' : '') }}
                 </td>
 
-                <td class="py-2 px-3 border border-gray-300">
-                  {{ $r->ket ?? '' }}
-                </td>
+                <td class="py-2 px-3 border border-gray-300">{{ $r->ket ?? '' }}</td>
 
-                <td class="py-2 px-3 border border-gray-300">
-                  {{ $r->itemcode ?? '' }}
-                </td>
+                <td class="py-2 px-3 border border-gray-300">{{ $r->itemcode ?? '' }}</td>
 
-                <td class="py-2 px-3 border border-gray-300">
-                  {{ $r->itemname ?? '' }}
-                </td>
+                <td class="py-2 px-3 border border-gray-300">{{ $r->itemname ?? '' }}</td>
 
-                <td class="py-2 px-3 border border-gray-300">
-                  {{ $r->unit ?? '' }}
+                <td class="py-2 px-3 border border-gray-300">{{ $r->unit ?? '' }}</td>
+
+                <td class="py-2 px-3 border border-gray-300 {{ $isConflictRow ? 'font-semibold text-amber-700' : 'text-gray-700' }}">
+                  {{ $r->costcenter ?? '-' }}
+                  @if($isConflictRow)
+                    <svg class="inline w-3.5 h-3.5 text-amber-500 ml-0.5 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    </svg>
+                  @endif
                 </td>
 
                 <td class="py-2 px-3 border border-gray-300 text-right font-medium text-green-700">
@@ -175,7 +191,7 @@
 
           <tfoot>
             <tr class="bg-gray-100 font-semibold">
-              <td class="py-2 px-3 border border-gray-300 text-right" colspan="5">TOTAL</td>
+              <td class="py-2 px-3 border border-gray-300 text-right" colspan="6">TOTAL</td>
               <td class="py-2 px-3 border border-gray-300 text-right text-green-800">
                 {{ number_format($totalMasuk, 2) }}
               </td>
@@ -197,6 +213,7 @@
               <th class="py-2 px-3 border border-gray-300">ITEM CODE</th>
               <th class="py-2 px-3 border border-gray-300">ITEM NAME</th>
               <th class="py-2 px-3 border border-gray-300">UNIT</th>
+              <th class="py-2 px-3 border border-gray-300">COST CENTER</th>
               <th class="py-2 px-3 border border-gray-300 text-right">MASUK</th>
               <th class="py-2 px-3 border border-gray-300 text-right">KELUAR</th>
             </tr>
@@ -204,26 +221,23 @@
 
           <tbody>
             @foreach($block->rows as $r)
+              @php $isConflictRow = in_array($r->itemcode, $conflictItemcodes); @endphp
               <tr>
                 <td class="py-2 px-3 border border-gray-300 text-center font-semibold
                 {{ strtoupper(trim($r->type ?? '')) === 'R' ? 'text-green-700' : (strtoupper(trim($r->type ?? '')) === 'U' ? 'text-red-700' : 'text-gray-600') }}">
                   {{ strtoupper(trim($r->type ?? '')) === 'R' ? 'RT' : (strtoupper(trim($r->type ?? '')) === 'U' ? 'USE' : '') }}
                 </td>
 
-                <td class="py-2 px-3 border border-gray-300">
-                  {{ $r->ket ?? '' }}
-                </td>
+                <td class="py-2 px-3 border border-gray-300">{{ $r->ket ?? '' }}</td>
 
-                <td class="py-2 px-3 border border-gray-300">
-                  {{ $r->itemcode ?? '' }}
-                </td>
+                <td class="py-2 px-3 border border-gray-300">{{ $r->itemcode ?? '' }}</td>
 
-                <td class="py-2 px-3 border border-gray-300">
-                  {{ $r->itemname ?? '' }}
-                </td>
+                <td class="py-2 px-3 border border-gray-300">{{ $r->itemname ?? '' }}</td>
 
-                <td class="py-2 px-3 border border-gray-300">
-                  {{ $r->unit ?? '' }}
+                <td class="py-2 px-3 border border-gray-300">{{ $r->unit ?? '' }}</td>
+
+                <td class="py-2 px-3 border border-gray-300 {{ $isConflictRow ? 'font-semibold' : '' }}">
+                  {{ $r->costcenter ?? '-' }}{{ $isConflictRow ? ' (!)' : '' }}
                 </td>
 
                 <td class="py-2 px-3 border border-gray-300 text-right font-medium text-green-700">
@@ -239,7 +253,7 @@
 
           <tfoot>
             <tr class="bg-gray-100 font-semibold">
-              <td class="py-2 px-3 border border-gray-300 text-right" colspan="5">TOTAL</td>
+              <td class="py-2 px-3 border border-gray-300 text-right" colspan="6">TOTAL</td>
               <td class="py-2 px-3 border border-gray-300 text-right text-green-800">
                 {{ number_format($totalMasuk, 2) }}
               </td>

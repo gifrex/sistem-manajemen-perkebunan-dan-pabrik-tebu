@@ -16,6 +16,7 @@ use App\Http\Controllers\Report\SaldoPanenReportController;
 use App\Http\Controllers\Report\SuratJalanReportController;
 use App\Http\Controllers\Report\SuratJalanTimbanganReportController;
 use App\Http\Controllers\Report\TrackPiasReportController;
+use App\Http\Controllers\Report\CheckUseController;
 use App\Http\Controllers\Transaction\AgronomiController;
 use App\Http\Controllers\Transaction\HPTController;
 use Illuminate\Support\Facades\Route;
@@ -168,6 +169,12 @@ Route::middleware('auth')->prefix('report')->name('report.')->group(function () 
         Route::get('track-pias', [TrackPiasReportController::class, 'index'])->name('track-pias.index');
         Route::post('track-pias/data', [TrackPiasReportController::class, 'getData'])->name('track-pias.data');
     });
+
+    // ============================================================================
+    // CEK SINKRONISASI NO USE
+    // ============================================================================
+    Route::get('check-use', [CheckUseController::class, 'index'])->name('check-use.index');
+    Route::post('check-use/check', [CheckUseController::class, 'check'])->name('check-use.check');
 
     // ============================================================================
     // BIAYA PER PLOT
