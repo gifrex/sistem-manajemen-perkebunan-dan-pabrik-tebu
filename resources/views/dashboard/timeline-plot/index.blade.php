@@ -49,15 +49,19 @@
         
         <div class="mb-6 border-b border-gray-200">
             <nav class="flex space-x-4">
-                <a href="?activity={{$activityFilter}}&tab={{ request('tab','table') }}" 
-                class="py-2 px-4 border-b-2 font-medium text-sm {{$cropType!=='p'?'border-blue-600 text-blue-600':'border-transparent text-gray-500 hover:text-gray-700'}}">
-                📊 Timeline
-                </a>
-                
-                <a href="?crop=p&activity={{$activityFilter}}&tab={{ request('tab','table') }}"
-                class="py-2 px-4 border-b-2 font-medium text-sm {{$cropType==='p'?'border-blue-600 text-blue-600':'border-transparent text-gray-500 hover:text-gray-700'}}">
-                 🌾 Panen
-                </a>
+                {{-- Toggle Timeline / Panen --}}
+                <div style="display:flex;background:#f3f4f6;border-radius:8px;padding:3px;gap:2px;">
+                    <a href="?activity={{$activityFilter}}&tab={{ request('tab','table') }}"
+                       style="padding:5px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;
+                              {{ $cropType!=='p' ? 'background:white;color:#2563eb;box-shadow:0 1px 3px rgba(0,0,0,.15);' : 'color:#6b7280;' }}">
+                        📊 Timeline
+                    </a>
+                    <a href="?crop=p&activity={{$activityFilter}}&tab={{ request('tab','table') }}"
+                       style="padding:5px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;
+                              {{ $cropType==='p' ? 'background:white;color:#2563eb;box-shadow:0 1px 3px rgba(0,0,0,.15);' : 'color:#6b7280;' }}">
+                        🌾 Panen
+                    </a>
+                </div>
                 
                 <button 
                 @click="activeTab = activeTab === 'map' ? 'table' : 'map'; activeTab === 'map' && $nextTick(() => initMapIfNeeded())" 
