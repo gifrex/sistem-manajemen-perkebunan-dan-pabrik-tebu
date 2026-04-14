@@ -264,6 +264,27 @@
                                     $rowBg = ($status === 'PC')
                                         ? '#dcfce7'
                                         : (str_starts_with($status, 'RC') ? '#dbeafe' : '#ffffff');
+
+                                    // Cek aktivitas overdue (>14 hari, belum 100%)
+                                    $overdueList = [];
+                                    foreach($plotActivityDetails[$plot->plot]['activities'] ?? [] as $act) {
+                                        if (($act['percentage'] ?? 0) < 100 && !empty($act['tanggal'])) {
+                                            $daysOld = \Carbon\Carbon::parse($act['tanggal'])->diffInDays(now());
+                                            if ($daysOld > 14) {
+                                                $overdueList[] = $act['code'] . ' (' . $daysOld . ' hr)';
+                                            }
+                                        }
+                                    }
+                                    // Cek trash mulcher: jika ada panen selesai tapi belum trash mulcher > 14 hari
+                                    $lastPanenDate = $plotActivityDetails[$plot->plot]['last_panen_lkh_date'] ?? null;
+                                    $lastTrashDate = $plotActivityDetails[$plot->plot]['last_trash_mulcher_date'] ?? null;
+                                    if ($lastPanenDate && !$lastTrashDate) {
+                                        $daysSincePanen = \Carbon\Carbon::parse($lastPanenDate)->diffInDays(now());
+                                        if ($daysSincePanen > 14) {
+                                            $overdueList[] = 'Trash Mulcher (' . $daysSincePanen . ' hr)';
+                                        }
+                                    }
+                                    $hasOverdue = count($overdueList) > 0;
                                 @endphp
 
                                 <tr style="background: {{ $rowBg }}; cursor:pointer;"
@@ -277,6 +298,10 @@
 
                                     <td class="sticky-h" style="left:60px;">
                                         {{ $plot->plot }} ({{ $status }})
+                                        @if($hasOverdue)
+                                            <span title="⚠ Overdue: {{ implode(', ', $overdueList) }}"
+                                                  style="color:#dc2626;cursor:help;font-size:12px;margin-left:3px;">⚠</span>
+                                        @endif
                                     </td>
 
                                     <td class="sticky-h" style="left:120px; text-align:right;">
@@ -487,17 +512,37 @@
                                 @foreach($plotsInMap as $plotCode)
                                     @php
                                         $detail = $plotActivityDetails[$plotCode] ?? null;
-                                        if (!$detail) continue; // Skip kalau tidak ada data
-                                        
+                                        if (!$detail) continue;
+
                                         $umurText = ($detail['umur_bulan'] ?? 0) >= 0
                                             ? (($detail['umur_bulan'] ?? 0) . ' bln / ' . ($detail['umur_hari'] ?? 0) . ' hr')
                                             : '-';
                                         $avgPct = $detail['avg_percentage'] ?? 0;
                                         $pctColor = $avgPct >= 100 ? 'text-green-600' : ($avgPct > 0 ? 'text-orange-600' : 'text-gray-500');
+
+                                        $mapOverdueList = [];
+                                        foreach($detail['activities'] ?? [] as $act) {
+                                            if (($act['percentage'] ?? 0) < 100 && !empty($act['tanggal'])) {
+                                                $daysOld = \Carbon\Carbon::parse($act['tanggal'])->diffInDays(now());
+                                                if ($daysOld > 14) $mapOverdueList[] = $act['code'] . ' (' . $daysOld . ' hr)';
+                                            }
+                                        }
+                                        $mapLastPanen = $detail['last_panen_lkh_date'] ?? null;
+                                        $mapLastTrash = $detail['last_trash_mulcher_date'] ?? null;
+                                        if ($mapLastPanen && !$mapLastTrash) {
+                                            $d2 = \Carbon\Carbon::parse($mapLastPanen)->diffInDays(now());
+                                            if ($d2 > 14) $mapOverdueList[] = 'Trash Mulcher (' . $d2 . ' hr)';
+                                        }
                                     @endphp
-                                    
+
                                     <tr class="hover:bg-green-50">
-                                        <td class="border p-2 font-bold">{{ $plotCode }}</td>
+                                        <td class="border p-2 font-bold">
+                                            {{ $plotCode }}
+                                            @if(count($mapOverdueList) > 0)
+                                                <span title="⚠ Overdue: {{ implode(', ', $mapOverdueList) }}"
+                                                      style="color:#dc2626;cursor:help;">⚠</span>
+                                            @endif
+                                        </td>
                                         <td class="border p-2">
                                             <span class="px-2 py-1 rounded text-xs">
                                                 {{ $detail['lifecyclestatus'] ?? '-' }}
@@ -604,7 +649,7 @@
     const plotActivityDetails = @json($plotActivityDetails ?? []);
     const activityFilter = @json($activityFilter ?? 'all');
         
-    let map, markers = [], polygons = [], iconOverlays = [];
+    let map, markers = [], polygons = [];
 
     // 🔑 Tentukan warna plot berdasarkan umur, ZPK, dan panen
 function getPlotColor(d) {
@@ -807,8 +852,6 @@ function getRingColor(d) {
                     </div>`
                 });
                 
-                marker.__info = info; // store for FA icon overlay click handler
-
                 marker.addListener('click', () => {
                 if (activeInfoWindow) activeInfoWindow.close();
                 info.open(map, marker);
@@ -857,67 +900,6 @@ function getRingColor(d) {
 
             });
 
-            // ===== FA ICON OVERLAYS =====
-            class MapIconOverlay extends google.maps.OverlayView {
-                constructor(pos, iconClass, color, clickFn) {
-                    super();
-                    this._pos = pos; this._cls = iconClass; this._clr = color; this._fn = clickFn; this.div = null;
-                }
-                onAdd() {
-                    const d = document.createElement('div');
-                    d.style.cssText = 'position:absolute;cursor:pointer;transform:translate(-50%,-110%);pointer-events:auto;line-height:1;';
-                    d.innerHTML = `<i class="${this._cls}" style="font-size:17px;color:${this._clr};filter:drop-shadow(0 1px 2px rgba(0,0,0,.55));"></i>`;
-                    if (this._fn) d.addEventListener('click', this._fn);
-                    this.div = d;
-                    this.getPanes().floatPane.appendChild(d);
-                }
-                draw() {
-                    const proj = this.getProjection();
-                    if (!proj || !this.div) return;
-                    const p = proj.fromLatLngToDivPixel(new google.maps.LatLng(this._pos.lat, this._pos.lng));
-                    if (p) { this.div.style.left = p.x + 'px'; this.div.style.top = p.y + 'px'; }
-                }
-                onRemove() { this.div?.parentNode?.removeChild(this.div); this.div = null; }
-            }
-
-            // Build infoWindow lookup by plot
-            const infoByPlot = {};
-            markers.forEach((m, i) => {
-                const plot = plotHeaders[i]?.plot;
-                if (plot && m.__info) infoByPlot[plot] = { marker: m, info: m.__info };
-            });
-
-            plotHeaders.forEach(h => {
-                const d    = plotActivityDetails[h.plot] || {};
-                const acts = d.activities || [];
-                if (!acts.length) return;
-
-                const allDone   = acts.every(a => parseFloat(a.percentage || 0) >= 100);
-                const isOverdue = !allDone && acts.some(a =>
-                    parseFloat(a.percentage || 0) < 100 && a.tanggal &&
-                    (Date.now() - new Date(a.tanggal)) / 86400000 > 14
-                );
-
-                let cls, clr;
-                if (allDone)        { cls = 'fa-solid fa-person-circle-check';       clr = '#16a34a'; }
-                else if (isOverdue) { cls = 'fa-solid fa-person-circle-exclamation'; clr = '#dc2626'; }
-                else                { cls = 'fa-solid fa-person-digging';            clr = '#0369a1'; }
-
-                const ov = new MapIconOverlay(
-                    { lat: parseFloat(h.centerlatitude), lng: parseFloat(h.centerlongitude) },
-                    cls, clr,
-                    () => {
-                        const entry = infoByPlot[h.plot];
-                        if (!entry) return;
-                        if (activeInfoWindow) activeInfoWindow.close();
-                        entry.info.open(map, entry.marker);
-                        activeInfoWindow = entry.info;
-                    }
-                );
-                ov.setMap(map);
-                iconOverlays.push(ov);
-            });
-            // ===== /FA ICON OVERLAYS =====
         }
 
 
