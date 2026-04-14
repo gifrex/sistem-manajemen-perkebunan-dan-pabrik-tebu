@@ -33,8 +33,8 @@ class AbsenRepository
                     ->where('t.companycode', '=', $companycode)
                     ->where('t.isactive', '=', 1);
             })
+            ->leftJoin('user as m', 'h.mandorid', '=', 'm.userid')
             ->where('h.companycode', $companycode)
-            ->where('h.approvalstatus', '1') // FIXED: Changed from l.approval_status to h.approvalstatus
             ->whereDate('h.uploaddate', Carbon::parse($date));
 
         if ($mandorId) {
@@ -42,12 +42,15 @@ class AbsenRepository
         }
 
         return $query->select([
+                'h.absenno',
                 'h.mandorid',
+                'h.approvalstatus',
+                'm.name as mandor_name',
                 'l.tenagakerjaid',
                 't.nama',
-                't.nik',
                 't.gender',
-                't.jenistenagakerja'
+                't.jenistenagakerja',
+                DB::raw('TIME(l.absenmasuk) as jam_masuk'),
             ])
             ->get();
     }
@@ -65,7 +68,6 @@ class AbsenRepository
         return DB::table('absenhdr as h')
             ->join('user as u', 'h.mandorid', '=', 'u.userid')
             ->where('h.companycode', $companycode)
-            ->where('h.approvalstatus', '1') // FIXED: Added approval filter
             ->whereDate('h.uploaddate', Carbon::parse($date))
             ->select('h.mandorid', 'u.name as mandor_name')
             ->distinct()

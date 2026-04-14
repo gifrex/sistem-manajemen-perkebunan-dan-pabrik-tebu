@@ -23,9 +23,13 @@ class PanenApprovalRepository
                 $join->on('at.transactionnumber', '=', 'k.transactionnumber')
                     ->where('k.companycode', '=', $companycode);
             })
+            ->leftJoin('suratjalanpostemp as sjt', function ($join) use ($companycode) {
+                $join->on('at.transactionnumber', '=', 'sjt.transactionnumber')
+                    ->where('sjt.companycode', '=', $companycode);
+            })
             ->leftJoin('user as u', 'at.inputby', '=', 'u.userid')
             ->where('at.companycode', $companycode)
-            ->where('am.category', 'Approval Koreksi Surat Jalan Panen')
+            ->whereIn('am.category', ['Approval Koreksi Surat Jalan Panen', 'Input SJ Non-NFC'])
             ->where(function ($query) use ($idjabatan) {
                 $query->where(function ($q) use ($idjabatan) {
                     $q->where('at.approval1idjabatan', $idjabatan)
@@ -53,9 +57,19 @@ class PanenApprovalRepository
             'at.*',
             'am.category',
             'u.name as inputby_name',
+            // Koreksi SJ Panen fields
             'k.suratjalanno',
             'k.perubahan',
             'k.alasan',
+            // Input SJ Non-NFC fields
+            DB::raw('COALESCE(k.suratjalanno, sjt.suratjalanno) as suratjalanno_display'),
+            'sjt.id as nonnfc_temp_id',
+            'sjt.suratjalanno as nonnfc_suratjalanno',
+            'sjt.plot as nonnfc_plot',
+            'sjt.varietas as nonnfc_varietas',
+            'sjt.nomorpolisi as nonnfc_nomorpolisi',
+            'sjt.namasupir as nonnfc_namasupir',
+            'sjt.keterangan as nonnfc_keterangan',
             DB::raw("DATE_FORMAT(at.createdat, '%d/%m/%Y') as formatted_date"),
             DB::raw('CASE
                 WHEN at.approval1idjabatan = ' . $idjabatan . ' AND at.approval1flag IS NULL THEN 1
@@ -180,6 +194,14 @@ class PanenApprovalRepository
     public function getKoreksiSJDetail(string $companycode, string $transactionnumber): ?object
     {
         return DB::table('koreksisuratjalanpanen')
+            ->where('companycode', $companycode)
+            ->where('transactionnumber', $transactionnumber)
+            ->first();
+    }
+
+    public function getSJNonNfcDetail(string $companycode, string $transactionnumber): ?object
+    {
+        return DB::table('suratjalanpostemp')
             ->where('companycode', $companycode)
             ->where('transactionnumber', $transactionnumber)
             ->first();

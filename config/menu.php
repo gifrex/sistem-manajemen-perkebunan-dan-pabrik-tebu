@@ -215,6 +215,11 @@ return [
                 'route' => 'transaction.koreksi-sj-panen.index',
                 'permission' => 'transaction.koreksisjpanen.view',
             ],
+            [
+                'name' => 'Input SJ Non-NFC',
+                'route' => 'transaction.surat-jalan-non-nfc.index',
+                'permission' => 'transaction.surat-jalan-non-nfc.view',
+            ],
         ],
     ],
 
