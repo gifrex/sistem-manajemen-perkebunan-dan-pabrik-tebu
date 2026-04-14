@@ -29,7 +29,7 @@
     <div class="flex items-center justify-between px-4 py-2">
 
       {{-- Create Button --}}
-      @if(hasPermission('Create Subkontraktor'))
+      @can('masterdata.subkontraktor.create')
         <button @click="resetForm()"
                 class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2">
           <svg class="w-5 h-5 text-white dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
@@ -38,10 +38,13 @@
                 d="M5 12h14m-7 7V5" />
           </svg> New Data
         </button>
-      @endif
+      @endcan
         
       {{-- Search Form --}}
       <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-2">
+        @if(request('status') !== null && request('status') !== '')
+          <input type="hidden" name="status" value="{{ request('status') }}">
+        @endif
         <label for="search" class="text-xs font-medium text-gray-700">Search:</label>
         <input
           type="text"
@@ -53,8 +56,33 @@
         />
       </form>
 
+      {{-- Status Filter --}}
+      <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-2">
+        @if(request('search'))
+          <input type="hidden" name="search" value="{{ request('search') }}">
+        @endif
+        @if(request('perPage'))
+          <input type="hidden" name="perPage" value="{{ request('perPage') }}">
+        @endif
+        <label for="status" class="text-xs font-medium text-gray-700">Status:</label>
+        <select 
+          name="status" id="status"
+          onchange="this.form.submit()"
+          class="text-xs mt-1 block w-28 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            <option value="" {{ request('status') === null || request('status') === '' ? 'selected' : '' }}>Semua</option>
+            <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Active</option>
+            <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Non-Active</option>
+        </select>
+      </form>
+
       {{-- Items Per Page --}}
       <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-2">
+        @if(request('search'))
+          <input type="hidden" name="search" value="{{ request('search') }}">
+        @endif
+        @if(request('status') !== null && request('status') !== '')
+          <input type="hidden" name="status" value="{{ request('status') }}">
+        @endif
         <label for="perPage" class="text-xs font-medium text-gray-700">Items per page:</label>
         <select 
           name="perPage" id="perPage"
@@ -119,14 +147,26 @@
                     {{-- ID Subkontraktor --}}
                     <div>
                       <label for="id" class="block text-sm font-medium text-gray-700">ID Subkontraktor</label>
-                      <input type="text" name="id" id="id" x-model="form.id" 
-                            x-init="form.id = '{{ old('id') }}'"
-                            @input="form.id = form.id.toUpperCase()"
-                            class="mt-1 block w-1/2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 uppercase"
-                            maxlength="10" required>
-                      @error('id')
-                      <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                      @enderror
+                      <template x-if="mode === 'create'">
+                        <div>
+                          <input type="text" name="id" id="id" x-model="form.id"
+                                x-init="form.id = '{{ old('id') }}'"
+                                @input="form.id = form.id.toUpperCase()"
+                                class="mt-1 block w-1/2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 uppercase"
+                                maxlength="10" required>
+                          @error('id')
+                          <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                          @enderror
+                        </div>
+                      </template>
+                      <template x-if="mode === 'edit'">
+                        <div class="mt-1">
+                          {{-- ID tidak bisa diubah saat edit --}}
+                          <input type="hidden" name="id" x-model="form.id">
+                          <div class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-700 font-medium w-1/2 uppercase"
+                               x-text="form.id"></div>
+                        </div>
+                      </template>
                     </div>
 
                     {{-- Kontraktor Dropdown --}}
@@ -189,20 +229,28 @@
                         <th class="py-2 px-4 border-b">ID Subkontraktor</th>
                         <th class="py-2 px-4 border-b">Nama Subkontraktor</th>
                         <th class="py-2 px-4 border-b">Kontraktor</th>
+                        <th class="py-2 px-4 border-b">Status</th>
                         <th class="py-2 px-4 border-b">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($subkontraktor as $index => $data)
-                        <tr class="hover:bg-gray-50">
+                        <tr class="hover:bg-gray-50 {{ !$data->isactive ? 'opacity-50' : '' }}">
                             <td class="py-2 px-4 border-b">{{ $subkontraktor->firstItem() + $index }}</td>
                             <td class="py-2 px-4 border-b">{{ $data->id }}</td>
                             <td class="py-2 px-4 border-b text-left">{{ $data->namasubkontraktor }}</td>
                             <td class="py-2 px-4 border-b text-left">{{ $data->kontraktorid }} - {{ $data->namakontraktor ?? '-' }}</td>
                             <td class="py-2 px-4 border-b">
+                              @if($data->isactive)
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
+                              @else
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Non-Active</span>
+                              @endif
+                            </td>
+                            <td class="py-2 px-4 border-b">
                                 <div class="flex items-center justify-center space-x-2">
                                   {{-- Edit Button --}}
-                                  @if(hasPermission('Edit Subkontraktor'))
+                                  @can('masterdata.subkontraktor.edit')
                                   <button
                                     @click="
                                       mode = 'edit';
@@ -232,36 +280,44 @@
                                             clip-rule="evenodd" />
                                     </svg>
                                   </button>
-                                  @endif
+                                  @endcan
                                   
-                                  {{-- Delete Button --}}
-                                  @if(hasPermission('Hapus Subkontraktor'))
+                                  {{-- Toggle Active/Deactive Button --}}
+                                  @can('masterdata.subkontraktor.delete')
                                     <form 
-                                      action="{{ url("masterdata/subkontraktor/{$data->companycode}/{$data->id}") }}" 
+                                      action="{{ url("masterdata/subkontraktor/{$data->companycode}/{$data->id}/toggle-active") }}" 
                                       method="POST"
-                                      onsubmit="return confirm('Yakin ingin menghapus data ini?');"
+                                      onsubmit="return confirm('{{ $data->isactive ? 'Yakin ingin menonaktifkan subkontraktor ini?' : 'Yakin ingin mengaktifkan kembali subkontraktor ini?' }}');"
                                       class="inline">
                                       @csrf
-                                      @method('DELETE')
-                                      <button 
-                                        type="submit"
-                                        class="group flex items-center text-red-600 hover:text-red-800 focus:ring-2 focus:ring-red-500 rounded-md px-2 py-1 text-sm">
-                                        <svg class="w-6 h-6 text-red-500 dark:text-white group-hover:hidden"
-                                          aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
-                                          width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                      @method('PATCH')
+                                      @if($data->isactive)
+                                        <button 
+                                          type="submit"
+                                          title="Nonaktifkan"
+                                          class="group flex items-center text-orange-600 hover:text-orange-800 focus:ring-2 focus:ring-orange-500 rounded-md px-2 py-1 text-sm">
+                                          {{-- Ban/Block icon for deactivate --}}
+                                          <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
+                                            width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                            <path stroke="currentColor" stroke-linecap="round" stroke-width="2"
+                                                d="m6 6 12 12m3-6a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                          </svg>
+                                        </button>
+                                      @else
+                                        <button 
+                                          type="submit"
+                                          title="Aktifkan kembali"
+                                          class="group flex items-center text-green-600 hover:text-green-800 focus:ring-2 focus:ring-green-500 rounded-md px-2 py-1 text-sm">
+                                          {{-- Check circle icon for activate --}}
+                                          <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
+                                            width="24" height="24" fill="none" viewBox="0 0 24 24">
                                             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z" />
-                                        </svg>
-                                        <svg class="w-6 h-6 text-red-500 dark:text-white hidden group-hover:block"
-                                          aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
-                                          width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                                            <path fill-rule="evenodd"
-                                                d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z"
-                                                clip-rule="evenodd" />
-                                        </svg>
-                                      </button>
+                                                d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                          </svg>
+                                        </button>
+                                      @endif
                                     </form>
-                                  @endif
+                                  @endcan
                                 </div>
                               </td>
                         </tr>

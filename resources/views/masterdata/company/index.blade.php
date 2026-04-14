@@ -6,7 +6,7 @@
     <div class="mx-auto py-4 bg-white rounded-md shadow-md">
         <div class="flex items-center justify-between mx-4 gap-2">
 
-            @if(hasPermission('Create Company'))
+            @can('masterdata.company.create')
                 <button onclick="openCreateModal()"
                     class="bg-blue-500 text-white px-4 py-2 text-sm border border-transparent shadow-sm font-medium rounded-md hover:bg-blue-600 flex items-center gap-2">
                     <svg class="w-5 h-5 text-white dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
@@ -16,7 +16,7 @@
                     </svg>
                     <span class="text-sm">New Data</span>
                 </button>
-            @endif
+            @endcan
             <form method="POST" action="{{ url()->current() }}" class="flex items-center justify-end gap-2">
                 @csrf
                 <label for="perPage" class="text-xs font-medium text-gray-700">Items per page:</label>
@@ -294,7 +294,7 @@
                 <td class="py-2 px-4 border-b border-gray-300">${newData.address}</td>
                 <td class="py-2 px-4 border-b border-gray-300">${newData.companyperiod}</td>
                 <td class="py-2 px-4 border-b border-gray-300">${newData.companyinventory}</td>
-                @if (hasPermission('Edit Company'))
+                @can('masterdata.company.edit')
                 <td class="py-2 px-4 border-b border-gray-300">
                     <div class="flex items-center justify-center">
                         <button class="group flex items-center edit-button" onclick="openEditModal('${newData.companycode}', '${newData.name}', '${newData.companyperiod}', '${newData.address}', '${newData.companyinventory}')">
@@ -322,7 +322,7 @@
                         </button>
                     </div>
                 </td>
-                @endif
+                @endcan
             `;
             tableBody.prepend(newRow);
         }

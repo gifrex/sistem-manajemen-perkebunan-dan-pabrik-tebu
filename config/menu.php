@@ -2,20 +2,9 @@
 
 /**
  * Navigation Menu Configuration
- * 
- * BEST PRACTICE: Config-based menu (no database queries)
- * Used by: NavigationComposer, Sidebar component
- * 
- * Structure:
- * - Each menu item can have unlimited children (nested)
- * - 'permission' links to permission table (module.resource.action)
- * - 'route' is the Laravel route name
- * - 'icon' is the icon identifier (lucide icons)
  */
 
 return [
-    
-    
 
     // ============================================
     // MASTER DATA
@@ -30,8 +19,6 @@ return [
                 'route' => 'masterdata.company.index',
                 'permission' => 'masterdata.company.view',
             ],
-            
-            // Manajemen Lahan (Group)
             [
                 'name' => 'Manajemen Lahan',
                 'children' => [
@@ -55,18 +42,21 @@ return [
                         'route' => 'masterdata.split-merge-plot.index',
                         'permission' => 'masterdata.splitmergeplot.view',
                     ],
+                    [
+                        'name' => 'Buka Kerja Ulang',
+                        'route' => 'masterdata.open-rework.index',
+                        'permission' => 'masterdata.open-rework.view',
+                    ],
+                    [
+                        'name' => 'Costcenter Gudang',
+                        'route' => 'masterdata.costcenter.index',
+                        'permission' => 'masterdata.costcenter.create',
+                    ],
                 ],
             ],
-            
-            // Data Agronomi (Group)
             [
                 'name' => 'Data Agronomi',
                 'children' => [
-                    [
-                        'name' => 'Kategori',
-                        'route' => 'masterdata.kategori.index',
-                        'permission' => 'masterdata.kategori.view',
-                    ],
                     [
                         'name' => 'Herbisida',
                         'route' => 'masterdata.herbisida.index',
@@ -89,8 +79,6 @@ return [
                     ],
                 ],
             ],
-            
-            // Manajemen Personel & Aset (Group)
             [
                 'name' => 'Manajemen Personel & Aset',
                 'children' => [
@@ -121,7 +109,6 @@ return [
                     ],
                 ],
             ],
-            
             [
                 'name' => 'Approval',
                 'route' => 'masterdata.approval.index',
@@ -134,8 +121,18 @@ return [
             ],
             [
                 'name' => 'Upah',
-                'route' => 'masterdata.upah.index',
-                'permission' => 'masterdata.upah.view',
+                'children' => [
+                    [
+                        'name' => 'Upah Harian',
+                        'route' => 'masterdata.upah.index',
+                        'permission' => 'masterdata.upah.view',
+                    ],
+                    [
+                        'name' => 'Upah Borongan',
+                        'route' => 'masterdata.upah-borongan.index',
+                        'permission' => 'masterdata.upah.view',
+                    ],
+                ]
             ],
             [
                 'name' => 'Accounting',
@@ -150,7 +147,7 @@ return [
     // ============================================
     [
         'name' => 'Transaction',
-        'icon' => 'file-edit',
+        'icon' => 'edit',
         'permission' => 'transaction.menu.view',
         'children' => [
             [
@@ -184,9 +181,14 @@ return [
                 'permission' => 'transaction.gudangbbm.view',
             ],
             [
-                'name' => 'Kendaraan Workshop',
-                'route' => 'transaction.kendaraan-workshop.index',
-                'permission' => 'transaction.kendaraanworkshop.view',
+                'name' => 'Kendaraan Supply',
+                'route' => 'transaction.kendaraan-supply.index',
+                'permission' => 'transaction.kendaraansupply.view',
+            ],
+            [
+                'name' => 'Order BBM',
+                'route' => 'transaction.order-bbm.index',
+                'permission' => 'transaction.orderbbm.view',
             ],
             [
                 'name' => 'Tebar Pias',
@@ -203,6 +205,21 @@ return [
                 'route' => 'transaction.mapping-bsm.index',
                 'permission' => 'transaction.mappingbsm.view',
             ],
+            [
+                'name' => 'Koreksi',
+                'route' => 'transaction.gudang.koreksi',
+                'permission' => 'transaction.gudang.view',
+            ],
+            [
+                'name' => 'Koreksi SJ Panen',
+                'route' => 'transaction.koreksi-sj-panen.index',
+                'permission' => 'transaction.koreksisjpanen.view',
+            ],
+            [
+                'name' => 'Input SJ Non-NFC',
+                'route' => 'transaction.surat-jalan-non-nfc.index',
+                'permission' => 'transaction.surat-jalan-non-nfc.view',
+            ],
         ],
     ],
 
@@ -211,9 +228,14 @@ return [
     // ============================================
     [
         'name' => 'Report',
-        'icon' => 'file-text',
+        'icon' => 'report',
         'permission' => 'report.menu.view',
         'children' => [
+            [
+                'name' => 'Absen',
+                'route' => 'report.absen.index',
+                'permission' => 'report.absen.view',
+            ],
             [
                 'name' => 'Agronomi',
                 'route' => 'report.agronomi.index',
@@ -240,6 +262,11 @@ return [
                 'permission' => 'report.panentebu.view',
             ],
             [
+                'name' => 'Rekapitulasi Premi Target Kontraktor',
+                'route' => 'report.rekapitulasi-premi-report.index',
+                'permission' => 'report.rekapitulasipremi.view',
+            ],
+            [
                 'name' => 'Surat Jalan',
                 'route' => 'report.report-surat-jalan.index',
                 'permission' => 'report.suratjalan.view',
@@ -248,6 +275,11 @@ return [
                 'name' => 'Surat Jalan & Timbangan',
                 'route' => 'report.report-surat-jalan-timbangan.index',
                 'permission' => 'report.suratjalantimbangan.view',
+            ],
+            [
+                'name' => 'Saldo Panen',
+                'route' => 'report.saldo-panen.index',
+                'permission' => 'report.saldopanen.view',
             ],
             [
                 'name' => 'Panen Track Plot',
@@ -264,18 +296,32 @@ return [
                 'route' => 'report.trash-report.index',
                 'permission' => 'report.trash.view',
             ],
+            [
+                'name' => 'Track Waktu Pias',
+                'route' => 'report.track-pias.index',
+                'permission' => 'report.track-pias.view',
+            ],
+            [
+                'name' => 'Biaya Per Plot',
+                'route' => 'report.biaya-per-plot.index',
+                'permission' => 'report.biayaperplot.view',
+            ],
         ],
     ],
-
 
     // ============================================
     // DASHBOARD
     // ============================================
     [
         'name' => 'Dashboard',
-        'icon' => 'layout-dashboard',
+        'icon' => 'dashboard',
         'permission' => 'dashboard.menu.view',
         'children' => [
+            [
+                'name' => 'Panen',
+                'route' => 'dashboard.panen',
+                'permission' => 'dashboard.panen.view',
+            ],
             [
                 'name' => 'Agronomi',
                 'route' => 'dashboard.agronomi',
@@ -301,6 +347,11 @@ return [
                 'route' => 'dashboard.maps',
                 'permission' => 'dashboard.maps.view',
             ],
+            [
+                'name' => 'Surat Teguran',
+                'route' => 'dashboard.surat-teguran.index',
+                'permission' => 'dashboard.suratteguran.view',
+            ],
         ],
     ],
 
@@ -324,18 +375,34 @@ return [
             ],
             [
                 'name' => 'Upload GPX File',
-                'route' => 'upload.gpx.view',
+                'route' => 'process.uploadgpx',
                 'permission' => 'process.uploadgpx.view',
             ],
             [
                 'name' => 'Export KML File',
-                'route' => 'export.kml.view',
+                'route' => 'process.exportkml',
                 'permission' => 'process.exportkml.view',
             ],
+            // [
+            //     'name' => 'Closing',
+            //     'route' => 'process.closing',
+            //     'permission' => 'process.closing.view',
+            // ],
+        ],
+    ],
+
+    // ============================================
+    // FINANCE
+    // ============================================
+    [
+        'name' => 'Finance',
+        'icon' => 'finance',
+        'permission' => 'finance.menu.view',
+        'children' => [
             [
-                'name' => 'Closing',
-                'route' => 'process.closing',
-                'permission' => 'process.closing.view',
+                'name' => 'Pembayaran Upah Mingguan',
+                'route' => 'finance.pembayaran-upah-mingguan.index',
+                'permission' => 'finance.pembayaranupahmingguan.view',
             ],
         ],
     ],
@@ -358,11 +425,14 @@ return [
                 'route' => 'pabrik.panen-pabrik.index',
                 'permission' => 'pabrik.panenpabrik.view',
             ],
+            [
+                'name' => 'Surat Teguran',
+                'route' => 'pabrik.surat-teguran.index',
+                'permission' => 'pabrik.suratteguran.view',
+            ],
         ],
     ],
 
-
-    
     // ============================================
     // USER MANAGEMENT
     // ============================================
@@ -409,6 +479,28 @@ return [
         ],
     ],
 
+    // ============================================
+    // IT SUPPORT
+    // ============================================
+    [
+        'name' => 'IT Support',
+        'icon' => 'wrench',
+        'permission' => 'it-support.menu.view',
+        'children' => [
+            [
+                'name' => 'Delete RKH',
+                'route' => 'it-support.delete-rkh.index',
+                'permission' => 'it-support.delete-rkh.view',
+            ],
+            [
+                'name' => 'Ganti Tanggal RKH',
+                'route' => 'it-support.change-date-rkh.index',
+                'permission' => 'it-support.change-date-rkh.view',
+            ],
+        ],
+    ],
+
+    // ============================================
     // INFO & UPDATES
     // ============================================
     [
@@ -429,5 +521,36 @@ return [
         ],
     ],
 
-    
+    // ============================================
+    // DEVELOPER
+    // ============================================
+    [
+        'name' => 'Developer',
+        'icon' => 'code',
+        'permission' => 'developer.menu.view',
+        'children' => [
+            [
+                'name' => 'Log Viewer',
+                'route' => 'log-viewer.index',
+                'permission' => 'developer.logviewer.view',
+            ],
+        ],
+    ],
+    [
+        'name' => 'Settings',
+        'icon' => 'cog',
+        'permission' => 'settings.menu.view',
+        'children' => [
+            [
+                'name' => 'Tabel Harga Panen',
+                'route' => 'settings.harga-panen.index',
+                'permission' => 'settings.harga-panen.index',
+            ],
+            [
+                'name' => 'Target Kontraktor',
+                'route' => 'settings.target-kontraktor.index',
+                'permission' => 'settings.target-kontraktor.index',
+            ],
+        ],
+    ]
 ];

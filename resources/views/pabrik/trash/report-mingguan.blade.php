@@ -16,6 +16,20 @@
                     </svg>
                     Print
                 </button>
+                <form method="POST" action="{{ route('pabrik.trash.report.export-excel') }}" style="display:inline">
+                    @csrf
+                    <input type="hidden" name="report_type" value="mingguan">
+                    <input type="hidden" name="start_date" value="{{ $startDate }}">
+                    <input type="hidden" name="end_date" value="{{ $endDate }}">
+                    <input type="hidden" name="company" value="{{ is_array($company) ? implode(',', $company) : $company }}">
+                    <button type="submit"
+                        class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3"></path>
+                        </svg>
+                        Export Excel
+                    </button>
+                </form>
                 <button onclick="window.close()"
                     class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
                     Tutup
@@ -128,14 +142,14 @@
                                     <td class="px-2 py-2 text-xs border-2 border-gray-300">{{ $item['plot'] ?? '' }}</td>
                                     <td class="px-2 py-2 text-xs border-2 border-gray-300">{{ $item['namakontraktor'] ?? '-' }}</td>
                                     <td class="px-2 py-2 text-xs border-2 border-gray-300">{{ $item['namasubkontraktor'] ?? '-' }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['pucuk'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['daungulma'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['sogolan'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['siwilan'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tebumati'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tanahetc'] ?? 0, 2, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['pucuk'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['daungulma'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['sogolan'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['siwilan'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tebumati'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tanahetc'] ?? 0, 3, ',', '.') }}</td>
                                     <td class="px-2 py-2 text-xs text-right font-semibold border-2 border-gray-300">{{ number_format($item['total'] ?? 0, 3, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['toleransi'] ?? 0, 2, ',', '.') }}%</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['toleransi'] ?? 0, 3, ',', '.') }}%</td>
                                     <td class="px-2 py-2 text-xs text-right font-semibold border-2 border-gray-300">{{ number_format($item['nettotrash'] ?? 0, 3, ',', '.') }}</td>
                                 </tr>
                                 @endforeach

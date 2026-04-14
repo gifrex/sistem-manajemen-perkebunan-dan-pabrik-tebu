@@ -408,11 +408,11 @@
             </div>
         </div>
 
-        <!-- Action Buttons -->
+        {{-- Action Buttons --}}
         <div class="mt-6 flex justify-center space-x-4 no-print">
             @if($lkhData->status != 'APPROVED' && $lkhData->status != 'COMPLETED' && !$lkhData->issubmit)
             <button 
-                onclick="alert('Edit LKH Panen akan segera tersedia')"
+                onclick="window.location.href='{{ route('transaction.rencanakerjaharian.editLKH', $lkhData->lkhno) }}'"
                 class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center"
             >
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -421,9 +421,23 @@
                 Edit LKH
             </button>
             @endif
+
+            {{-- Submit Button: only show if status DRAFT and not yet submitted --}}
+            @if(!$lkhData->issubmit && $lkhData->status === 'DRAFT')
+            <button 
+                onclick="handleSubmitLKH('{{ $lkhData->lkhno }}')"
+                id="btn-submit-lkh"
+                class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center"
+            >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Submit untuk Approval
+            </button>
+            @endif
             
             <button 
-                onclick="handlePrint()"
+                onclick="window.open('{{ route('transaction.rencanakerjaharian.printLKH', $lkhData->lkhno) }}', '_blank')"
                 class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center"
             >
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -618,8 +632,7 @@
                                     </td>
                                     <td class="px-4 py-3 text-center">
                                         <a 
-                                            href="{{ route('report.report-surat-jalan-timbangan.index') }}/${sj.suratjalanno}" 
-                                            target="_blank"
+                                            href="{{ route('report.report-surat-jalan-timbangan.index') }}/${sj.suratjalanno}"
                                             class="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                                         >
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -669,5 +682,56 @@
                 closeSJModal();
             }
         });
+
+        async function handleSubmitLKH(lkhno) {
+            if (!confirm('Apakah Anda yakin ingin mengirim LKH ini untuk approval?')) return;
+
+            const btn = document.getElementById('btn-submit-lkh');
+            btn.disabled = true;
+            btn.innerHTML = `
+                <svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                </svg>
+                Mengirim...
+            `;
+
+            try {
+                const response = await fetch('{{ route("transaction.rencanakerjaharian.submitLKH") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ lkhno: lkhno })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Gagal mengirim LKH: ' + data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = `
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Submit untuk Approval
+                    `;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat mengirim LKH');
+                btn.disabled = false;
+                btn.innerHTML = `
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Submit untuk Approval
+                `;
+            }
+        }
     </script>
 </x-layout>

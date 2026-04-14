@@ -8,8 +8,10 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
-use Box\Spout\Writer\Common\Creator\Style\StyleBuilder;
-use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
+use OpenSpout\Writer\XLSX\Writer;
+use OpenSpout\Writer\XLSX\Options;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Style;
 
 class RencanaKerjaMingguanController extends Controller
 {
@@ -33,8 +35,6 @@ class RencanaKerjaMingguanController extends Controller
             'lists.*.plot' => 'required',
             'lists.*.totalluasactual' => 'required',
             'lists.*.totalestimasi' => 'required',
-            // 'lists.*.totalhasil' => 'required',
-            // 'lists.*.totalsisa' => 'required',
         ];
     }
 
@@ -44,10 +44,11 @@ class RencanaKerjaMingguanController extends Controller
 
         $search = $request->input('search', '');
         $isClosing = $request->input('isclosing', 0);
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
+        $startDate = $request->input('start_date', Carbon::now()->startOfWeek()->format('Y-m-d'));
+        $endDate = $request->input('end_date', Carbon::now()->endOfWeek()->format('Y-m-d'));
 
         $userid = Auth::user()->userid;
+        $jabatan = Auth::user()->idjabatan;
 
         if ($request->isMethod('post')) {
             $request->validate([
@@ -59,10 +60,6 @@ class RencanaKerjaMingguanController extends Controller
         $perPage = $request->session()->get('perPage', 10);
 
         $querys = DB::table('rkmhdr')
-            // ->leftJoin('rkmlst', function ($join) {
-            //     $join->on('rkmhdr.rkmno', '=', 'rkmlst.rkmno')
-            //         ->whereColumn('rkmhdr.companycode', '=', 'rkmlst.companycode');
-            // })
             ->join('activity', 'activity.activitycode', '=', 'rkmhdr.activitycode')
             ->where('rkmhdr.companycode', '=', session('companycode'))
             ->when($startDate, function ($query) use ($startDate) {
@@ -72,15 +69,16 @@ class RencanaKerjaMingguanController extends Controller
                 $query->whereDate('rkmhdr.rkmdate', '<=', $endDate);
             });
 
-        if ($userid != 'Admin') {
+        if ($jabatan != 0) {
             $querys->where('rkmhdr.inputby', '=', $userid);
         }
-        // ->where('rkmlst.companycode', '=', session('companycode'))
-        // ->where('rkmhdr.isclosing', '=', $isClosing);
+
+
         if (!empty($search)) {
             $querys->where(function ($query) use ($search) {
                 $query->where('rkmhdr.rkmno', 'like', '%' . $search . '%')
-                    ->orWhere('rkmhdr.activitycode', 'like', '%' . $search . '%');
+                    ->orWhere('rkmhdr.activitycode', 'like', '%' . $search . '%')
+                    ->orWhere('activity.activityname', 'like', '%' . $search . '%');
             });
         }
 
@@ -94,10 +92,10 @@ class RencanaKerjaMingguanController extends Controller
         }
 
         if ($request->ajax()) {
-            return view('transaction.rkm.index', compact('title', 'search', 'perPage', 'rkm'));
+            return view('transaction.rkm.index', compact('title', 'search', 'perPage', 'rkm', 'startDate', 'endDate'));
         }
 
-        return view('transaction.rkm.index', compact('title', 'search', 'perPage', 'rkm'));
+        return view('transaction.rkm.index', compact('title', 'search', 'perPage', 'rkm', 'startDate', 'endDate'));
     }
 
     public function create(Request $request)
@@ -109,11 +107,6 @@ class RencanaKerjaMingguanController extends Controller
         $url = route('transaction.rencana-kerja-mingguan.store');
         $buttonSubmit = 'Submit';
         $selectedDate = $request->input('targetDate');
-
-        // if (!$selectedDate) {
-        //     return redirect()->route('transaction.rencana-kerja-mingguan.index')
-        //         ->with('error', 'Silakan pilih tanggal terlebih dahulu');
-        // }
 
         if (!$this->validateDateRange($selectedDate)) {
             return redirect()->route('transaction.rencana-kerja-mingguan.index')
@@ -156,7 +149,7 @@ class RencanaKerjaMingguanController extends Controller
         $comp = session('companycode');
         $plots = DB::table('masterlist')
             ->where('companycode', $comp)
-            // ->where('tgl2', '=', null)
+
             ->where('plot', 'like', $blok . '%')
             ->orderByRaw("LEFT(plot, 1), CAST(SUBSTRING(plot, 2) AS UNSIGNED)")
             ->pluck('plot');
@@ -209,8 +202,6 @@ class RencanaKerjaMingguanController extends Controller
                 'success1' => 'Data sudah ada di salah satu tabel, silahkan coba dengan data yang berbeda.',
             ])->withInput();
         }
-
-        // dd($validated);
 
         DB::beginTransaction();
 
@@ -271,13 +262,13 @@ class RencanaKerjaMingguanController extends Controller
                     ->on('a.rkmno', '=', 'b.rkmno');
             })
             ->leftJoin('lkhhdr as c', function ($join) {
-                $join->on('a.companycode', '=', 'b.companycode')
+                $join->on('a.companycode', '=', 'c.companycode')
                     ->on('a.activitycode', '=', 'c.activitycode')
                     ->whereBetween('c.lkhdate', [DB::raw('a.startdate'), DB::raw('a.enddate')]);
             })
             ->leftJoin('lkhdetailplot as d', function ($join) {
                 $join->on('c.lkhno', '=', 'd.lkhno')
-                    ->on('a.companycode', '=', 'b.companycode')
+                    ->on('c.companycode', '=', 'd.companycode')
                     ->on('b.plot', '=', 'd.plot');
             })
             ->leftJoin('activity as act', 'a.activitycode', '=', 'act.activitycode')
@@ -291,11 +282,13 @@ class RencanaKerjaMingguanController extends Controller
                 'b.blok',
                 'b.plot',
                 'b.totalluasactual',
-                DB::raw('SUM(d.luashasil) AS hasil'),
-                DB::raw('b.totalestimasi - SUM(d.luashasil) AS sisa')
+                DB::raw('COALESCE(SUM(d.luashasil), 0) AS hasil'),
+                DB::raw('COALESCE(b.totalestimasi - SUM(d.luashasil), b.totalestimasi) AS sisa')
             )
             ->where('a.companycode', $companyCode)
             ->where('a.rkmno', $rkmno)
+            ->orderBy('b.blok', 'asc')
+            ->orderBy('b.plot', 'asc')
             ->groupBy(
                 'a.rkmno',
                 'a.startdate',
@@ -413,8 +406,8 @@ class RencanaKerjaMingguanController extends Controller
 
     public function excel(Request $request)
     {
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
+        $startDate = $request->input('start_date', Carbon::now()->startOfWeek()->format('Y-m-d'));
+        $endDate = $request->input('end_date', Carbon::now()->endOfWeek()->format('Y-m-d'));
         $search = $request->input('search');
         $companyCode = session('companycode');
 
@@ -436,7 +429,7 @@ class RencanaKerjaMingguanController extends Controller
             })
             ->leftJoin('lkhdetailplot as d', function ($join) {
                 $join->on('c.lkhno', '=', 'd.lkhno')
-                    ->on('a.companycode', '=', 'b.companycode')
+                    ->on('c.companycode', '=', 'd.companycode')
                     ->on('b.plot', '=', 'd.plot');
             })
             ->leftJoin('activity as act', 'a.activitycode', '=', 'act.activitycode')
@@ -452,8 +445,8 @@ class RencanaKerjaMingguanController extends Controller
                 'b.blok',
                 'b.plot',
                 'b.totalluasactual',
-                DB::raw('SUM(d.luashasil) AS hasil'),
-                DB::raw('b.totalestimasi - SUM(d.luashasil) AS sisa')
+                DB::raw('COALESCE(SUM(d.luashasil), 0) AS hasil'),
+                DB::raw('COALESCE(b.totalestimasi - SUM(d.luashasil), b.totalestimasi) AS sisa')
             )
             ->where('a.companycode', $companyCode)
             ->groupBy(
@@ -472,28 +465,29 @@ class RencanaKerjaMingguanController extends Controller
             ->orderBy('a.rkmno', 'desc');
 
         if ($startDate) {
-            $query->whereDate('rkmhdr.rkmdate', '>=', $startDate);
+            $query->whereDate('a.rkmdate', '>=', $startDate);
         }
         if ($endDate) {
-            $query->whereDate('rkmhdr.rkmdate', '<=', $endDate);
+            $query->whereDate('a.rkmdate', '<=', $endDate);
         }
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('rkmlst.rkmno', 'like', "%{$search}%")
-                    ->orWhere('plotting.activitycode', 'like', "%{$search}%");
+                $q->where('b.rkmno', 'like', "%{$search}%")
+                    ->orWhere('a.activitycode', 'like', "%{$search}%")
+                    ->orWhere('act.activityname', 'like', "%{$search}%");
             });
         }
 
         $now = Carbon::now();
 
-        // Tentukan nama file
+
         if ($startDate && $endDate) {
             $filename = "RKMReport_{$startDate}_sd_{$endDate}.xlsx";
         } else {
             $filename = "RKMReport.xlsx";
         }
 
-        // Buat direktori temp jika belum ada
+
         $tempDir = storage_path('app/temp');
         if (!file_exists($tempDir)) {
             mkdir($tempDir, 0755, true);
@@ -501,78 +495,56 @@ class RencanaKerjaMingguanController extends Controller
 
         $tempFile = $tempDir . '/' . $filename;
 
-        // Buat writer dengan Spout dan set temp folder
-        $writer = WriterEntityFactory::createXLSXWriter();
-
-        // SET TEMP FOLDER - INI YANG PENTING!
-        $writer->setTempFolder($tempDir);
-
+        $writer = new Writer(new Options(tempFolder: $tempDir));
         $writer->openToFile($tempFile);
 
-        // Style untuk header (bold)
-        $headerStyle = (new StyleBuilder())
-            ->setFontBold()
-            ->build();
+        $headerStyle = new Style(fontBold: true);
 
-        // Buat header row
-        $headerCells = [
-            WriterEntityFactory::createCell('No. RKM'),
-            WriterEntityFactory::createCell('RKM Date'),
-            WriterEntityFactory::createCell('Start Date'),
-            WriterEntityFactory::createCell('End Date'),
-            WriterEntityFactory::createCell('Blok'),
-            WriterEntityFactory::createCell('Plot'),
-            WriterEntityFactory::createCell('Luas Plot (Ha)'),
-            WriterEntityFactory::createCell('Estimasi Pengerjaan (Ha)'),
-            WriterEntityFactory::createCell('Aktual Pengerjaan (Ha)'),
-            WriterEntityFactory::createCell('Sisa (Ha)'),
-            WriterEntityFactory::createCell('Kode Aktivitas'),
-            WriterEntityFactory::createCell('Nama Aktivitas'),
-            WriterEntityFactory::createCell('Dibuat Oleh'),
-        ];
+        $writer->addRow(Row::fromValuesWithStyle([
+            'No. RKM',
+            'RKM Date',
+            'Start Date',
+            'End Date',
+            'Blok',
+            'Plot',
+            'Luas Plot (Ha)',
+            'Estimasi Pengerjaan (Ha)',
+            'Aktual Pengerjaan (Ha)',
+            'Sisa (Ha)',
+            'Kode Aktivitas',
+            'Nama Aktivitas',
+            'Dibuat Oleh',
+        ], $headerStyle));
 
-        $headerRow = WriterEntityFactory::createRow($headerCells, $headerStyle);
-        $writer->addRow($headerRow);
-
-        // Proses data dalam chunk untuk efisiensi memori
-        $query->chunk(1000, function ($rkmChunk) use ($writer, $now) {
+        $query->chunk(1000, function ($rkmChunk) use ($writer) {
             $rows = [];
 
             foreach ($rkmChunk as $list) {
-                $decimalStyle = (new StyleBuilder())
-                    ->setFormat('0.00')
-                    ->build();
-
-                $cells = [
-                    WriterEntityFactory::createCell($list->rkmno),
-                    WriterEntityFactory::createCell($list->rkmdate),
-                    WriterEntityFactory::createCell($list->startdate),
-                    WriterEntityFactory::createCell($list->enddate),
-                    WriterEntityFactory::createCell($list->blok),
-                    WriterEntityFactory::createCell($list->plot),
-                    WriterEntityFactory::createCell($list->totalluasactual),
-                    WriterEntityFactory::createCell($list->totalestimasi),
-                    WriterEntityFactory::createCell($list->hasil),
-                    WriterEntityFactory::createCell($list->sisa),
-                    WriterEntityFactory::createCell($list->activitycode),
-                    WriterEntityFactory::createCell($list->activityname),
-                    WriterEntityFactory::createCell($list->inputby),
-                ];
-
-                $rows[] = WriterEntityFactory::createRow($cells);
+                $rows[] = Row::fromValues([
+                    $list->rkmno,
+                    $list->rkmdate,
+                    $list->startdate,
+                    $list->enddate,
+                    $list->blok,
+                    $list->plot,
+                    $list->totalluasactual,
+                    $list->totalestimasi,
+                    $list->hasil,
+                    $list->sisa,
+                    $list->activitycode,
+                    $list->activityname,
+                    $list->inputby,
+                ]);
             }
 
-            // Tulis semua rows dalam chunk sekaligus
             $writer->addRows($rows);
-
-            // Bebaskan memori
             unset($rows);
             gc_collect_cycles();
         });
 
         $writer->close();
 
-        // Return file sebagai download dan hapus setelah dikirim
+
         return response()->download($tempFile, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Cache-Control' => 'max-age=0',

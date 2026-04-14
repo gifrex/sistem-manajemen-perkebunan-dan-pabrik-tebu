@@ -138,22 +138,24 @@ class MasterlistBatchRepository
                     ELSE 0
                 END as is_on_panen"),
                 DB::raw('(
-                    SELECT activitycode 
+                    SELECT activitycode
                     FROM lkhdetailplot ldp2
                     JOIN lkhhdr lh2 ON ldp2.lkhno = lh2.lkhno AND ldp2.companycode = lh2.companycode
                     WHERE ldp2.companycode = "' . $companycode . '"
                     AND ldp2.plot = m.plot
+                    AND ldp2.batchno = m.activebatchno
                     AND lh2.approvalstatus = "1"
                     ORDER BY lh2.lkhdate DESC
                     LIMIT 1
                 ) as last_activitycode'),
                 DB::raw('(
-                    SELECT a2.activityname 
+                    SELECT a2.activityname
                     FROM lkhdetailplot ldp2
                     JOIN lkhhdr lh2 ON ldp2.lkhno = lh2.lkhno AND ldp2.companycode = lh2.companycode
                     JOIN activity a2 ON lh2.activitycode = a2.activitycode
                     WHERE ldp2.companycode = "' . $companycode . '"
                     AND ldp2.plot = m.plot
+                    AND ldp2.batchno = m.activebatchno
                     AND lh2.approvalstatus = "1"
                     ORDER BY lh2.lkhdate DESC
                     LIMIT 1
@@ -164,6 +166,7 @@ class MasterlistBatchRepository
                     JOIN lkhhdr lh2 ON ldp2.lkhno = lh2.lkhno AND ldp2.companycode = lh2.companycode
                     WHERE ldp2.companycode = "' . $companycode . '"
                     AND ldp2.plot = m.plot
+                    AND ldp2.batchno = m.activebatchno
                     AND lh2.approvalstatus = "1"
                     ORDER BY lh2.lkhdate DESC
                     LIMIT 1
@@ -177,6 +180,7 @@ class MasterlistBatchRepository
     /**
      * Calculate total approved work (luashasil) 
      * for plot+activity BEFORE specific date
+     * filter by active BATCH
      * 
      * @param string $companycode
      * @param string $plot
@@ -188,23 +192,61 @@ class MasterlistBatchRepository
         $companycode, 
         $plot, 
         $activitycode, 
-        $beforeDate
+        $beforeDate,
+        $batchno = null
     ) {
-        return (float) DB::table('lkhdetailplot as ldp')
+        $query = DB::table('lkhdetailplot as ldp')
             ->join('lkhhdr as lh', function($join) {
                 $join->on('ldp.lkhno', '=', 'lh.lkhno')
                     ->on('ldp.companycode', '=', 'lh.companycode');
             })
             ->where('ldp.companycode', $companycode)
             ->where('ldp.plot', $plot)
-            ->where('lh.activitycode', $activitycode)
+            ->when(is_array($activitycode),
+                fn($q) => $q->whereIn('lh.activitycode', $activitycode),
+                fn($q) => $q->where('lh.activitycode', $activitycode)
+            )
             ->where('lh.approvalstatus', '1')
-            ->whereDate('lh.lkhdate', '<', $beforeDate)
+            ->where('ldp.rework', 0)
+            ->whereDate('lh.lkhdate', '<', $beforeDate);
+
+        if ($batchno) {
+            $query->where('ldp.batchno', $batchno);
+        }
+        
+        return (float) $query->sum('ldp.luashasil');
+    }
+
+    /**
+     * Calculate total approved luashasil for a plot, excluding a specific LKH.
+     * Used for over-luas validation at submit/approval time.
+     */
+    public function getTotalApprovedWorkByPlotExcludingLkh(
+        $companycode,
+        $plot,
+        $activitycodes,
+        $batchno,
+        $excludeLkhno
+    ) {
+        return (float) DB::table('lkhdetailplot as ldp')
+            ->join('lkhhdr as lh', function ($join) {
+                $join->on('ldp.lkhno', '=', 'lh.lkhno')
+                    ->on('ldp.companycode', '=', 'lh.companycode');
+            })
+            ->where('ldp.companycode', $companycode)
+            ->where('ldp.plot', $plot)
+            ->where('ldp.batchno', $batchno)
+            ->when(is_array($activitycodes),
+                fn($q) => $q->whereIn('lh.activitycode', $activitycodes),
+                fn($q) => $q->where('lh.activitycode', $activitycodes)
+            )
+            ->where('lh.approvalstatus', '1')
+            ->where('lh.lkhno', '!=', $excludeLkhno)
             ->sum('ldp.luashasil');
     }
 
     /**
-     * Calculate total harvest (luashasil) 
+     * Calculate total harvest (luashasil)
      * for batch UNTIL specific date (STC calculation)
      * 
      * @param string $companycode
@@ -251,24 +293,35 @@ class MasterlistBatchRepository
     }
 
     /**
-     * Get last approved activity date for plot
+     * Get last approved activity info for plot
      * 
      * @param string $companycode
      * @param string $plot
      * @return string|null
      */
-    public function getLastApprovedActivityDateForPlot($companycode, $plot)
+    public function getLastApprovedActivityInfoForPlot($companycode, $plot, $batchno = null)
     {
-        return DB::table('lkhdetailplot as ldp')
+        $query = DB::table('lkhdetailplot as ldp')
             ->join('lkhhdr as lh', function($join) {
                 $join->on('ldp.lkhno', '=', 'lh.lkhno')
                     ->on('ldp.companycode', '=', 'lh.companycode');
             })
+            ->join('activity as ma', 'lh.activitycode', '=', 'ma.activitycode')
             ->where('ldp.companycode', $companycode)
             ->where('ldp.plot', $plot)
-            ->where('lh.approvalstatus', '1')
-            ->orderBy('lh.lkhdate', 'desc')
-            ->value('lh.lkhdate');
+            ->where('lh.approvalstatus', '1');
+
+        if ($batchno) {
+            $query->where('ldp.batchno', $batchno);
+        }
+
+        return $query->orderBy('lh.lkhdate', 'desc')
+            ->select([
+                'lh.activitycode as last_activitycode',
+                'ma.activityname as last_activityname',
+                'lh.lkhdate as last_activity_date'
+            ])
+            ->first();
     }
 
     /**

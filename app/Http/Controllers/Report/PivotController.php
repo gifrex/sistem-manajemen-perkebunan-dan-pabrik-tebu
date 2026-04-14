@@ -24,9 +24,9 @@ class PivotController extends Controller
                     ->on('agrohdr.companycode', '=', 'agrolst.companycode');
             })
             ->join('company', 'agrohdr.companycode', '=', 'company.companycode')
-            ->join('plot', function ($join) {
-                $join->on('agrohdr.plot', '=', 'plot.plot')
-                    ->on('agrohdr.companycode', '=', 'plot.companycode');
+            ->join('batch', function ($join) {
+                $join->on('agrohdr.plot', '=', 'batch.plot')
+                    ->on('agrohdr.companycode', '=', 'batch.companycode');
             })
             ->leftJoin('blok', function ($join) {
                 $join->on('agrohdr.blok', '=', 'blok.blok')
@@ -39,7 +39,7 @@ class PivotController extends Controller
             ->select(
                 'company.name as company',
                 'blok.blok as Blok',
-                'plot.plot as Plot',
+                'batch.plot as Plot',
                 DB::raw("MONTH(agrohdr.tanggalpengamatan) as Bulan"),
                 DB::raw("AVG(per_germinasi) as Germinasi"),
                 DB::raw("AVG(per_gap) as GAP"),
@@ -203,9 +203,9 @@ class PivotController extends Controller
                     ->on('hpthdr.companycode', '=', 'hptlst.companycode');
             })
             ->join('company', 'hpthdr.companycode', '=', 'company.companycode')
-            ->join('plot', function ($join) {
-                $join->on('hpthdr.plot', '=', 'plot.plot')
-                    ->on('hpthdr.companycode', '=', 'plot.companycode');
+            ->join('batch', function ($join) {
+                $join->on('hpthdr.plot', '=', 'batch.plot')
+                    ->on('hpthdr.companycode', '=', 'batch.companycode');
             })
             ->leftJoin('blok', function ($join) {
                 $join->on('hpthdr.blok', '=', 'blok.blok')
@@ -218,7 +218,7 @@ class PivotController extends Controller
             ->select(
                 'company.name as company',
                 'blok.blok as Blok',
-                'plot.plot as Plot',
+                'batch.plot as Plot',
                 DB::raw("MONTH(hpthdr.tanggalpengamatan) as Bulan"),
                 DB::raw("AVG(per_ppt) as PersenPPT"),
                 DB::raw("AVG(per_pbt) as PersenPBT"),

@@ -141,18 +141,20 @@ class TenagaKerjaController extends Controller
         $sheet->setCellValue('A2', '- Untuk cek Mandor User ID, klik tab dibawah "Daftar Mandor"');
         $sheet->setCellValue('A3', '- Sebelum mengisi Jenis Tenaga Kerja ID, harap melihat terlebih dahulu tab "Jenis Tenaga Kerja" untuk mencocokan ID nya');
         $sheet->setCellValue('A4', '- Pastikan semua data diisi dengan benar sesuai format');
+        $sheet->setCellValue('A5', '- NIK harus berisi 16 digit angka saja (contoh: 3201234567890123)');
 
-        $sheet->getStyle('A2:A4')->getFont()->setItalic(true)->setSize(10);
-        $sheet->getStyle('A2:A4')->getFont()->getColor()->setRGB('666666');
+        $sheet->getStyle('A2:A5')->getFont()->setItalic(true)->setSize(10);
+        $sheet->getStyle('A2:A5')->getFont()->getColor()->setRGB('666666');
 
         // Merge cells untuk keterangan
         $sheet->mergeCells('A2:E2');
         $sheet->mergeCells('A3:E3');
         $sheet->mergeCells('A4:E4');
+        $sheet->mergeCells('A5:E5');
 
-        // Header tabel mulai dari row 6
+        // Header tabel mulai dari row 7
         $headers = ['Mandor User ID', 'Nama Tenaga Kerja', 'NIK', 'Gender (L/P)', 'Jenis Tenaga Kerja ID'];
-        $sheet->fromArray($headers, null, 'A6');
+        $sheet->fromArray($headers, null, 'A7');
 
         // Style header
         $headerStyle = [
@@ -166,14 +168,21 @@ class TenagaKerjaController extends Controller
                 ]
             ]
         ];
-        $sheet->getStyle('A6:E6')->applyFromArray($headerStyle);
+        $sheet->getStyle('A7:E7')->applyFromArray($headerStyle);
 
-        // Contoh data di row 7
-        $sheet->setCellValue('A7', $mandor->first()->userid ?? 'MDR001');
-        $sheet->setCellValue('B7', 'Contoh: Budi Santoso');
-        $sheet->setCellValue('C7', '3201234567890123');
-        $sheet->setCellValue('D7', 'L');
-        $sheet->setCellValue('E7', '1');
+        // SET FORMAT KOLOM NIK (KOLOM C) SEBAGAI TEXT
+        // Format dari row 8 sampai 1000 (atau sesuai kebutuhan)
+        $sheet->getStyle('C8:C1000')
+            ->getNumberFormat()
+            ->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+
+        // Contoh data di row 8
+        $sheet->setCellValue('A8', $mandor->first()->userid ?? 'MDR001');
+        $sheet->setCellValue('B8', 'Contoh: Budi Santoso');
+        // Set NIK dengan setCellValueExplicit untuk pastikan format text
+        $sheet->setCellValueExplicit('C8', '3201234567890123', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValue('D8', 'L');
+        $sheet->setCellValue('E8', '1');
 
         // Style untuk contoh data
         $exampleStyle = [
@@ -185,7 +194,7 @@ class TenagaKerjaController extends Controller
                 ]
             ]
         ];
-        $sheet->getStyle('A7:E7')->applyFromArray($exampleStyle);
+        $sheet->getStyle('A8:E8')->applyFromArray($exampleStyle);
 
         // Auto width
         foreach (range('A', 'E') as $col) {
@@ -261,9 +270,9 @@ class TenagaKerjaController extends Controller
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray();
 
-            // Remove keterangan (row 1-6) dan header row (row 6)
-            // Data dimulai dari row 7, tapi karena array index 0, maka row 7 = index 6
-            $dataRows = array_slice($rows, 6); // Ambil dari index 6 ke bawah (row 7 dst)
+            // Remove keterangan (row 1-7) dan header row (row 7)
+            // Data dimulai dari row 8, tapi karena array index 0, maka row 8 = index 7
+            $dataRows = array_slice($rows, 7); // Ambil dari index 7 ke bawah (row 8 dst)
             
             if ($dataRows === null || count($dataRows) == 0) {
                 return redirect()->back()->with('error', 'File tidak berisi data.');
@@ -273,10 +282,9 @@ class TenagaKerjaController extends Controller
             $errorCount = 0;
             $errors = [];
 
-
             DB::beginTransaction();
             foreach ($dataRows as $index => $row) {
-                $rowNumber = $index + 7; // +7 karena data mulai row 7 di Excel
+                $rowNumber = $index + 8; // +8 karena data mulai row 8 di Excel
 
                 // Skip empty rows
                 if (empty(array_filter($row))) {
@@ -301,48 +309,28 @@ class TenagaKerjaController extends Controller
                     $errorCount++;
                     continue;
                 }
-
+                
                 if (!in_array($gender, ['L', 'P'])) {
                     $errors[] = "Baris $rowNumber: Gender harus L atau P";
                     $errorCount++;
                     continue;
                 }
 
-                // Check if mandor exists
-                $mandorExists = User::where('userid', $mandoruserid)
-                    ->where('idjabatan', 5)
-                    ->where('companycode', $companycode)
-                    ->exists();
-
-                if (!$mandorExists) {
-                    $errors[] = "Baris $rowNumber: Mandor dengan UserID '$mandoruserid' tidak ditemukan";
-                    $errorCount++;
-                    continue;
-                }
-
-                // Check if jenis tenaga kerja exists
-                $jenisExists = DB::table('jenistenagakerja')
-                    ->where('idjenistenagakerja', $jenistenagakerja)
-                    ->exists();
-
-                if (!$jenisExists) {
-                    $errors[] = "Baris $rowNumber: Jenis Tenaga Kerja ID '$jenistenagakerja' tidak ditemukan";
-                    $errorCount++;
-                    continue;
-                }
-
-                // Check if NIK already exists
+                // Check if NIK already exists (hanya cek yang active)
                 if (!empty($nik)) {
-                    $nikExists = TenagaKerja::where('nik', $nik)->exists();
+                    $nikExists = TenagaKerja::where('nik', $nik)->where('companycode', $companycode)->where('mandoruserid', $mandoruserid)
+                        ->where('isactive', 1)
+                        ->exists();
                     if ($nikExists) {
-                        $errors[] = "Baris $rowNumber: NIK '$nik' sudah terdaftar";
+                        $errors[] = "Baris $rowNumber: NIK '$nik' sudah terdaftar dan masih aktif";
                         $errorCount++;
                         continue;
                     }
-                }
+                }                
 
                 // Generate next ID
                 $nextId = $this->generateNextId($companycode);
+                
                 // Insert data
                 TenagaKerja::create([
                     'tenagakerjaid' => $nextId,
@@ -386,21 +374,24 @@ class TenagaKerjaController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:100',
-            'nik' => 'required|string|max:16|unique:tenagakerja,nik',
-            'mandor' => 'required|exists:user,userid',
-            'gender' => 'required|in:L,P',
-            'jenis' => 'required|exists:jenistenagakerja,idjenistenagakerja',
-        ]);
+        
 
         $companycode = session('companycode');
 
-        // Generate the next ID
+        // Check NIK yang masih aktif
+        $ceknik = TenagaKerja::where('nik', $request->nik)->where('companycode', $companycode)->where('mandoruserid', $request->mandor)
+            ->where('isactive', 1)
+            ->first();
+        if ($ceknik) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['nik' => 'NIK sudah terdaftar dan masih aktif']);
+        }
+
         $nextId = $this->generateNextId($companycode);
 
         // Double check if the ID already exists
-        $exists = TenagaKerja::where('companycode', $companycode)
+        $exists = TenagaKerja::where('companycode', $companycode)->where('mandoruserid', $request->mandor)
             ->where('tenagakerjaid', $nextId)
             ->exists();
         if ($exists) {
@@ -429,19 +420,21 @@ class TenagaKerjaController extends Controller
      * Update the specified tenaga kerja in storage.
      */
     public function update(Request $request, $companycode, $id)
-    {
+    { 
         $tenagaKerja = TenagaKerja::where('companycode', $companycode)
             ->where('tenagakerjaid', $id)
             ->firstOrFail();
 
-        $request->validate([
-            'name' => 'required|string|max:100',
-            'nik' => 'required|string|max:16|unique:tenagakerja,nik,' . $id . ',tenagakerjaid',
-            'mandor' => 'required|exists:user,userid',
-            'gender' => 'required|in:L,P',
-            'jenis' => 'required|exists:jenistenagakerja,idjenistenagakerja',
-            'isactive' => 'nullable|boolean'
-        ]);
+        // Check NIK yang sama tapi beda ID dan masih aktif
+        $ceknik = TenagaKerja::where('nik', $request->nik)->where('companycode', $companycode)->where('mandoruserid', $request->mandor)
+            ->where('tenagakerjaid', '!=', $id)
+            ->where('isactive', 1)
+            ->first();
+        if ($ceknik) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['nik' => 'NIK sudah terdaftar dan masih aktif']);
+        }
 
         $tenagaKerja->update([
             'mandoruserid' => $request->mandor,

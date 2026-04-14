@@ -1,26 +1,28 @@
 <?php
 
 // routes\masterdata.php
-
+ 
 use App\Http\Controllers\MasterData\ActivityController;
 use App\Http\Controllers\MasterData\BlokController;
 use App\Http\Controllers\MasterData\BatchController;
 use App\Http\Controllers\MasterData\CompanyController;
 use App\Http\Controllers\MasterData\MasterListController;
+use App\Http\Controllers\MasterData\CostcenterController;
 use App\Http\Controllers\MasterData\HerbisidaController;
 use App\Http\Controllers\MasterData\HerbisidaGroupController;
 use App\Http\Controllers\MasterData\HerbisidaDosageController;
 use App\Http\Controllers\MasterData\ApprovalController;
-use App\Http\Controllers\MasterData\KategoriController;
 use App\Http\Controllers\MasterData\VarietasController;
 use App\Http\Controllers\MasterData\AccountingController;
 use App\Http\Controllers\MasterData\MandorController;
 use App\Http\Controllers\MasterData\TenagaKerjaController;
 use App\Http\Controllers\MasterData\UpahController;
+use App\Http\Controllers\MasterData\UpahBoronganController;
 use App\Http\Controllers\MasterData\KendaraanController;
 use App\Http\Controllers\MasterData\KontraktorController;
 use App\Http\Controllers\MasterData\SubkontraktorController;
 use App\Http\Controllers\MasterData\SplitMergePlotController;
+use App\Http\Controllers\MasterData\OpenReworkController;
 
 Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(function () {
 
@@ -63,12 +65,7 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
         Route::get('herbisida', [HerbisidaController::class, 'index'])->name('herbisida.index');
         Route::post('herbisida', [HerbisidaController::class, 'store'])->name('herbisida.store');
         Route::get('herbisida/group', [HerbisidaController::class, 'group'])->name('herbisida.group');
-        Route::get('herbisida/items', function (\Illuminate\Http\Request $request) {
-            return \App\Models\Herbisida::where('companycode', $request->companycode)
-                ->select('itemcode', 'itemname')
-                ->orderBy('itemcode')
-                ->get();
-        })->name('herbisida.items');
+        Route::get('herbisida/items', [HerbisidaController::class, 'items'])->name('herbisida.items');
     });
 
     Route::middleware('permission:masterdata.herbisida.edit')->group(function () {
@@ -90,6 +87,15 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
     });
 
     // ============================================================================
+    // COSTCENTER
+    // ============================================================================
+    Route::middleware('permission:masterdata.costcenter.create')->group(function () {
+        Route::get('costcenter', [CostcenterController::class, 'index'])->name('costcenter.index');
+        Route::patch('costcenter/{herbisidagroupid}', [CostcenterController::class, 'update'])->name('costcenter.update');
+        Route::delete('costcenter/{herbisidagroupid}', [CostcenterController::class, 'destroy'])->name('costcenter.destroy');
+    });
+
+    // ============================================================================
     // HERBISIDA DOSAGE
     // ============================================================================
     Route::middleware('permission:masterdata.herbisidadosage.view')->group(function () {
@@ -98,12 +104,16 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
     });
 
     Route::middleware('permission:masterdata.herbisidadosage.edit')->group(function () {
-        Route::match(['put', 'patch'], 'herbisida-dosage/{companycode}/{activitycode}/{itemcode}', [HerbisidaDosageController::class, 'update'])->name('herbisida-dosage.update');
+        Route::match(['put', 'patch'], 'herbisida-dosage/{herbisidagroupid}/{itemcode}', [HerbisidaDosageController::class, 'update'])->name('herbisida-dosage.update');
     });
 
     Route::middleware('permission:masterdata.herbisidadosage.delete')->group(function () {
-        Route::delete('herbisida-dosage/{companycode}/{activitycode}/{itemcode}', [HerbisidaDosageController::class, 'destroy'])->name('herbisida-dosage.destroy');
+        Route::delete('herbisida-dosage/{herbisidagroupid}/{itemcode}', [HerbisidaDosageController::class, 'destroy'])->name('herbisida-dosage.destroy');
     });
+
+    //
+
+    //
 
     // ============================================================================
     // AKTIVITAS
@@ -129,22 +139,6 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
 
     Route::middleware('permission:masterdata.approval.delete')->group(function () {
         Route::delete('approval/{companycode}/{category}', [ApprovalController::class, 'destroy'])->name('approval.destroy');
-    });
-
-    // ============================================================================
-    // KATEGORI
-    // ============================================================================
-    Route::middleware('permission:masterdata.kategori.view')->group(function () {
-        Route::get('kategori', [KategoriController::class, 'index'])->name('kategori.index');
-        Route::post('kategori', [KategoriController::class, 'store'])->name('kategori.store');
-    });
-
-    Route::middleware('permission:masterdata.kategori.edit')->group(function () {
-        Route::match(['put', 'patch'], 'kategori/{kodekategori}', [KategoriController::class, 'update'])->name('kategori.update');
-    });
-
-    Route::middleware('permission:masterdata.kategori.delete')->group(function () {
-        Route::delete('kategori/{kodekategori}', [KategoriController::class, 'destroy'])->name('kategori.destroy');
     });
 
     // ============================================================================
@@ -224,6 +218,16 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
         Route::delete('split-merge-plot/{transactionNumber}', [SplitMergePlotController::class, 'destroy'])->name('split-merge-plot.destroy');
     });
 
+    Route::middleware('permission:masterdata.open-rework.view')->group(function () {
+        Route::get('open-rework', [OpenReworkController::class, 'index'])->name('open-rework.index');
+        Route::post('open-rework/get-lkh-list', [OpenReworkController::class, 'getLkhList'])->name('open-rework.get-lkh-list');
+        Route::get('open-rework/lkh-detail/{lkhno}', [OpenReworkController::class, 'getLkhDetailPlots'])->name('open-rework.lkh-detail');
+        Route::get('open-rework/approval/{approvalno}', [OpenReworkController::class, 'getApprovalDetail'])->name('open-rework.approval-detail');
+        Route::post('open-rework', [OpenReworkController::class, 'store'])->name('open-rework.store');
+    });
+
+    
+
     // ============================================================================
     // MANDOR
     // ============================================================================
@@ -274,6 +278,16 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
         Route::delete('upah/{id}', [UpahController::class, 'destroy'])->name('upah.destroy');
     });
 
+    // UPAH BORONGAN
+    Route::middleware('permission:masterdata.upah.view')->group(function () {
+        Route::get('upah-borongan', [UpahBoronganController::class, 'index'])->name('upah-borongan.index');
+        Route::get('upah-borongan/activities-by-group', [UpahBoronganController::class, 'getActivitiesByGroup'])->name('upah-borongan.activities-by-group');
+        Route::get('upah-borongan/current-wage', [UpahBoronganController::class, 'getCurrentWage'])->name('upah-borongan.current-wage');
+        Route::post('upah-borongan', [UpahBoronganController::class, 'store'])->name('upah-borongan.store');
+        Route::put('upah-borongan/{id}', [UpahBoronganController::class, 'update'])->name('upah-borongan.update');
+        Route::delete('upah-borongan/{id}', [UpahBoronganController::class, 'destroy'])->name('upah-borongan.destroy');
+    });
+
     // ============================================================================
     // KENDARAAN
     // ============================================================================
@@ -303,7 +317,7 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
     });
 
     Route::middleware('permission:masterdata.kontraktor.delete')->group(function () {
-        Route::delete('kontraktor/{companycode}/{id}', [KontraktorController::class, 'destroy'])->name('kontraktor.destroy');
+        Route::patch('kontraktor/{companycode}/{id}/toggle-active', [KontraktorController::class, 'toggleActive'])->name('kontraktor.toggle-active');
     });
 
     // ============================================================================
@@ -319,6 +333,6 @@ Route::middleware('auth')->prefix('masterdata')->name('masterdata.')->group(func
     });
 
     Route::middleware('permission:masterdata.subkontraktor.delete')->group(function () {
-        Route::delete('subkontraktor/{companycode}/{id}', [SubkontraktorController::class, 'destroy'])->name('subkontraktor.destroy');
+        Route::patch('subkontraktor/{companycode}/{id}/toggle-active', [SubkontraktorController::class, 'toggleActive'])->name('subkontraktor.toggle-active');
     });
 });

@@ -1,0 +1,13 @@
+.git
+.env
+node_modules
+vendor
+storage/*.php
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+tests
+Dockerfile
+docker-compose.yml
+.github

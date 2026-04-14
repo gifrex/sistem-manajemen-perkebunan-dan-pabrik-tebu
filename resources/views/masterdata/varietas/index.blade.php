@@ -19,7 +19,7 @@
 
     <div class="flex items-center justify-between px-4 py-2">
         {{-- Create Button --}}
-      @if(hasPermission('Create Varietas'))
+      @can('masterdata.varietas.create')
         <button @click="resetForm()"
                 class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2">
           <svg class="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -27,7 +27,7 @@
           </svg>
           New Data
         </button>
-      @endif
+      @endcan
       {{-- Search Form --}}
       <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-2">
         <label for="search" class="text-xs font-medium text-gray-700">Search:</label>
@@ -146,7 +146,7 @@
                 <td class="py-2 px-4 border-b">{{ $data->description }}</td>
                 <td class="py-2 px-4 border-b">
                   <div class="flex items-center justify-center space-x-2">
-                    @if(hasPermission('Edit Varietas'))
+                    @can('masterdata.varietas.edit')
                       <button @click="
                         mode = 'edit';
                         form.kodevarietasOriginal = '{{ $data->kodevarietas }}';
@@ -163,8 +163,8 @@
                           <use xlink:href="#icon-edit-solid"/> <use xlink:href="#icon-edit-solid2" />
                         </svg>
                       </button>
-                    @endif
-                    @if(hasPermission('Hapus Varietas'))
+                    @endcan
+                    @can('masterdata.varietas.delete')
                       <form action="{{ url("masterdata/varietas/{$data->kodevarietas}") }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus data ini?');" class="inline">
                         @csrf
                         @method('DELETE')
@@ -179,7 +179,7 @@
                           </svg>
                         </button>
                       </form>
-                    @endif
+                    @endcan
                   </div>
                 </td>
               </tr>

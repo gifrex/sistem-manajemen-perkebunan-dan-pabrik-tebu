@@ -12,12 +12,22 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        'api_client' => [
+            'driver'   => 'sanctum',
+            'provider' => 'api_clients',
+        ],
     ],
 
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', App\Models\User::class),
+        ],
+
+        'api_clients' => [
+            'driver' => 'eloquent',
+            'model'  => App\Models\ApiClient::class,
         ],
 
         // 'users' => [

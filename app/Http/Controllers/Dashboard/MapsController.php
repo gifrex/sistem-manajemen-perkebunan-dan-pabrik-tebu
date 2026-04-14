@@ -47,61 +47,71 @@ class MapsController extends Controller
     public function index()
     {
         $title = "Dashboard Agronomi";
-        $nav = "Agronomi";
-        $header = DB::table('testgpshdr')->where('companycode', session('companycode'))->orderBy('plot')->get();
-        //old
-        //$list1 = DB::table('testgpslst')->where('companycode', session('companycode'))->whereIn('plot', Arr::pluck($header, 'plot'))->get();
-        //new
+        $nav   = "Agronomi";
+        $company = session('companycode');
+
+        // 1) Ambil LIST = sumber kebenaran (harus lengkap + 1 company)
         $list = DB::table('testgpslst as a')
-            ->leftJoin('plot as b', function ($join) {
-                $join->on('a.plot', '=', 'b.plot')
-                    ->on('a.companycode', '=', 'b.companycode');
+            ->join('testgpshdr as d', function ($join) {
+                $join->on('a.plot', '=', 'd.plot')
+                    ->on('a.companycode', '=', 'd.companycode');
             })
-            ->leftJoin('masterlist as m', function ($join) {
-                $join->on('b.plot', '=', 'm.plot')
-                    ->on('b.companycode', '=', 'm.companycode');
+            ->join('masterlist as m', function ($join) {
+                $join->on('a.plot', '=', 'm.plot')
+                    ->on('a.companycode', '=', 'm.companycode');
             })
-            ->leftJoin('batch as c', function ($join) {
+            ->join('batch as c', function ($join) {
                 $join->on('m.activebatchno', '=', 'c.batchno')
                     ->on('m.companycode', '=', 'c.companycode')
                     ->where('c.isactive', '=', 1);
             })
-            ->where('a.companycode', session('companycode'))
-            ->whereIn('a.plot', Arr::pluck($header, 'plot'))
+            ->where('a.companycode', $company) // ✅ kunci utama: filter company di root
             ->select(
+                'a.companycode',
                 'a.plot',
                 'a.latitude',
                 'a.longitude',
+                'd.centerlatitude',
+                'd.centerlongitude',
                 'c.batchno',
                 'c.batchdate',
                 'c.batcharea',
                 'c.lifecyclestatus',
                 'c.kodevarietas',
                 'c.isactive',
-                'b.luasarea',
-                'b.jaraktanam as plot_jaraktanam',
-                'b.status',
                 DB::raw('DATEDIFF(CURDATE(), c.batchdate) as umur_hari')
             )
             ->get();
 
-        // $plotKodeStatus = collect($list)
-        // ->whereNotNull('kodestatus')
-        // ->where('kodestatus', '!=', '')
-        // ->groupBy('plot')
-        // ->map(function($items) {
-        //     return $items->first()->kodestatus;
-        // });
+        // 2) Header dibuat dari LIST (jadi marker hanya untuk plot yang lolos join)
+        $header = $list->map(function ($x) {
+            return (object)[
+                'companycode' => $x->companycode,
+                'plot' => $x->plot,
+                'centerlatitude' => $x->centerlatitude,
+                'centerlongitude' => $x->centerlongitude,
+            ];
+        })->unique('plot')->values();
 
-        //  dd($list, $header);
-        return view('dashboard\maps\mapsfilter')->with([
-            'title' => $title,
-            'nav'   => $nav,
-            'header' => $header,
-            // 'plotKodeStatus' => $plotKodeStatus,
-            'list' => $list
+        // 3) Debug dd jika perlu: /dashboard/maps?debug=1
+        if (request()->get('debug') == 1) {
+            dd([
+                'session_companycode' => $company,
+                'list_companycodes'   => $list->pluck('companycode')->unique()->values(),
+                'list_rows'           => $list->count(),
+                'header_plots'        => $header->count(),
+                'sample_plots'        => $header->take(20)->pluck('plot'),
+            ]);
+        }
+
+        return view('dashboard.maps.mapsfilter')->with([
+            'title'  => $title,
+            'nav'    => $nav,
+            'header' => $header, // ✅ marker pakai ini
+            'list'   => $list,   // ✅ polygon points pakai ini
         ]);
     }
+
 
     public function indexapi(Request $request)
     {
@@ -114,22 +124,18 @@ class MapsController extends Controller
         $detailsPlots = Arr::pluck($details, 'plot');
 
         $list = DB::table('testgpslst as a')
-            ->leftJoin('plot as b', function ($join) {
-                $join->on('a.plot', '=', 'b.plot')
-                    ->on('a.companycode', '=', 'b.companycode');
+            ->join('testgpshdr as d', function ($join) {
+                $join->on('a.plot', '=', 'd.plot')
+                    ->on('a.companycode', '=', 'd.companycode');
             })
-            ->leftJoin('masterlist as m', function ($join) {
-                $join->on('b.plot', '=', 'm.plot')
-                    ->on('b.companycode', '=', 'm.companycode');
+            ->join('masterlist as m', function ($join) {
+                $join->on('a.plot', '=', 'm.plot')
+                    ->on('a.companycode', '=', 'm.companycode');
             })
-            ->leftJoin('batch as c', function ($join) {
+            ->join('batch as c', function ($join) {
                 $join->on('m.activebatchno', '=', 'c.batchno')
                     ->on('m.companycode', '=', 'c.companycode')
                     ->where('c.isactive', '=', 1);
-            })
-            ->leftJoin('testgpshdr as d', function ($join) {
-                $join->on('a.plot', '=', 'd.plot')
-                    ->on('a.companycode', '=', 'd.companycode');
             })
             ->where('a.companycode', session('companycode'))
             ->whereIn('a.plot', $detailsPlots)
@@ -146,12 +152,11 @@ class MapsController extends Controller
                 'c.lifecyclestatus',
                 'c.kodevarietas',
                 'c.isactive',
-                'b.luasarea',
-                'b.jaraktanam as plot_jaraktanam',
-                'b.status',
                 DB::raw('DATEDIFF(CURDATE(), c.batchdate) as umur_hari')
             )
             ->get();
+
+
 
         $header = $list->map(function ($item) {
             return (object)[

@@ -1,32 +1,35 @@
 name: Deploy Staging (.180)
 
 on:
-  push:
-    branches: ["main"]
+  # push:
+  #  branches: ["main"]
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
 jobs:
   deploy_staging:
     runs-on: [self-hosted, windows, staging]
     environment: staging
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+        
       - name: Install dependencies
         shell: powershell
         run: |
           npm install
-
+          
       - name: Build assets
         shell: powershell
         run: |
           npm run build
-
+          
       - name: Deploy to XAMPP htdocs
         shell: powershell
         run: |

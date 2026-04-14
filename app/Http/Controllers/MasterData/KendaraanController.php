@@ -5,7 +5,7 @@ namespace App\Http\Controllers\MasterData;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Kendaraan;
+use App\Models\MasterData\Kendaraan;
 use App\Models\TenagaKerja;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;

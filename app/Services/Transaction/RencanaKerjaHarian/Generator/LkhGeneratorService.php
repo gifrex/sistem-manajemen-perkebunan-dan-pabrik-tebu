@@ -11,7 +11,7 @@ class LkhGeneratorService
 {
     protected $wageCalculationService;
     
-    const PANEN_ACTIVITIES = ['4.3.3', '4.4.3', '4.5.2'];
+    const PANEN_ACTIVITIES = ['4.3.3', '4.4.3', '4.5.2', '2.2.2a', '2.2.2b'];
     const BSM_ACTIVITY = '4.7';
     const JENIS_HARIAN = 1;
     const JENIS_BORONGAN = 2;
@@ -24,144 +24,133 @@ class LkhGeneratorService
     }
 
     public function generateLkhFromRkh($rkhno, $companycode = null)
-    {
-        try {
-            DB::beginTransaction();
+{
+    try {
+        $companycode = $companycode ?? session('companycode');
 
-            $companycode = $companycode ?? session('companycode');
-
-            if (!$companycode) {
-                throw new \Exception("Company code tidak ditemukan");
-            }
-
-            $rkh = DB::table('rkhhdr')
-                ->where('rkhno', $rkhno)
-                ->where('companycode', $companycode)
-                ->first();
-                
-            if (!$rkh) {
-                throw new \Exception("RKH {$rkhno} not found for company {$companycode}");
-            }
-
-            if (!$this->isRkhFullyApproved($rkh)) {
-                throw new \Exception("RKH {$rkhno} belum fully approved");
-            }
-
-            $existingLkh = DB::table('lkhhdr')
-                ->where('rkhno', $rkhno)
-                ->where('companycode', $companycode)
-                ->exists();
-            
-            if ($existingLkh) {
-                throw new \Exception("LKH untuk RKH {$rkhno} (company: {$companycode}) sudah pernah di-generate");
-            }
-
-            $rkhActivities = DB::table('rkhlst')
-                ->where('rkhno', $rkhno)
-                ->where('companycode', $companycode)
-                ->get();
-
-            if ($rkhActivities->isEmpty()) {
-                throw new \Exception("Tidak ada aktivitas ditemukan untuk RKH {$rkhno}");
-            }
-
-            $groupedActivities = $this->groupActivitiesForLkh($rkhActivities);
-
-            $generatedLkh = [];
-            $lkhIndex = 1;
-
-            foreach ($groupedActivities as $groupKey => $groupActivities) {
-                $firstActivity = $groupActivities->first();
-                
-                [$activitycode, $jenistenagakerja] = explode('|', $groupKey);
-                
-                $lkhno = $this->generateLkhNumber($rkh->rkhno, $lkhIndex);
-                
-                $lkhHeaderResult = $this->createLkhHeader(
-                    $rkh, 
-                    $lkhno, 
-                    $activitycode, 
-                    $jenistenagakerja, 
-                    $groupActivities
-                );
-                
-                $plotResult = [];
-                $isBsm = ($activitycode === self::BSM_ACTIVITY);
-                
-                if (!$isBsm) {
-                    $plotResult = $this->createLkhDetailPlots(
-                        $lkhno, 
-                        $lkhHeaderResult['lkhhdrid'],
-                        $groupActivities, 
-                        $rkh->companycode,
-                        $activitycode
-                    );
-                }
-                
-                $kendaraanResult = $this->generateLkhKendaraanRecords(
-                    $rkh->rkhno,
-                    $lkhno,
-                    $lkhHeaderResult['lkhhdrid'],
-                    $activitycode,
-                    $rkh->companycode,
-                    $groupActivities
-                );
-                
-                $isPanen = in_array($activitycode, self::PANEN_ACTIVITIES);
-                
-                $lkhData = [
-                    'lkhno' => $lkhno,
-                    'activitycode' => $activitycode,
-                    'type' => $isPanen ? 'PANEN' : ($isBsm ? 'BSM' : 'NORMAL'),
-                    'plots' => $lkhHeaderResult['plots_summary'],
-                    'plots_count' => count($plotResult),
-                    'jenistenagakerja' => $jenistenagakerja,
-                    'jenis_label' => $this->getJenisLabel($jenistenagakerja),
-                    'total_luas' => $lkhHeaderResult['total_luas'],
-                    'planned_workers' => $lkhHeaderResult['planned_workers'],
-                    'kendaraan_count' => $kendaraanResult['total_vehicles'],
-                    'status' => 'DRAFT'
-                ];
-                
-                if ($isBsm) {
-                    $lkhData['bsm_status'] = 'WAITING_ANDROID_INPUT';
-                    $lkhData['bsm_note'] = 'Android will insert BSM records per SJ';
-                }
-                
-                $generatedLkh[] = $lkhData;
-                $lkhIndex++;
-            }
-
-            DB::commit();
-
-            Log::info("LKH auto-generated for RKH {$rkhno}", [
-                'generated_lkh' => $generatedLkh,
-                'total_lkh' => count($generatedLkh)
-            ]);
-
-            return [
-                'success' => true,
-                'message' => 'LKH berhasil di-generate otomatis',
-                'generated_lkh' => $generatedLkh,
-                'total_lkh' => count($generatedLkh)
-            ];
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            
-            Log::error("Failed to generate LKH for RKH {$rkhno}: " . $e->getMessage(), [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return [
-                'success' => false,
-                'message' => $e->getMessage(),
-                'generated_lkh' => [],
-                'total_lkh' => 0
-            ];
+        if (!$companycode) {
+            throw new \Exception("Company code tidak ditemukan");
         }
+
+        $rkh = DB::table('rkhhdr')
+            ->where('rkhno', $rkhno)
+            ->where('companycode', $companycode)
+            ->first();
+            
+        if (!$rkh) {
+            throw new \Exception("RKH {$rkhno} not found for company {$companycode}");
+        }
+
+        if (!$this->isRkhFullyApproved($rkh)) {
+            throw new \Exception("RKH {$rkhno} belum fully approved");
+        }
+
+        $existingLkh = DB::table('lkhhdr')
+            ->where('rkhno', $rkhno)
+            ->where('companycode', $companycode)
+            ->exists();
+        
+        if ($existingLkh) {
+            throw new \Exception("LKH untuk RKH {$rkhno} (company: {$companycode}) sudah pernah di-generate");
+        }
+
+        $rkhActivities = DB::table('rkhlst')
+            ->where('rkhno', $rkhno)
+            ->where('companycode', $companycode)
+            ->get();
+
+        if ($rkhActivities->isEmpty()) {
+            throw new \Exception("Tidak ada aktivitas ditemukan untuk RKH {$rkhno}");
+        }
+
+        $groupedActivities = $this->groupActivitiesForLkh($rkhActivities);
+
+        $generatedLkh = [];
+        $lkhIndex = 1;
+
+        foreach ($groupedActivities as $groupKey => $groupActivities) {
+            $firstActivity = $groupActivities->first();
+            
+            [$activitycode, $jenistenagakerja] = explode('|', $groupKey);
+            
+            $lkhno = $this->generateLkhNumber($rkh->rkhno, $lkhIndex);
+            
+            $lkhHeaderResult = $this->createLkhHeader(
+                $rkh, 
+                $lkhno, 
+                $activitycode, 
+                $jenistenagakerja, 
+                $groupActivities
+            );
+            
+            $plotResult = [];
+            $isBsm = ($activitycode === self::BSM_ACTIVITY);
+            
+            if (!$isBsm) {
+                $plotResult = $this->createLkhDetailPlots(
+                    $lkhno, 
+                    $lkhHeaderResult['lkhhdrid'],
+                    $groupActivities, 
+                    $rkh->companycode,
+                    $activitycode
+                );
+            }
+            
+            $kendaraanResult = $this->generateLkhKendaraanRecords(
+                $rkh->rkhno,
+                $lkhno,
+                $lkhHeaderResult['lkhhdrid'],
+                $activitycode,
+                $rkh->companycode,
+                $groupActivities
+            );
+            
+            $isPanen = in_array($activitycode, self::PANEN_ACTIVITIES);
+            
+            $lkhData = [
+                'lkhno' => $lkhno,
+                'activitycode' => $activitycode,
+                'type' => $isPanen ? 'PANEN' : ($isBsm ? 'BSM' : 'NORMAL'),
+                'plots' => $lkhHeaderResult['plots_summary'],
+                'plots_count' => count($plotResult),
+                'jenistenagakerja' => $jenistenagakerja,
+                'jenis_label' => $this->getJenisLabel($jenistenagakerja),
+                'total_luas' => $lkhHeaderResult['total_luas'],
+                'planned_workers' => $lkhHeaderResult['planned_workers'],
+                'kendaraan_count' => $kendaraanResult['total_vehicles'],
+                'status' => 'DRAFT'
+            ];
+            
+            if ($isBsm) {
+                $lkhData['bsm_status'] = 'WAITING_ANDROID_INPUT';
+                $lkhData['bsm_note'] = 'Android will insert BSM records per SJ';
+            }
+            
+            $generatedLkh[] = $lkhData;
+            $lkhIndex++;
+        }
+
+        Log::info("LKH auto-generated for RKH {$rkhno}", [
+            'generated_lkh' => $generatedLkh,
+            'total_lkh' => count($generatedLkh)
+        ]);
+
+        return [
+            'success' => true,
+            'message' => 'LKH berhasil di-generate otomatis',
+            'generated_lkh' => $generatedLkh,
+            'total_lkh' => count($generatedLkh)
+        ];
+
+    } catch (\Exception $e) {
+        Log::error("Failed to generate LKH for RKH {$rkhno}: " . $e->getMessage(), [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        throw $e;
     }
+}
 
     private function groupActivitiesForLkh($activities)
     {
@@ -272,6 +261,7 @@ class LkhGeneratorService
         return $plotDetails;
     }
 
+    
     private function generateLkhKendaraanRecords($rkhno, $lkhno, $lkhhdrid, $activitycode, $companycode, $activities)
     {
         try {
@@ -302,6 +292,8 @@ class LkhGeneratorService
                     $kendaraanid = $kendaraan ? $kendaraan->id : null;
                 }
                 
+                // CHANGED: Hapus hourmeterstart, hourmeterend, solar, status
+                // Kolom-kolom tersebut sudah pindah ke tabel orderbbmlst
                 $record = [
                     'companycode' => $companycode,
                     'lkhno' => $lkhno,
@@ -312,10 +304,6 @@ class LkhGeneratorService
                     'helperid' => $assignment->helperid,
                     'jammulai' => null,
                     'jamselesai' => null,
-                    'hourmeterstart' => null,
-                    'hourmeterend' => null,
-                    'solar' => null,
-                    'status' => null,
                     'createdat' => now()
                 ];
                 

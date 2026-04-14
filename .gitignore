@@ -3,9 +3,13 @@
 /public/build
 /public/hot
 /public/storage
+/public/uploads/*
+!/public/uploads/.gitkeep
+/public/vendor/log-viewer/
 /storage/*.key
 /vendor
 .env
+.env.dev
 .env.backup
 .env.production
 .phpactor.json
@@ -20,4 +24,5 @@ yarn-error.log
 /.vscode
 /.zed
 test-api.http
-/.github
+.env.docker
+docker/dev/init-db/*.sql

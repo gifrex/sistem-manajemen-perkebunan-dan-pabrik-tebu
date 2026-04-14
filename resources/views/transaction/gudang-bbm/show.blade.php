@@ -1,248 +1,276 @@
-{{-- resources/views/transaction/gudang/gudang-bbm-show.blade.php --}}
+{{-- resources/views/transaction/gudang-bbm/show.blade.php --}}
+{{-- Pure read-only print preview. Semua aksi (input solar, finalize) ada di index page. --}}
 <x-layout>
-    <x-slot:title>Konfirmasi Pengeluaran BBM - {{ $lkhData->lkhno }}</x-slot:title>
-    <x-slot:navbar>Konfirmasi Pengeluaran BBM</x-slot:navbar>
-    <x-slot:nav>Konfirmasi BBM</x-slot:nav>
+    <x-slot:title>{{ $title }}</x-slot:title>
+    <x-slot:navbar>{{ $navbar }}</x-slot:navbar>
+    <x-slot:nav>{{ $nav }}</x-slot:nav>
 
     <style>
         @media print {
-            body * {
-                visibility: hidden;
-            }
-            .print-area, .print-area * {
-                visibility: visible;
-            }
-            .print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-            }
-            .no-print {
-                display: none !important;
-            }
+            body * { visibility: hidden; }
+            .print-area, .print-area * { visibility: visible; }
+            .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+            .print-area table { font-size: 9pt; }
+            .print-area { font-size: 10pt; }
         }
-        
         @media screen {
             .print-area {
                 max-width: 210mm;
                 margin: 0 auto;
                 background: white;
-                padding: 20mm;
+                padding: 15mm 20mm;
                 box-shadow: 0 0 10px rgba(0,0,0,0.1);
             }
         }
+        .print-area table { border-collapse: collapse; }
+        .print-area th, .print-area td { border: 1px solid #000; padding: 4px 8px; }
+        .info-table td { border: none; padding: 2px 0; }
     </style>
 
-    {{-- Action Buttons - No Print --}}
+@php
+    if ($header->gudangconfirm == 0) {
+        $statusLabel = 'Menunggu Input Solar Real';
+    } elseif (($header->gudangapprovalstatus ?? null) === '1') {
+        $statusLabel = 'Approved';
+    } elseif (($header->gudangapprovalstatus ?? null) === '0') {
+        $statusLabel = 'Ditolak';
+    } else {
+        $statusLabel = 'Menunggu Approval Pengeluaran';
+    }
+@endphp
+
+    {{-- Action Bar (screen only) --}}
     <div class="no-print mb-4 flex justify-between items-center">
-        <a href="{{ route('transaction.gudang-bbm.index') }}" 
-           class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm">
-            ← Kembali
-        </a>
-        
-        @if($canConfirm)
-        <div class="space-x-2">
-            <button onclick="confirmBbm('{{ $orderNumber }}')" 
-                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
-                Konfirmasi BBM
-            </button>
-            <button onclick="window.print()" 
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
-                Print
-            </button>
-        </div>
-        @else
-        <div class="space-x-2">
-            <span class="text-green-600 text-sm font-medium">✓ Sudah Dikonfirmasi</span>
-            <button onclick="window.print()" 
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
-                Print
-            </button>
-        </div>
-        @endif
+        <a href="{{ route('transaction.gudang-bbm.index') }}"
+           class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm">&larr; Kembali</a>
+        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">Print</button>
     </div>
 
+    {{-- ================================================================= --}}
+    {{-- PRINT AREA --}}
+    {{-- ================================================================= --}}
     <div class="print-area">
-        {{-- Header --}}
-        <div class="text-center border-b-2 border-black pb-4 mb-6">
-            <h1 class="text-xl font-bold uppercase tracking-wide">KONFIRMASI PENGELUARAN BBM</h1>
-            <p class="text-sm mt-1">{{ config('app.name') }}</p>
-            <div class="flex justify-between items-center mt-4">
-                <div class="text-left">
-                    <div class="text-sm">No. Order:</div>
-                    <div class="text-lg font-bold">{{ $orderNumber }}</div>
-                </div>
-                <div class="text-right">
-                    <div class="text-sm">{{ $printDate }}</div>
-                </div>
-            </div>
+
+        {{-- Document Header --}}
+        <div style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px;">
+            <div style="font-size: 16pt; font-weight: bold; letter-spacing: 1px;">KONFIRMASI PENGELUARAN BBM</div>
+            <div style="font-size: 9pt; margin-top: 4px;">{{ config('app.name') }}</div>
         </div>
 
-        {{-- LKH Information --}}
-        <div class="mb-6">
-            <h2 class="text-sm font-bold uppercase border-b border-gray-400 pb-1 mb-3">Informasi Pekerjaan</h2>
-            <div class="grid grid-cols-2 gap-6 text-sm">
-                <div>
-                    <table class="w-full">
+        {{-- Order Info --}}
+        <table style="width:100%; margin-bottom: 16px;" class="info-table">
+            <tr>
+                <td style="width:50%; vertical-align:top;">
+                    <table class="info-table" style="width:100%">
                         <tr>
-                            <td class="py-1 w-24">LKH No</td>
-                            <td class="py-1">: {{ $lkhData->lkhno }}</td>
+                            <td style="width:110px; color:#555;">No. Order</td>
+                            <td style="font-weight:bold; font-size: 12pt;">: #{{ $header->orderno }}</td>
                         </tr>
                         <tr>
-                            <td class="py-1">Tanggal</td>
-                            <td class="py-1">: {{ \Carbon\Carbon::parse($lkhData->lkhdate)->translatedFormat('d F Y') }}</td>
-                        </tr>
-                    </table>
-                </div>
-                <div>
-                    <table class="w-full">
-                        <tr>
-                            <td class="py-1 w-32">Activity</td>
-                            <td class="py-1">: {{ $lkhData->activitycode }} - {{ $lkhData->activityname }}</td>
+                            <td style="color:#555;">Tanggal</td>
+                            <td>: {{ \Carbon\Carbon::parse($header->orderdate)->translatedFormat('d F Y') }}</td>
                         </tr>
                         <tr>
-                            <td class="py-1">Mandor</td>
-                            <td class="py-1">: {{ $lkhData->mandor_nama ?? 'N/A' }}</td>
+                            <td style="color:#555;">Status</td>
+                            <td>: <strong>{{ $statusLabel }}</strong></td>
                         </tr>
                     </table>
-                </div>
-            </div>
-        </div>
+                </td>
+                <td style="width:50%; vertical-align:top;">
+                    <table class="info-table" style="width:100%">
+                        <tr>
+                            <td style="width:110px; color:#555;">Tipe Sumber</td>
+                            <td>: {{ $header->sourcetype === 'LKH' ? 'LKH (Kendaraan Kerja)' : 'SJS (Kendaraan Supply)' }}</td>
+                        </tr>
+                        <tr>
+                            <td style="color:#555;">No. Referensi</td>
+                            <td>: {{ $header->sourceno }}</td>
+                        </tr>
+                        @if($sourceInfo)
+                            @if($header->sourcetype === 'LKH')
+                            <tr>
+                                <td style="color:#555;">Activity</td>
+                                <td>: {{ $sourceInfo->activitycode ?? '' }} - {{ $sourceInfo->activityname ?? '' }}</td>
+                            </tr>
+                            <tr>
+                                <td style="color:#555;">Mandor</td>
+                                <td>: {{ $sourceInfo->mandor_nama ?? 'N/A' }}</td>
+                            </tr>
+                            @else
+                            <tr>
+                                <td style="color:#555;">Tujuan</td>
+                                <td>: {{ $sourceInfo->tujuan ?? '' }}</td>
+                            </tr>
+                            <tr>
+                                <td style="color:#555;">Aktivitas</td>
+                                <td>: {{ $sourceInfo->keteranganaktivitas ?? '' }}</td>
+                            </tr>
+                            @endif
+                        @endif
+                    </table>
+                </td>
+            </tr>
+        </table>
 
-        {{-- Vehicle & BBM Details --}}
-        <div class="mb-6">
-            <h2 class="text-sm font-bold uppercase border-b border-gray-400 pb-1 mb-3">Detail Kendaraan & BBM</h2>
-            <table class="w-full text-sm border-collapse border border-black">
+        {{-- Detail Table --}}
+        <div style="margin-bottom: 8px; font-weight:bold; font-size: 9pt; text-transform:uppercase; border-bottom:1px solid #999; padding-bottom:4px; color:#333;">
+            Detail Kendaraan & BBM
+        </div>
+        <table style="width:100%; font-size: 9pt;">
+            <thead>
+                <tr style="background:#f0f0f0;">
+                    <th style="text-align:center; width:30px;">No</th>
+                    <th style="text-align:left;">Kendaraan</th>
+                    <th style="text-align:left;">Jenis</th>
+                    <th style="text-align:left;">Operator</th>
+                    <th style="text-align:center;">Hasil Kerja</th>
+                    <th style="text-align:center;">Kalibrasi</th>
+                    <th style="text-align:center;">Solar Diminta (L)</th>
+                    <th style="text-align:center;">Solar Real (L)</th>
+                    <th style="text-align:center;">Selisih (L)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($detail as $idx => $item)
+                <tr>
+                    <td style="text-align:center;">{{ $idx + 1 }}</td>
+                    <td style="font-weight:600;">
+                        {{ $item->nokendaraan }}
+                        @if($item->ismanualoverride)
+                            <span style="font-size:8pt; font-weight:normal;"> *)</span>
+                        @endif
+                    </td>
+                    <td>{{ $item->jenis ?? '-' }}</td>
+                    <td>{{ $item->operator_nama ?? '-' }}</td>
+                    <td style="text-align:center;">{{ number_format($item->hasilkerja, 2) }} {{ $item->satuanhasil }}</td>
+                    <td style="text-align:center;">{{ number_format($item->nilaikalibrasi, 2) }} {{ $item->satuankalibrasi }}</td>
+                    <td style="text-align:center;">{{ number_format($item->solarrequested, 2) }}</td>
+                    <td style="text-align:center; font-weight:600;">
+                        {{ $item->solarreal !== null ? number_format($item->solarreal, 2) : '-' }}
+                    </td>
+                    <td style="text-align:center;">
+                        @if($item->solarreal !== null)
+                            @php $selisih = $item->solarrequested - $item->solarreal; @endphp
+                            {{ $selisih > 0 ? '-' . number_format($selisih, 2) : '0.00' }}
+                        @else
+                            -
+                        @endif
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
+                <tr style="background:#f0f0f0; font-weight:bold;">
+                    <td colspan="6" style="text-align:right;">TOTAL</td>
+                    <td style="text-align:center;">{{ number_format($header->totalsolarrequested, 2) }}</td>
+                    <td style="text-align:center;">
+                        {{ $header->totalsolarreal !== null ? number_format($header->totalsolarreal, 2) : '-' }}
+                    </td>
+                    <td style="text-align:center;">
+                        @if($header->totalsolarreal !== null)
+                            @php $totalSelisih = $header->totalsolarrequested - $header->totalsolarreal; @endphp
+                            {{ $totalSelisih > 0 ? '-' . number_format($totalSelisih, 2) : '0.00' }}
+                        @else
+                            -
+                        @endif
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+
+        @if($detail->where('ismanualoverride', 1)->count() > 0)
+        <div style="font-size: 8pt; color:#666; margin-top:4px;">
+            *) Solar diminta di-override manual dari nilai kalkulasi
+        </div>
+        @endif
+
+        {{-- ============================================================= --}}
+        {{-- RIWAYAT PROSES --}}
+        {{-- ============================================================= --}}
+        <div style="margin-top: 24px; border-top: 1px solid #999; padding-top: 12px;">
+            <div style="font-weight:bold; font-size: 9pt; text-transform:uppercase; margin-bottom:8px; color:#333;">
+                Riwayat Proses
+            </div>
+            <table style="width:100%; font-size: 9pt;">
                 <thead>
-                    <tr class="bg-gray-100">
-                        <th class="border border-black px-2 py-2 text-left">Kendaraan</th>
-                        <th class="border border-black px-2 py-2 text-left">Jenis</th>
-                        <th class="border border-black px-2 py-2 text-left">Operator</th>
-                        <th class="border border-black px-2 py-2 text-center">Plot</th>
-                        <th class="border border-black px-2 py-2 text-center">Jam Kerja</th>
-                        <th class="border border-black px-2 py-2 text-center">HM Start</th>
-                        <th class="border border-black px-2 py-2 text-center">HM End</th>
-                        <th class="border border-black px-2 py-2 text-center">Selisih</th>
-                        <th class="border border-black px-2 py-2 text-center">Solar (L)</th>
-                        <th class="border border-black px-2 py-2 text-center">Status</th>
+                    <tr style="background:#f0f0f0;">
+                        <th style="text-align:left;">Tahap</th>
+                        <th style="text-align:left;">Pelaksana</th>
+                        <th style="text-align:center;">Status</th>
+                        <th style="text-align:center;">Tanggal</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($vehicleData as $vehicle)
+                    {{-- 1. Pembuatan Order --}}
                     <tr>
-                        <td class="border border-black px-2 py-2 font-semibold">{{ $vehicle->nokendaraan }}</td>
-                        <td class="border border-black px-2 py-2">{{ $vehicle->jenis ?? '-' }}</td>
-                        <td class="border border-black px-2 py-2">{{ $vehicle->operator_nama ?? '-' }}</td>
-                        <td class="border border-black px-2 py-2 text-center">
-                            <span class="text-xs">{{ $vehicle->plots ?? '-' }}</span>
-                        </td>
-                        <td class="border border-black px-2 py-2 text-center">
-                            {{ substr($vehicle->jammulai, 0, 5) }} - {{ substr($vehicle->jamselesai, 0, 5) }}
-                        </td>
-                        <td class="border border-black px-2 py-2 text-center">{{ number_format($vehicle->hourmeterstart ?? 0, 1) }}</td>
-                        <td class="border border-black px-2 py-2 text-center">{{ number_format($vehicle->hourmeterend ?? 0, 1) }}</td>
-                        <td class="border border-black px-2 py-2 text-center font-semibold">
-                            {{ number_format(($vehicle->hourmeterend ?? 0) - ($vehicle->hourmeterstart ?? 0), 1) }}
-                        </td>
-                        <td class="border border-black px-2 py-2 text-center font-bold">
-                            {{ number_format($vehicle->solar ?? 0, 2) }}
-                        </td>
-                        <td class="border border-black px-2 py-2 text-center">
-                            @if($vehicle->gudangconfirm)
-                                <span class="text-xs bg-green-100 text-green-700 px-1 py-1 rounded">✓ Confirmed</span>
-                            @else
-                                <span class="text-xs bg-yellow-100 text-yellow-700 px-1 py-1 rounded">Pending</span>
-                            @endif
+                        <td>Pembuatan Order</td>
+                        <td>{{ $header->inputby ?? '-' }}</td>
+                        <td style="text-align:center;">Dibuat</td>
+                        <td style="text-align:center;">
+                            {{ $header->createdat ? \Carbon\Carbon::parse($header->createdat)->format('d/m/Y H:i') : '-' }}
                         </td>
                     </tr>
-                    @endforeach
+
+                    {{-- 2. Approval Permintaan (multi-level) --}}
+                    @for($i = 1; $i <= ($header->jumlahapproval ?? 0); $i++)
+                    @php
+                        $aUser = $header->{"approval{$i}userid"} ?? null;
+                        $aFlag = $header->{"approval{$i}flag"} ?? null;
+                        $aDate = $header->{"approval{$i}date"} ?? null;
+                        $aJab  = $header->{"approval{$i}idjabatan"} ?? null;
+                        $jabName = $aJab ? \Illuminate\Support\Facades\DB::table('jabatan')->where('idjabatan', $aJab)->value('namajabatan') : null;
+
+                        if ($aFlag === '1') $aStatus = 'Approved';
+                        elseif ($aFlag === '0') $aStatus = 'Ditolak';
+                        else $aStatus = 'Pending';
+                    @endphp
+                    <tr>
+                        <td>Approval Permintaan {{ $i }}{{ $jabName ? " ({$jabName})" : '' }}</td>
+                        <td>{{ $aUser ?? '-' }}</td>
+                        <td style="text-align:center;">{{ $aStatus }}</td>
+                        <td style="text-align:center;">{{ $aDate ? \Carbon\Carbon::parse($aDate)->format('d/m/Y H:i') : '-' }}</td>
+                    </tr>
+                    @endfor
+
+                    {{-- 3. Konfirmasi Gudang --}}
+                    <tr>
+                        <td>Konfirmasi Gudang BBM</td>
+                        <td>{{ $header->gudangconfirmedby ?? '-' }}</td>
+                        <td style="text-align:center;">{{ $header->gudangconfirm == 1 ? 'Dikonfirmasi' : 'Pending' }}</td>
+                        <td style="text-align:center;">
+                            {{ isset($header->gudangconfirmedat) && $header->gudangconfirmedat ? \Carbon\Carbon::parse($header->gudangconfirmedat)->format('d/m/Y H:i') : '-' }}
+                        </td>
+                    </tr>
+
+                    {{-- 4. Approval Pengeluaran (multi-level) --}}
+                    @for($i = 1; $i <= ($header->gudangjumlahapproval ?? 0); $i++)
+                    @php
+                        $gUser = $header->{"gudangapproval{$i}userid"} ?? null;
+                        $gFlag = $header->{"gudangapproval{$i}flag"} ?? null;
+                        $gDate = $header->{"gudangapproval{$i}date"} ?? null;
+                        $gJab  = $header->{"gudangapproval{$i}idjabatan"} ?? null;
+                        $gJabName = $gJab ? \Illuminate\Support\Facades\DB::table('jabatan')->where('idjabatan', $gJab)->value('namajabatan') : null;
+
+                        if ($gFlag === '1') $gStatus = 'Approved';
+                        elseif ($gFlag === '0') $gStatus = 'Ditolak';
+                        else $gStatus = 'Pending';
+                    @endphp
+                    <tr>
+                        <td>Approval Pengeluaran {{ $i }}{{ $gJabName ? " ({$gJabName})" : '' }}</td>
+                        <td>{{ $gUser ?? '-' }}</td>
+                        <td style="text-align:center;">{{ $gStatus }}</td>
+                        <td style="text-align:center;">{{ $gDate ? \Carbon\Carbon::parse($gDate)->format('d/m/Y H:i') : '-' }}</td>
+                    </tr>
+                    @endfor
                 </tbody>
-                <tfoot>
-                    <tr class="bg-gray-100 font-bold">
-                        <td colspan="9" class="border border-black px-2 py-2 text-right">TOTAL SOLAR:</td>
-                        <td class="border border-black px-2 py-2 text-center">
-                            {{ number_format($totalSolar, 2) }} L
-                        </td>
-                    </tr>
-                </tfoot>
             </table>
         </div>
 
-        {{-- Confirmation Status --}}
-        <div class="mb-6 p-4 border rounded-lg {{ $canConfirm ? 'bg-yellow-50 border-yellow-300' : 'bg-green-50 border-green-300' }}">
-            <h3 class="text-sm font-bold uppercase mb-2">Status Konfirmasi</h3>
-            @if($canConfirm)
-                <p class="text-sm text-yellow-700">
-                    <strong>Status:</strong> Menunggu konfirmasi dari gudang BBM
-                </p>
-            @else
-                <p class="text-sm text-green-700">
-                    <strong>Status:</strong> ✓ Sudah dikonfirmasi oleh gudang BBM
-                </p>
-            @endif
-        </div>
-
-        {{-- Signature Section --}}
-        <div class="grid grid-cols-3 gap-8 text-center text-sm">
-            <div>
-                <div class="font-semibold mb-16">Diminta Oleh:</div>
-                <div class="border-t border-black pt-2">
-                    <div class="font-semibold">{{ $lkhData->mandor_nama ?? 'N/A' }}</div>
-                    <div class="text-xs">Mandor</div>
-                </div>
-            </div>
-            <div>
-                <div class="font-semibold mb-16">Disetujui Oleh:</div>
-                <div class="border-t border-black pt-2">
-                    <div class="font-semibold">_________________</div>
-                    <div class="text-xs">Admin Kendaraan</div>
-                </div>
-            </div>
-            <div>
-                <div class="font-semibold mb-16">Dikonfirmasi Oleh:</div>
-                <div class="border-t border-black pt-2">
-                    <div class="font-semibold">{{ auth()->user()->name ?? 'Admin BBM' }}</div>
-                    <div class="text-xs">Admin BBM</div>
-                </div>
-            </div>
-        </div>
-
         {{-- Footer --}}
-        <div class="text-center text-xs mt-6 border-t border-gray-300 pt-2">
-            Dicetak pada: {{ $printDate }} | Order No: {{ $orderNumber }}
+        <div style="text-align:center; font-size: 8pt; margin-top: 16px; border-top: 1px solid #ccc; padding-top: 6px; color: #999;">
+            Dokumen ini digenerate oleh sistem. Validitas dapat diverifikasi melalui nomor order dan riwayat proses di atas.
+            <br>Order #{{ $header->orderno }} | Dicetak: {{ $printDate }}
         </div>
     </div>
-
-    <script>
-        async function confirmBbm(ordernumber) {
-            if (!confirm('Apakah Anda yakin ingin mengkonfirmasi pengeluaran BBM untuk Order #' + ordernumber + '?')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`{{ url('transaction/gudang-bbm') }}/${ordernumber}/confirm`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({
-                        ordernumber: ordernumber
-                    })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    alert(data.message);
-                    location.reload();
-                } else {
-                    alert('Gagal konfirmasi: ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Terjadi kesalahan saat konfirmasi BBM');
-            }
-        }
-    </script>
 </x-layout>

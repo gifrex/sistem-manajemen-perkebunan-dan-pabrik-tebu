@@ -219,14 +219,14 @@
                                     <td class="px-2 py-2 text-xs text-center border-2 border-gray-300">{{ $item['plot'] ?? '' }}</td>
                                     <td class="px-2 py-2 text-xs text-center border-2 border-gray-300">{{ $item['namakontraktor'] ?? '-' }}</td>
                                     <td class="px-2 py-2 text-xs text-center border-2 border-gray-300">{{ $item['namasubkontraktor'] ?? '-' }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['pucuk'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['daungulma'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['sogolan'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['siwilan'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tebumati'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tanahetc'] ?? 0, 2, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['pucuk'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['daungulma'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['sogolan'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['siwilan'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tebumati'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tanahetc'] ?? 0, 3, ',', '.') }}</td>
                                     <td class="px-2 py-2 text-xs text-right font-semibold border-2 border-gray-300">{{ number_format($item['total'] ?? 0, 3, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['toleransi'] ?? 0, 2, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['toleransi'] ?? 0, 3, ',', '.') }}</td>
                                     <td class="px-2 py-2 text-xs text-right font-semibold border-2 border-gray-300">{{ number_format($item['nettotrash'] ?? 0, 3, ',', '.') }}</td>
                                 </tr>
                                 @endforeach
@@ -296,14 +296,14 @@
                                         <td class="px-2 py-2 text-xs border-2 border-gray-300">{{ $item['plot'] ?? '' }}</td>
                                         <td class="px-2 py-2 text-xs border-2 border-gray-300">{{ $item['namakontraktor'] ?? '-' }}</td>
                                         <td class="px-2 py-2 text-xs border-2 border-gray-300">{{ $item['namasubkontraktor'] ?? '-' }}</td>
-                                        <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['pucuk'] ?? 0, 2, ',', '.') }}</td>
-                                        <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['daungulma'] ?? 0, 2, ',', '.') }}</td>
-                                        <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['sogolan'] ?? 0, 2, ',', '.') }}</td>
-                                        <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['siwilan'] ?? 0, 2, ',', '.') }}</td>
-                                        <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tebumati'] ?? 0, 2, ',', '.') }}</td>
-                                        <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tanahetc'] ?? 0, 2, ',', '.') }}</td>
+                                        <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['pucuk'] ?? 0, 3, ',', '.') }}</td>
+                                        <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['daungulma'] ?? 0, 3, ',', '.') }}</td>
+                                        <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['sogolan'] ?? 0, 3, ',', '.') }}</td>
+                                        <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['siwilan'] ?? 0, 3, ',', '.') }}</td>
+                                        <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tebumati'] ?? 0, 3, ',', '.') }}</td>
+                                        <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tanahetc'] ?? 0, 3, ',', '.') }}</td>
                                         <td class="px-2 py-2 text-xs text-right font-semibold border-2 border-gray-300">{{ number_format($item['total'] ?? 0, 3, ',', '.') }}</td>
-                                        <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['toleransi'] ?? 0, 2, ',', '.') }}%</td>
+                                        <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['toleransi'] ?? 0, 3, ',', '.') }}%</td>
                                         <td class="px-2 py-2 text-xs text-right font-semibold border-2 border-gray-300">{{ number_format($item['nettotrash'] ?? 0, 3, ',', '.') }}</td>
                                     </tr>
                                     @endforeach
@@ -470,15 +470,15 @@
                                                         <td class="uniform-cell text-center">
                                                             {{ number_format($sumTonase, 0, ',', '.') }}
                                                         </td>
-                                                        <td class="uniform-cell text-right">{{ number_format($avgPucuk, 2, ',', '.') }}</td>
-                                                        <td class="uniform-cell text-right">{{ number_format($avgDaun, 2, ',', '.') }}</td>
-                                                        <td class="uniform-cell text-right">{{ number_format($avgSogolan, 2, ',', '.') }}</td>
-                                                        <td class="uniform-cell text-right">{{ number_format($avgSiwilan, 2, ',', '.') }}</td>
-                                                        <td class="uniform-cell text-right">{{ number_format($avgTebumati, 2, ',', '.') }}</td>
-                                                        <td class="uniform-cell text-right">{{ number_format($avgTanah, 2, ',', '.') }}</td>
-                                                        <td class="uniform-cell text-right">{{ number_format($totaltrash, 2, ',', '.') }}</td>
-                                                        <td class="uniform-cell text-right">{{ number_format($totaltrash, 2, ',', '.') }}</td>
-                                                        <td class="uniform-cell text-right">{{ number_format($nettoTrash, 2, ',', '.') }}</td>
+                                                        <td class="uniform-cell text-right">{{ number_format($avgPucuk, 3, ',', '.') }}</td>
+                                                        <td class="uniform-cell text-right">{{ number_format($avgDaun, 3, ',', '.') }}</td>
+                                                        <td class="uniform-cell text-right">{{ number_format($avgSogolan, 3, ',', '.') }}</td>
+                                                        <td class="uniform-cell text-right">{{ number_format($avgSiwilan, 3, ',', '.') }}</td>
+                                                        <td class="uniform-cell text-right">{{ number_format($avgTebumati, 3, ',', '.') }}</td>
+                                                        <td class="uniform-cell text-right">{{ number_format($avgTanah, 3, ',', '.') }}</td>
+                                                        <td class="uniform-cell text-right">{{ number_format($totaltrash, 3, ',', '.') }}</td>
+                                                        <td class="uniform-cell text-right">{{ number_format($totaltrash, 3, ',', '.') }}</td>
+                                                        <td class="uniform-cell text-right">{{ number_format($nettoTrash, 3, ',', '.') }}</td>
                                                         <td class="uniform-cell text-right">{{ number_format($kgTrashBruto, 0, ',', '.') }}</td>
                                                         <td class="uniform-cell text-right">{{ number_format($kgTrashNetto, 0, ',', '.') }}</td>
                                                     </tr>
@@ -516,31 +516,31 @@
                                                     <strong>{{ number_format($groupSumTonase, 0, ',', '.') }}</strong>
                                                 </td>
                                                 <td class="uniform-cell-group text-right">
-                                                    <strong>{{ number_format($groupAvgPucuk, 2, ',', '.') }}</strong>
+                                                    <strong>{{ number_format($groupAvgPucuk, 3, ',', '.') }}</strong>
                                                 </td>
                                                 <td class="uniform-cell-group text-right">
-                                                    <strong>{{ number_format($groupAvgDaun, 2, ',', '.') }}</strong>
+                                                    <strong>{{ number_format($groupAvgDaun, 3, ',', '.') }}</strong>
                                                 </td>
                                                 <td class="uniform-cell-group text-right">
-                                                    <strong>{{ number_format($groupAvgSogolan, 2, ',', '.') }}</strong>
+                                                    <strong>{{ number_format($groupAvgSogolan, 3, ',', '.') }}</strong>
                                                 </td>
                                                 <td class="uniform-cell-group text-right">
-                                                    <strong>{{ number_format($groupAvgSiwilan, 2, ',', '.') }}</strong>
+                                                    <strong>{{ number_format($groupAvgSiwilan, 3, ',', '.') }}</strong>
                                                 </td>
                                                 <td class="uniform-cell-group text-right">
-                                                    <strong>{{ number_format($groupAvgTebumati, 2, ',', '.') }}</strong>
+                                                    <strong>{{ number_format($groupAvgTebumati, 3, ',', '.') }}</strong>
                                                 </td>
                                                 <td class="uniform-cell-group text-right">
-                                                    <strong>{{ number_format($groupAvgTanah, 2, ',', '.') }}</strong>
+                                                    <strong>{{ number_format($groupAvgTanah, 3, ',', '.') }}</strong>
                                                 </td>
                                                 <td class="uniform-cell-group text-right">
-                                                    <strong>{{ number_format($groupTotalTrash, 2, ',', '.') }}</strong>
+                                                    <strong>{{ number_format($groupTotalTrash, 3, ',', '.') }}</strong>
                                                 </td>
                                                 <td class="uniform-cell-group text-right">
-                                                    <strong>{{ number_format($trashPersentaseBruto, 2, ',', '.') }}</strong>
+                                                    <strong>{{ number_format($trashPersentaseBruto, 3, ',', '.') }}</strong>
                                                 </td>
                                                 <td class="uniform-cell-group text-right">
-                                                    <strong>{{ number_format($trashPersentaseNetto, 2, ',', '.') }}</strong>
+                                                    <strong>{{ number_format($trashPersentaseNetto, 3, ',', '.') }}</strong>
                                                 </td>
                                                 <td class="uniform-cell-group text-right">
                                                     <strong>{{ number_format($groupKgTrashBruto, 0, ',', '.') }}</strong>
@@ -892,15 +892,15 @@
                                             <tr class="bg-yellow-100">
                                                 <td class="uniform-cell text-center font-bold">TOTAL</td>
                                                 <td class="uniform-cell text-right font-bold">{{ number_format($grandTotalTonaseAll, 0, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandAvgPucuk, 2, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandAvgDaun, 2, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandAvgSogolan, 2, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandAvgSiwilan, 2, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandAvgTebumati, 2, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandAvgTanah, 2, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandTotalTrashSum, 2, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandTrashPersentaseBruto, 2, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandTrashPersentaseNetto, 2, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandAvgPucuk, 3, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandAvgDaun, 3, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandAvgSogolan, 3, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandAvgSiwilan, 3, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandAvgTebumati, 3, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandAvgTanah, 3, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandTotalTrashSum, 3, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandTrashPersentaseBruto, 3, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($grandTrashPersentaseNetto, 3, ',', '.') }}</td>
                                                 <td class="uniform-cell text-right font-bold">{{ number_format($grandKgTrashBrutoAll, 0, ',', '.') }}</td>
                                                 <td class="uniform-cell text-right font-bold">{{ number_format($grandKgTrashNettoAll, 0, ',', '.') }}</td>
                                             </tr>
@@ -908,13 +908,13 @@
                                             {{-- Per Ton Average Row --}}
                                             <tr class="bg-white">
                                                 <td colspan="2" class="uniform-cell text-center font-bold">RATA PERTON</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($rataPucukPerTon, 2, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($rataDaunPerTon, 2, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($rataSogolanPerTon, 2, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($rataSiwilanPerTon, 2, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($rataTebumatiPerTon, 2, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($rataTanahPerTon, 2, ',', '.') }}</td>
-                                                <td class="uniform-cell text-right font-bold">{{ number_format($totalTrashPerTon, 2, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($rataPucukPerTon, 3, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($rataDaunPerTon, 3, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($rataSogolanPerTon, 3, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($rataSiwilanPerTon, 3, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($rataTebumatiPerTon, 3, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($rataTanahPerTon, 3, ',', '.') }}</td>
+                                                <td class="uniform-cell text-right font-bold">{{ number_format($totalTrashPerTon, 3, ',', '.') }}</td>
                                                 <td colspan="4" class="uniform-cell text-right"></td>
                                             </tr>
                                         </tbody>

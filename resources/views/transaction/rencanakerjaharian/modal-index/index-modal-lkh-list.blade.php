@@ -104,7 +104,7 @@
                                    <td class="border border-gray-300 px-3 py-3">
                                        <div class="flex justify-center space-x-1">
                                            <!-- View Button - Gray/Black -->
-                                           <a :href="lkh.view_url" target="_blank"
+                                           <a :href="lkh.view_url"
                                               class="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs transition-colors font-medium">
                                                View
                                            </a>

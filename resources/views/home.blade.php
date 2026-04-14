@@ -28,17 +28,17 @@
                             </div>
                             
                             <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
-                                Welcome back,
+                                Welcome Back,
                                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400">{{ $user }}</span>
                             </h1>
                             
-                            <!-- ✅ Hide on mobile (hidden md:block) -->
+                            <!--  Hide on mobile (hidden md:block) -->
                             <p class="hidden md:block text-xl text-emerald-100 mb-8 max-w-3xl leading-relaxed">
                                 Comprehensive sugarcane plantation management system for Sungai Budi. 
                                 Monitor growth, analyze data, and optimize operations with intelligent insights.
                             </p>
                             
-                            <!-- ✅ Action Buttons with Permission Checks -->
+                            <!--  Action Buttons with Permission Checks -->
                             <div class="flex flex-col sm:flex-row gap-4">
                                 {{-- Planning Button - Check permission --}}
                                 @can('transaction.rencanakerjaharian.view')
@@ -53,7 +53,7 @@
                                 
                                 {{-- Approval Button - Check permission --}}
                                 @can('transaction.approval.view')
-                                <a href="{{ route('transaction.approval.index') }}" 
+                                <a href="{{ route('approval.index') }}" 
                                    class="inline-flex items-center px-8 py-4 text-base font-semibold rounded-xl text-emerald-200 bg-emerald-800/50 hover:bg-emerald-700/50 transition-all duration-200 border border-emerald-600 hover:border-emerald-500 backdrop-blur-sm group">
                                     <svg class="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -63,7 +63,7 @@
                                 @endcan
                                 
                                 {{-- Reports Button - Check ANY report permission --}}
-                                @canany(['report.agronomi.view', 'report.hpt.view', 'report.zpk.view', 'report.manajemenlahan.view', 'report.suratjalantimbangan.view'])
+                                @canany(['report.agronomi.view', 'report.hpt.view', 'report.zpk.view', 'report.manajemenlahan.view', 'report.suratjalantimbangan.view', 'report.suratjalan.view'])
                                 <button type="button"
                                     @click="$dispatch('open-reports-modal')"
                                     class="inline-flex items-center px-8 py-4 text-base font-semibold rounded-xl text-emerald-200 bg-emerald-800/50 hover:bg-emerald-700/50 transition-all duration-200 border border-emerald-600 hover:border-emerald-500 backdrop-blur-sm group">
@@ -317,13 +317,10 @@
         </main>
     </div>
 
-    <!-- Include Company Modal -->
-    <x-company-modal :companies="$company" />
-
     <!-- Live Chat Component -->
     <x-live-chat />
 
-    <!-- ✅ REPORTS MODAL - Updated with Permission Checks -->
+    <!-- REPORTS MODAL - Updated with Permission Checks -->
     <div x-data="{ reportsModalOpen: false }" 
          @open-reports-modal.window="reportsModalOpen = true"
          @keydown.escape.window="reportsModalOpen = false">

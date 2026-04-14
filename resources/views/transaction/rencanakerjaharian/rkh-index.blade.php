@@ -1,4 +1,4 @@
-{{--resources\views\input\rencanakerjaharian\rkh-index.blade.php--}}
+{{--resources\views\transaction\rencanakerjaharian\rkh-index.blade.php--}}
 <x-layout>
     <x-slot:title>{{ $title }}</x-slot:title>
     <x-slot:navbar>{{ $navbar }}</x-slot:navbar>
@@ -44,6 +44,7 @@
                             <option value="">All Status</option>
                             <option value="Completed" {{ $filterStatus == 'Completed' ? 'selected' : '' }}>Completed</option>
                             <option value="In Progress" {{ $filterStatus == 'In Progress' ? 'selected' : '' }}>In Progress</option>
+                            <option value="Batal" {{ $filterStatus == 'Batal' ? 'selected' : '' }}>Batal</option>
                         </select>
 
                         <input type="date" name="filter_date" value="{{ $filterDate }}" onchange="document.getElementById('filterForm').submit()"
@@ -94,6 +95,7 @@
                             <td class="border px-2 py-1">{{ Carbon\Carbon::parse($rkh->rkhdate)->format('d/m/Y') }}</td>
                             <td class="border px-2 py-1">{{ $rkh->mandor_nama ?? '-' }}</td>
 
+                            {{-- APPROVAL COLUMN --}}
                             <td class="border px-2 py-1 text-center">
                                 @if($rkh->approval_status == 'Approved')
                                     <button @click="showRkhApprovalInfoModal = true; selectedRkhno = '{{ $rkh->rkhno }}'; loadRkhApprovalDetail('{{ $rkh->rkhno }}')"
@@ -123,28 +125,41 @@
                                 @endif
                             </td>
 
-                            {{-- UPDATED LKH BUTTON WITH PROGRESS STATUS --}}
+                            {{-- LKH BUTTON WITH PROGRESS STATUS --}}
                             <td class="border px-2 py-1 text-center">
-                                <button @click="showLKHModal = true; selectedRkhno = '{{ $rkh->rkhno }}'; loadLKHData('{{ $rkh->rkhno }}')"
-                                        class="px-2 py-0.5 text-xs font-semibold rounded transition-colors
-                                            @if($rkh->lkh_progress_status['color'] === 'green')
-                                                bg-green-100 text-green-700 hover:bg-green-200
-                                            @elseif($rkh->lkh_progress_status['color'] === 'yellow')
-                                                bg-yellow-100 text-yellow-700 hover:bg-yellow-200
-                                            @else
-                                                bg-gray-100 text-gray-700 hover:bg-gray-200
-                                            @endif">
-                                    @if($rkh->lkh_progress_status['color'] === 'green')
-                                        LKH
-                                    @else
-                                        {{ $rkh->lkh_progress_status['progress'] }}
-                                    @endif
-                                </button>
+                                @if($rkh->current_status == 'Batal')
+                                    <button @click="showLKHModal = true; selectedRkhno = '{{ $rkh->rkhno }}'; loadLKHData('{{ $rkh->rkhno }}')"
+                                            class="px-2 py-0.5 text-xs font-semibold text-red-800 bg-red-100 rounded hover:bg-red-200 transition-colors">
+                                        LKH Dibatalkan
+                                    </button>
+                                @else
+                                    {{-- Normal LKH Progress --}}
+                                    <button @click="showLKHModal = true; selectedRkhno = '{{ $rkh->rkhno }}'; loadLKHData('{{ $rkh->rkhno }}')"
+                                            class="px-2 py-0.5 text-xs font-semibold rounded transition-colors
+                                                @if($rkh->lkh_progress_status['color'] === 'green')
+                                                    bg-green-100 text-green-700 hover:bg-green-200
+                                                @elseif($rkh->lkh_progress_status['color'] === 'yellow')
+                                                    bg-yellow-100 text-yellow-700 hover:bg-yellow-200
+                                                @else
+                                                    bg-gray-100 text-gray-700 hover:bg-gray-200
+                                                @endif">
+                                        @if($rkh->lkh_progress_status['color'] === 'green')
+                                            LKH
+                                        @else
+                                            {{ $rkh->lkh_progress_status['progress'] }}
+                                        @endif
+                                    </button>
+                                @endif
                             </td>
 
-                            {{-- UPDATED STATUS BUTTON WITH LKH COMPLETION CHECK --}}
+                            {{-- STATUS BUTTON WITH LKH COMPLETION CHECK --}}
                             <td class="border px-2 py-1 text-center">
-                                @if($rkh->current_status == 'Completed')
+                                @if($rkh->current_status == 'Batal')
+                                    <button @click="showBatalInfoModal = true; selectedRkhno = '{{ $rkh->rkhno }}'; loadBatalDetail('{{ $rkh->rkhno }}')"
+                                            class="px-2 py-0.5 text-xs font-semibold text-red-800 bg-red-100 rounded hover:bg-red-200 cursor-pointer">
+                                        Batal
+                                    </button>
+                                @elseif($rkh->current_status == 'Completed')
                                     <span class="px-2 py-0.5 text-xs font-semibold text-green-800 bg-green-100 rounded">Completed</span>
                                 @else
                                     <button onclick="updateStatus('{{ $rkh->rkhno }}')"
@@ -158,41 +173,119 @@
                                             @if(!$rkh->lkh_progress_status['can_complete'])
                                                 title="Semua LKH harus selesai terlebih dahulu"
                                             @endif>
-                                        @if($rkh->lkh_progress_status['can_complete'])
-                                            In Progress
-                                        @else
-                                            In Progress
-                                        @endif
+                                        In Progress
                                     </button>
                                 @endif
                             </td>
 
+                            {{-- ACTIONS COLUMN --}}
                             <td class="border px-2 py-1">
                                 <div class="flex items-center justify-center space-x-2">
-                                    @if($rkh->approval1flag == '1' || $rkh->approval2flag == '1' || $rkh->approval3flag == '1' || $rkh->approval1flag == '0' || $rkh->approval2flag == '0' || $rkh->approval3flag == '0')
-                                        <div class="text-gray-400 px-2 py-1 cursor-not-allowed" title="Tidak dapat diedit karena sudah disetujui">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    @if($rkh->current_status == 'Batal')
+                                        <span class="text-xs text-gray-400 italic">No Action Available</span>
+                                        
+                                    @elseif($rkh->current_status == 'Completed')
+                                        <span class="text-xs text-gray-400 italic">No Action Available</span>
+                                        
+                                    @elseif($rkh->approvalstatus == '1' && $rkh->non_empty_lkh_count == 0)
+                                        <button @click="showCancelModal = true; cancelRkhno = '{{ $rkh->rkhno }}'; cancelAlasan = ''"
+                                                class="text-red-600 hover:text-red-800 px-2 py-1 group" title="Batalkan RKH">
+                                            <svg class="w-5 h-5 text-red-600 group-hover:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-cancel-outline"/>
+                                            </svg>
+                                            <svg class="w-5 h-5 text-red-600 hidden group-hover:block" fill="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-cancel-solid"/>
+                                            </svg>
+                                        </button>
+                                        <div class="text-gray-400 px-2 py-1 cursor-not-allowed" title="Tidak dapat diedit (sudah approved)">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-edit-outline"/>
                                             </svg>
                                         </div>
-                                        <div class="text-gray-400 px-2 py-1 cursor-not-allowed" title="Tidak dapat dihapus karena sudah disetujui">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        
+                                    @elseif($rkh->approvalstatus == '1' && $rkh->non_empty_lkh_count > 0)
+                                        <div class="text-gray-400 px-2 py-1 cursor-not-allowed" title="Tidak dapat dibatalkan (LKH sudah dikerjakan)">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-cancel-outline"/>
                                             </svg>
                                         </div>
-                                    @else
+                                        <div class="text-gray-400 px-2 py-1 cursor-not-allowed" title="Tidak dapat diedit (sudah approved)">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-edit-outline"/>
+                                            </svg>
+                                        </div>
+                                        
+                                    @elseif($rkh->approvalstatus == '0')
                                         <button onclick="window.location.href='{{ route('transaction.rencanakerjaharian.edit', $rkh->rkhno) }}'"
-                                                class="text-blue-600 hover:text-blue-800 px-2 py-1" title="Edit RKH">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                class="text-blue-600 hover:text-blue-800 px-2 py-1 group" title="Edit RKH (Submit Ulang)">
+                                            <svg class="w-5 h-5 text-blue-600 group-hover:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-edit-outline"/>
+                                            </svg>
+                                            <svg class="w-5 h-5 text-blue-600 hidden group-hover:block" fill="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-edit-solid"/>
                                             </svg>
                                         </button>
                                         <button onclick="deleteRKH('{{ $rkh->rkhno }}')"
-                                                class="text-red-600 hover:text-red-800 px-2 py-1" title="Hapus RKH">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                class="text-red-600 hover:text-red-800 px-2 py-1 group" title="Hapus RKH">
+                                            <svg class="w-5 h-5 text-red-600 group-hover:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-trash-outline"/>
+                                            </svg>
+                                            <svg class="w-5 h-5 text-red-600 hidden group-hover:block" fill="currentColor" viewBox="0 0 24 24">
+                                                <use href="#icon-trash-solid"/>
                                             </svg>
                                         </button>
+                                        
+                                    @else
+                                        @if($rkh->approval1flag == '1' || $rkh->approval2flag == '1' || $rkh->approval3flag == '1')
+                                            <div class="text-gray-400 px-2 py-1 cursor-not-allowed" title="Tidak dapat diedit (sudah ada approval)">
+                                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-edit-outline"/>
+                                                </svg>
+                                            </div>
+                                            <div class="text-gray-400 px-2 py-1 cursor-not-allowed" title="Tidak dapat dihapus (sudah ada approval)">
+                                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-trash-outline"/>
+                                                </svg>
+                                            </div>
+                                        @elseif($rkh->approval1flag == '0' || $rkh->approval2flag == '0' || $rkh->approval3flag == '0')
+                                            <button onclick="window.location.href='{{ route('transaction.rencanakerjaharian.edit', $rkh->rkhno) }}'"
+                                                    class="text-blue-600 hover:text-blue-800 px-2 py-1 group" title="Edit RKH (Submit Ulang)">
+                                                <svg class="w-5 h-5 text-blue-600 group-hover:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-edit-outline"/>
+                                                </svg>
+                                                <svg class="w-5 h-5 text-blue-600 hidden group-hover:block" fill="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-edit-solid"/>
+                                                </svg>
+                                            </button>
+                                            <button onclick="deleteRKH('{{ $rkh->rkhno }}')"
+                                                    class="text-red-600 hover:text-red-800 px-2 py-1 group" title="Hapus RKH">
+                                                <svg class="w-5 h-5 text-red-600 group-hover:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-trash-outline"/>
+                                                </svg>
+                                                <svg class="w-5 h-5 text-red-600 hidden group-hover:block" fill="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-trash-solid"/>
+                                                </svg>
+                                            </button>
+                                        @else
+                                            <button onclick="window.location.href='{{ route('transaction.rencanakerjaharian.edit', $rkh->rkhno) }}'"
+                                                    class="text-blue-600 hover:text-blue-800 px-2 py-1 group" title="Edit RKH">
+                                                <svg class="w-5 h-5 text-blue-600 group-hover:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-edit-outline"/>
+                                                </svg>
+                                                <svg class="w-5 h-5 text-blue-600 hidden group-hover:block" fill="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-edit-solid"/>
+                                                </svg>
+                                            </button>
+                                            <button onclick="deleteRKH('{{ $rkh->rkhno }}')"
+                                                    class="text-red-600 hover:text-red-800 px-2 py-1 group" title="Hapus RKH">
+                                                <svg class="w-5 h-5 text-red-600 group-hover:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-trash-outline"/>
+                                                </svg>
+                                                <svg class="w-5 h-5 text-red-600 hidden group-hover:block" fill="currentColor" viewBox="0 0 24 24">
+                                                    <use href="#icon-trash-solid"/>
+                                                </svg>
+                                            </button>
+                                        @endif
                                     @endif
                                 </div>
                             </td>
@@ -218,6 +311,7 @@
             @include('transaction.rencanakerjaharian.modal-index.index-modal-rekap')
             @include('transaction.rencanakerjaharian.modal-index.index-modal-rkh-approval-info')
             @include('transaction.rencanakerjaharian.modal-index.index-modal-lkh-approval-info')
+            @include('transaction.rencanakerjaharian.modal-index.index-modal-batal')
         </div>
     </div>
 
@@ -228,9 +322,8 @@
         dateInput.disabled = checkbox.checked;
     }
 
-    // UPDATED: Enhanced validation for LKH completion check
+    // Enhanced validation for LKH completion check
     function updateStatus(rkhno) {
-        // Check if button is disabled (additional client-side validation)
         const button = event.target.closest('button');
         if (button.disabled || button.classList.contains('cursor-not-allowed')) {
             alert('Semua LKH harus diselesaikan dan diapprove terlebih dahulu sebelum RKH dapat ditandai sebagai Completed');
@@ -245,7 +338,7 @@
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             },
-            body: JSON.stringify({ rkhno: rkhno, status: 'Completed' }) // CHANGED: Done -> Completed
+            body: JSON.stringify({ rkhno: rkhno, status: 'Completed' })
         })
         .then(response => response.json())
         .then(data => {
@@ -302,12 +395,16 @@
             showRkhApprovalInfoModal: false,
             showLkhApprovalInfoModal: false,
             showOutstandingModal: false,
+            showCancelModal: false,
+            showBatalInfoModal: false,
 
             // Loading states
             isRkhInfoLoading: false,
             isLkhInfoLoading: false,
             isLkhModalLoading: false,
             isAbsenLoading: false,
+            isCancelling: false,
+            isBatalInfoLoading: false,
 
             // Data
             selectedRkhno: '',
@@ -320,6 +417,14 @@
             createDate: new Date().toISOString().split('T')[0],
             dthDate: '{{ request('filter_date', date('Y-m-d')) }}',
             rekapLkhDate: '{{ request('filter_date', date('Y-m-d')) }}',
+            
+            // Cancel RKH states
+            cancelRkhno: '',
+            cancelAlasan: '',
+            
+            // Batal Info states
+            batalDetail: null,
+            
             // Outstanding RKH details
             outstandingDetails: {
                 rkhno: '',
@@ -347,28 +452,20 @@
                 return date.toISOString().split('T')[0];
             },
 
-            //  Computed property for report generation
             get canGenerateReport() {
                 if (!this.rekapLkhDate || !this.selectedReportType) return false;
-                
-                // Operator rekap tidak perlu pilih operator
                 if (this.selectedReportType === 'operator_rekap') return true;
-                
-                // Operator per-individual butuh pilih operator
                 if (this.selectedReportType === 'operator' && !this.selectedOperatorId) return false;
-                
                 return true;
             },
 
             // Initialize watchers
             init() {
-                // Listen for outstanding error event
                 window.addEventListener('show-outstanding-error', (event) => {
                     this.outstandingDetails = event.detail;
                     this.showOutstandingModal = true;
                 });
 
-                // Watch for report type changes
                 this.$watch('selectedReportType', (newValue) => {
                     if (newValue === 'operator' && this.rekapLkhDate) {
                         this.loadOperatorsForDate();
@@ -385,7 +482,6 @@
                     alert('Silakan pilih tanggal terlebih dahulu');
                     return;
                 }
-                // Buat Munculin Global Loading State
                 Alpine.store('loading').start();
                 window.location.href = `{{ route('transaction.rencanakerjaharian.create') }}?date=${this.createDate}`;
             },
@@ -413,7 +509,7 @@
                         
                         if (data.success) {
                             this.availableOperators = data.operators || [];
-                            this.selectedOperatorId = ''; // Reset selection
+                            this.selectedOperatorId = '';
                         } else {
                             alert('Gagal memuat data operator: ' + data.message);
                             this.availableOperators = [];
@@ -428,7 +524,7 @@
                 }
             },
 
-            // Generate selected report (unified method)
+            // Generate selected report
             async generateSelectedReport() {
                 if (!this.canGenerateReport) return;
 
@@ -436,15 +532,12 @@
                     let url, payload;
                     
                     if (this.selectedReportType === 'rekap') {
-                        // Rekap LKH logic
                         url = '{{ route("transaction.rencanakerjaharian.generateRekapLKH") }}';
                         payload = { date: this.rekapLkhDate };
                     } else if (this.selectedReportType === 'operator_rekap') {
-                        // Operator Rekap Report
                         url = '{{ route("transaction.rencanakerjaharian.generateOperatorRekapReport") }}';
                         payload = { date: this.rekapLkhDate };
                     } else if (this.selectedReportType === 'operator') {
-                        // Operator report logic
                         url = '{{ route("transaction.rencanakerjaharian.generateOperatorReport") }}';
                         payload = { 
                             date: this.rekapLkhDate,
@@ -478,7 +571,7 @@
                 }
             },
 
-            // LKH Modal Methods - UPDATED
+            // LKH Modal Methods
             async loadLKHData(rkhno) {
                 this.isLkhModalLoading = true;
                 this.lkhData = [];
@@ -567,7 +660,7 @@
                 }
             },
 
-            // Generate Methods
+            // Generate DTH
             async generateDTH() {
                 if (!this.dthDate) {
                     alert('Silakan pilih tanggal terlebih dahulu');
@@ -587,7 +680,7 @@
                     const data = await response.json();
                     if (data.success) {
                         this.showGenerateDTHModal = false;
-                        globalThis.open(data.redirect_url, '_blank');
+                        window.location.href = data.redirect_url;
                     } else {
                         alert('Gagal generate DTH: ' + data.message);
                     }
@@ -597,12 +690,7 @@
                 }
             },
 
-            // Legacy method now uses unified approach
-            async generateRekapLKH() {
-                this.selectedReportType = 'rekap';
-                await this.generateSelectedReport();
-            },
-
+            // Approval Detail Methods
             async loadRkhApprovalDetail(rkhno) {
                 this.isRkhInfoLoading = true;
                 try {
@@ -638,6 +726,64 @@
                     alert('Terjadi kesalahan saat memuat detail approval LKH');
                 } finally {
                     this.isLkhInfoLoading = false;
+                }
+            },
+
+            async submitCancelRkh() {
+                if (this.cancelAlasan.length < 10 || this.isCancelling) return;
+                
+                if (!confirm('Apakah Anda yakin ingin membatalkan RKH ini? Tindakan ini tidak dapat dibatalkan.')) {
+                    return;
+                }
+                
+                this.isCancelling = true;
+                
+                try {
+                    const response = await fetch(`{{ url('transaction/kerjaharian/rencanakerjaharian') }}/${this.cancelRkhno}/cancel`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            alasan: this.cancelAlasan
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('Gagal membatalkan RKH: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Terjadi kesalahan saat membatalkan RKH');
+                } finally {
+                    this.isCancelling = false;
+                }
+            },
+
+            async loadBatalDetail(rkhno) {
+                this.isBatalInfoLoading = true;
+                this.batalDetail = null;
+                
+                try {
+                    const response = await fetch(`{{ url('transaction/kerjaharian/rencanakerjaharian') }}/${rkhno}/batal-detail`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.batalDetail = data.data;
+                    } else {
+                        alert('Gagal memuat detail pembatalan: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Terjadi kesalahan saat memuat detail pembatalan');
+                } finally {
+                    this.isBatalInfoLoading = false;
                 }
             },
         };

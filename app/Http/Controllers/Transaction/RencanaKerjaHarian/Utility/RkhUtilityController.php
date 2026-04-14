@@ -55,12 +55,13 @@ class RkhUtilityController extends Controller
      * @param string $activitycode
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getPlotInfo($plot, $activitycode)
+    public function getPlotInfo(Request $request, $plot, $activitycode)
     {
         try {
             $companycode = Session::get('companycode');
-            
-            $result = $this->utilityService->getPlotInfo($companycode, $plot, $activitycode);
+            $rkhdate = $request->query('rkhdate');
+
+            $result = $this->utilityService->getPlotInfo($companycode, $plot, $activitycode, $rkhdate);
             
             return response()->json($result);
             
@@ -89,10 +90,56 @@ class RkhUtilityController extends Controller
         try {
             $companycode = Session::get('companycode');
             $mandorId = $request->mandor_id;
+            $date = $request->date;
+
+            // VALIDATION 1: Date Range
+            $today = date('Y-m-d');
+            $maxDate = date('Y-m-d', strtotime('+7 days'));
             
-            $result = $this->utilityService->checkOutstandingRkh($companycode, $mandorId);
+            if ($date < $today) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak dapat membuat RKH untuk tanggal yang sudah lewat.'
+                ], 400);
+            }
             
-            return response()->json($result);
+            if ($date > $maxDate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak dapat membuat RKH lebih dari 7 hari ke depan.'
+                ], 400);
+            }
+
+            // VALIDATION 2: Check Outstanding
+            $outstandingResult = $this->utilityService->checkOutstandingRkh($companycode, $mandorId);
+            
+            if ($outstandingResult['hasOutstanding']) {
+                return response()->json($outstandingResult);
+            }
+
+            // VALIDATION 3: Check Duplicate for Same Date
+            $duplicateResult = $this->utilityService->checkDuplicateRkh($companycode, $mandorId, $date);
+            
+            if ($duplicateResult['exists']) {
+                return response()->json([
+                    'success' => false,
+                    'hasDuplicate' => true,
+                    'message' => 'RKH untuk mandor ini pada tanggal tersebut sudah ada',
+                    'details' => [
+                        'rkhno' => $duplicateResult['rkhno'],
+                        'rkhdate' => $duplicateResult['rkhdate'],
+                        'status' => $duplicateResult['status']
+                    ]
+                ]);
+            }
+
+            // All validations passed
+            return response()->json([
+                'success' => true,
+                'hasOutstanding' => false,
+                'hasDuplicate' => false,
+                'message' => 'Validasi berhasil, dapat melanjutkan pembuatan RKH'
+            ]);
             
         } catch (\Exception $e) {
             \Log::error("Error checking outstanding RKH: " . $e->getMessage());

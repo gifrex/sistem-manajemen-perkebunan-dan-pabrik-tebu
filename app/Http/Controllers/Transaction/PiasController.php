@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 use App\Models\usematerialhdr;
 use App\Models\usemateriallst;
@@ -33,18 +38,25 @@ class PiasController extends Controller
     }
  
     public function home(Request $request)
-    {   
-        $perPage = (int) $request->input('perPage', 15);
-        
-        // Default tanggal: 2 bulan ke belakang sampai hari ini
-        $startDate = $request->input('start_date', now()->subMonths(2)->format('Y-m-d'));
-        $endDate = $request->input('end_date', now()->format('Y-m-d'));
-        
-        // Search query
-        $search = $request->input('search');
-        
+{
+    $perPage = (int) $request->input('perPage', 15);
+    $startDate = $request->input('start_date', now()->subMonths(2)->format('Y-m-d'));
+    $endDate = $request->input('end_date', now()->format('Y-m-d'));
+    $search = $request->input('search');
+
+    Log::info('PIAS HOME DEBUG PARAMS', [
+        'user' => optional(auth()->user())->userid ?? null,
+        'companycode' => session('companycode'),
+        'perPage' => $perPage,
+        'startDate' => $startDate,
+        'endDate' => $endDate,
+        'search' => $search,
+        'query_string' => $request->query(),
+    ]);
+
+    try {
         $rkhhdr = new Rkhhdr;
-        
+
         $selected = $rkhhdr::query()
             ->leftJoin('user as u', 'u.userid', '=', 'rkhhdr.mandorid')
             ->leftJoin('piashdr as ph', function ($join) {
@@ -57,29 +69,39 @@ class PiasController extends Controller
                 $query->select(DB::raw(1))
                       ->from('rkhlst')
                       ->whereColumn('rkhlst.rkhno', 'rkhhdr.rkhno')
+                      ->whereColumn('rkhlst.companycode', 'rkhhdr.companycode')
                       ->where('rkhlst.activitycode', '5.2.1');
             })
-            // Filter tanggal
             ->whereDate('rkhhdr.rkhdate', '>=', $startDate)
             ->whereDate('rkhhdr.rkhdate', '<=', $endDate);
-        
-        // Filter search
+
         if ($search) {
             $selected->where(function($query) use ($search) {
                 $query->where('rkhhdr.rkhno', 'like', "%{$search}%")
                       ->orWhere('u.name', 'like', "%{$search}%");
             });
         }
-        
+
         $selected->select([
                 'rkhhdr.*',
                 DB::raw('u.name as mandor_name'),
             ])
             ->selectRaw('CASE WHEN ph.rkhno IS NULL THEN 0 ELSE 1 END as is_generated')
             ->orderByDesc('rkhhdr.rkhdate');
-        
+
+        // LOG SQL sebelum dieksekusi
+        Log::info('PIAS HOME SQL', [
+            'sql' => $selected->toSql(),
+            'bindings' => $selected->getBindings(),
+        ]);
+
         $data = $selected->paginate($perPage)->appends($request->query());
-        
+
+        Log::info('PIAS HOME RESULT', [
+            'total' => $data->total(),
+            'count' => $data->count(),
+        ]);
+
         return view('transaction.pias.home', [
             'title'     => 'Pias',
             'data'      => $data,
@@ -88,12 +110,22 @@ class PiasController extends Controller
             'endDate'   => $endDate,
             'search'    => $search,
         ]);
+    } catch (\Throwable $e) {
+        Log::error('PIAS HOME ERROR', [
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        abort(500, 'PIAS HOME ERROR (cek laravel.log)');
     }
+}
 
     public function detail(Request $request)
     {   
-        $rkhhdr = new rkhhdr;
-        $rkhlst = new rkhlst;
+        $rkhhdr = new Rkhhdr;
+        $rkhlst = new RkhLst;
         $piashdr = new piashdr;
         $piaslst = new piaslst;
 
@@ -158,15 +190,18 @@ class PiasController extends Controller
         'rkhno'                 => 'required|string|max:20',
         'inputTJ'               => 'required|numeric|min:0',
         'inputTC'               => 'required|numeric|min:0',
+        'inputTV'               => 'required|numeric|min:0',
         'rows'                  => 'required|array|min:1',
         'rows.*.blok'           => 'required|string|max:50',
         'rows.*.plot'           => 'required|string|max:50',
         'rows.*.lkhno'          => 'required|string|max:20',
         'rows.*.tj'             => 'nullable|numeric|min:0',
         'rows.*.tc'             => 'nullable|numeric|min:0',
+        'rows.*.tv'             => 'nullable|numeric|min:0',
         'dosage'                => 'required|integer|min:10|max:25',
         'totalNeedTJ'           => 'required|integer|min:0',  
-        'totalNeedTC'           => 'required|integer|min:0'  
+        'totalNeedTC'           => 'required|integer|min:0',
+        'totalNeedTV'           => 'required|integer|min:0'  
     ], [
         'rows.required'         => 'Detail baris wajib ada.',
     ]); 
@@ -174,14 +209,17 @@ class PiasController extends Controller
     $rkhno   = $data['rkhno'];
     $stokTJ  = (float) $data['inputTJ'];
     $stokTC  = (float) $data['inputTC'];
+    $stokTV  = (float) $data['inputTV'];
     $rowsIn  = $data['rows'];
     $dosage   = (int) $data['dosage'];
 
     // 2) Hitung total yang diketik user
-    $sumTJ = 0; $sumTC = 0;
+    $sumTJ = 0; $sumTC = 0; $sumTV = 0;
+
     foreach ($rowsIn as $r) {
         $sumTJ += (float) ($r['tj'] ?? 0);
         $sumTC += (float) ($r['tc'] ?? 0);
+        $sumTV += (float) ($r['tv'] ?? 0);
     }
     
     if ($sumTJ > $stokTJ) {
@@ -193,6 +231,11 @@ class PiasController extends Controller
         return back()
             ->withErrors(['rows' => "Total TC yang diinput ($sumTC) melebihi stok TC ($stokTC)."])
             ->withInput();
+    }
+    if ($sumTV > $stokTV) {
+    return back()
+        ->withErrors(['rows' => "Total TV yang diinput ($sumTV) melebihi stok TV ($stokTV)."])
+        ->withInput();
     }
 
     // 3) Validasi kombinasi lkhno|blok|plot milik RKH ini
@@ -219,8 +262,7 @@ class PiasController extends Controller
     $companycode = DB::table('rkhhdr')->where('rkhno', $rkhno)->where('companycode', session('companycode'))->value('companycode');
 
     
-    return DB::transaction(function () use ($rkhno, $companycode, $rowsIn, $validMap, $stokTJ, $stokTC, $sumTJ, $sumTC, $dosage, $data) {
-
+    return DB::transaction(function () use ($rkhno, $companycode, $rowsIn, $validMap, $stokTJ, $stokTC, $stokTV, $sumTJ, $sumTC, $sumTV, $dosage, $data) {
 
         // Hapus detail lama
         $q = DB::table('piaslst')->where('rkhno', $rkhno);
@@ -257,6 +299,7 @@ class PiasController extends Controller
                 'plot'        => $plot,
                 'tj'          => (int) ($r['tj'] ?? 0),
                 'tc'          => (int) ($r['tc'] ?? 0),
+                'tv'          => (int) ($r['tv'] ?? 0),
             ], fn($v) => $v !== null);
         }
 
@@ -264,23 +307,28 @@ class PiasController extends Controller
             DB::table('piaslst')->insert($detail);
         }
 
-//hitung status 
-    $totalNeedTJ = (int) $data['totalNeedTJ'];
-    $totalNeedTC = (int) $data['totalNeedTC'];
-//
+        //hitung status 
+            $totalNeedTJ = (int) $data['totalNeedTJ'];
+            $totalNeedTC = (int) $data['totalNeedTC'];
+            $totalNeedTV = (int) $data['totalNeedTV'];
+        //
         //
 
         // Upsert header
         $header = [
-            'tj'       => $stokTJ,
-            'tc'       => $stokTC,
-            'sisatj'   => (int) floor($stokTJ - $sumTJ),
-            'sisatc'   => (int) floor($stokTC - $sumTC),
-            'dosage'    => $dosage,
+            'tj'          => $stokTJ,
+            'tc'          => $stokTC,
+            'tv'          => $stokTV,
+            'sisatj'      => (int) floor($stokTJ - $sumTJ),
+            'sisatc'      => (int) floor($stokTC - $sumTC),
+            'sisatv'      => (int) floor($stokTV - $sumTV),
+            'dosage'      => $dosage,
             'totalneedtj' => $totalNeedTJ,
             'totalneedtc' => $totalNeedTC,
+            'totalneedtv' => $totalNeedTV,
             'statustj'    => $sumTJ >= $totalNeedTJ ? 1 : 0,
-            'statustc'    => $sumTC >= $totalNeedTC ? 1 : 0
+            'statustc'    => $sumTC >= $totalNeedTC ? 1 : 0,
+            'statustv'    => $sumTV >= $totalNeedTV ? 1 : 0
         ];
 
         $keys = array_filter([
@@ -305,331 +353,291 @@ class PiasController extends Controller
     });
 }
     
-// public function old_submit_buma cek blok plot ga lkh(Request $request)
-// {   
-//     // 1) Validasi dasar + baris input
-//     $data = $request->validate([
-//         'rkhno'                 => 'required|string|max:20',
-//         'inputTJ'               => 'required|numeric|min:0',
-//         'inputTC'               => 'required|numeric|min:0',
-//         'rows'                  => 'required|array|min:1',
-//         'rows.*.blok'           => 'required|string|max:50',
-//         'rows.*.plot'           => 'required|string|max:50',
-//         'rows.*.tj'             => 'nullable|numeric|min:0',
-//         'rows.*.tc'             => 'nullable|numeric|min:0',
-//     ], [
-//         'rows.required'         => 'Detail baris wajib ada.',
-//     ]);
 
-//     $rkhno   = $data['rkhno'];
-//     $stokTJ  = (float) $data['inputTJ'];
-//     $stokTC  = (float) $data['inputTC'];
-//     $rowsIn  = $data['rows'];
+    public function report(Request $request)
+    {
+        $title     = 'Pias - Report';
+        $search    = $request->input('search');
+        $startDate = $request->input('start_date', now()->subDays(7)->format('Y-m-d'));
+        $endDate   = $request->input('end_date', now()->format('Y-m-d'));
+        $company   = session('companycode');
 
-//     // 2) Hitung total yang diketik user, pastikan tidak melebihi stok
-//     $sumTJ = 0; $sumTC = 0;
-//     foreach ($rowsIn as $r) {
-//         $sumTJ += (float) ($r['tj'] ?? 0);
-//         $sumTC += (float) ($r['tc'] ?? 0);
-//     }
-//     if ($sumTJ > $stokTJ) {
-//         return back()
-//             ->withErrors(['rows' => "Total TJ yang diinput ($sumTJ) melebihi stok TJ ($stokTJ)."])
-//             ->withInput();
-//     }
-//     if ($sumTC > $stokTC) {
-//         return back()
-//             ->withErrors(['rows' => "Total TC yang diinput ($sumTC) melebihi stok TC ($stokTC)."])
-//             ->withInput();
-//     }
-
-//     // (Opsional tapi aman) Pastikan baris yang disubmit memang milik RKH tersebut
-//     // Jika tidak perlu, blok ini bisa dihapus.
-//     // $validKeys = DB::table('rkhhdr')
-//     //     ->leftJoin('lkhhdr', 'lkhhdr.rkhno', '=', 'rkhhdr.rkhno')
-//     //     ->leftJoin('lkhdetailplot', 'lkhdetailplot.lkhno', '=', 'lkhhdr.lkhno')
-//     //     ->where('rkhhdr.rkhno', $rkhno)
-//     //     ->pluck(DB::raw("CONCAT(lkhdetailplot.blok,'|',lkhdetailplot.plot)"))
-//     //     ->toArray();
-//     $validKeys = DB::table('rkhhdr')
-//     ->leftJoin('lkhhdr', function($join) {
-//         $join->on('lkhhdr.rkhno', '=', 'rkhhdr.rkhno')
-//              ->on('lkhhdr.companycode', '=', 'rkhhdr.companycode');
-//     })
-//     ->leftJoin('lkhdetailplot', function($join) {
-//         $join->on('lkhdetailplot.lkhno', '=', 'lkhhdr.lkhno')
-//              ->on('lkhdetailplot.companycode', '=', 'lkhhdr.companycode');
-//     })
-//     ->where('rkhhdr.rkhno', $rkhno)
-//     ->whereNotNull('lkhdetailplot.blok')
-//     ->whereNotNull('lkhdetailplot.plot')
-//     ->select(DB::raw("CONCAT(lkhdetailplot.blok,'|',lkhdetailplot.plot) as plot_key"))
-//     ->pluck('plot_key')  
-//     ->toArray();
-//     $validMap = array_flip($validKeys);
-
-//     // Ambil companycode (kalau tabel piaslst/piashdr memakainya)
-//     $companycode = DB::table('rkhhdr')->where('rkhno', $rkhno)->value('companycode');
-
-//     // 3) Simpan apa adanya dalam transaksi
-//     return DB::transaction(function () use ($rkhno, $companycode, $rowsIn, $stokTJ, $stokTC, $sumTJ, $sumTC) {
-
-//         // Hapus detail lama agar sinkron dengan input terbaru
-//         $q = DB::table('piaslst')->where('rkhno', $rkhno);
-//         if ($companycode) $q->where('companycode', $companycode);
-//         $q->delete();
-
-//         // Siapkan rows untuk insert
-//         $now = now();
-//         $detail = [];
-//         foreach ($rowsIn as $r) {
-//             $blok = trim((string)($r['blok'] ?? ''));
-//             $plot = trim((string)($r['plot'] ?? ''));
-
-//             // skip baris yang tidak valid untuk RKH (jika blok validasi diaktifkan)
-//             if (!empty($validMap) && !isset($validMap["{$blok}|{$plot}"])) {
-//                 continue;
-//             }
-
-//             $detail[] = array_filter([
-//                 'companycode' => $companycode ?: null,
-//                 'rkhno'       => $rkhno,
-//                 'blok'        => $blok,
-//                 'plot'        => $plot,
-//                 'tj'          => (int) ($r['tj'] ?? 0),
-//                 'tc'          => (int) ($r['tc'] ?? 0),
-//             ], fn($v) => $v !== null);
-//         }
-
-//         if (!empty($detail)) {
-//             DB::table('piaslst')->insert($detail);
-//         }
-
-//         // Upsert header (stok & sisa); tanpa perhitungan kebutuhan apa pun
-//         $header = [
-//             'tj'       => $stokTJ,
-//             'tc'       => $stokTC,
-//             'sisatj'   => (int) floor($stokTJ - $sumTJ),
-//             'sisatc'   => (int) floor($stokTC - $sumTC),
-//         ];
-
-//         $keys = array_filter([
-//             'companycode' => $companycode ?: null,
-//             'rkhno'       => $rkhno,
-//         ], fn($v) => $v !== null);
-
-//         $exists = DB::table('piashdr')->where($keys)->exists();
-//         if (!$exists) {
-//             DB::table('piashdr')->insert($keys + $header + [
-//                 'generateddate' => $now,
-//                 'inputby'       => auth()->user()->name ?? 'System',
-//             ]);
-//         } else {
-//             DB::table('piashdr')->where($keys)->update($header + [
-//                 'updateddate' => $now,
-//                 'updateby'    => auth()->user()->name ?? 'System',
-//             ]);
-//         }
-
-//         return back()->with('success', 'Data PIAS berhasil disimpan.');
-//     });
-// }
-
-
-/*
-    public function submit_old_perhitungan_otomatis(Request $request) 
-{
-    $data = $request->validate([
-        'rkhno'   => 'required|string|max:20',
-        'inputTJ' => 'required|numeric|min:1',
-        'inputTC' => 'required|numeric|min:1',
-    ], [
-        'rkhno.required'   => 'RKH No harus diisi',
-        'inputTJ.required' => 'Total TJ tidak boleh kosong',
-        'inputTJ.min'      => 'Total TJ harus lebih besar atau sama dengan 1',
-        'inputTC.required' => 'Total TC tidak boleh kosong',
-        'inputTC.min'      => 'Total TC harus lebih besar atau sama dengan 1',
-    ]);
-
-    $rkhno  = $data['rkhno'];
-    $stokTJ = (float) $data['inputTJ'];
-    $stokTC = (float) $data['inputTC'];
-
-    try {
-        return DB::transaction(function () use ($rkhno, $stokTJ, $stokTC) {
-
-            // --- QUERY PLOT ---
-            $rowsDb = DB::table('rkhhdr')
-                ->leftJoin('lkhhdr', function($join) {
-                    $join->on('lkhhdr.rkhno', '=', 'rkhhdr.rkhno')
-                         ->on('lkhhdr.companycode', '=', 'rkhhdr.companycode');
-                })
-                ->leftJoin('lkhdetailplot', function($join) {
-                    $join->on('lkhdetailplot.lkhno', '=', 'lkhhdr.lkhno')
-                         ->on('lkhdetailplot.companycode', '=', 'lkhhdr.companycode');
-                })
-                ->leftJoin('masterlist', function($join) {
-                    $join->on('masterlist.companycode', '=', 'rkhhdr.companycode')
-                         ->on('masterlist.blok', '=', 'lkhdetailplot.blok')
-                         ->on('masterlist.plot', '=', 'lkhdetailplot.plot');
-                })
-                ->where('rkhhdr.rkhno', $rkhno)
-                ->where('approvalstatus', 1)
-                ->select(
-                    'rkhhdr.companycode',
-                    'rkhhdr.rkhdate',
-                    'lkhhdr.lkhno',
-                    'lkhdetailplot.blok',
-                    'lkhdetailplot.plot',
-                    'lkhdetailplot.luasrkh',
-                    'masterlist.tanggalulangtahun'
+        $rows = DB::table('piaslst as pl')
+            ->join('piashdr as ph', function ($j) {
+                $j->on('ph.rkhno', '=', 'pl.rkhno')
+                  ->on('ph.companycode', '=', 'pl.companycode');
+            })
+            ->join('rkhhdr as r', function ($j) {
+                $j->on('r.rkhno', '=', 'pl.rkhno')
+                  ->on('r.companycode', '=', 'pl.companycode');
+            })
+            ->join('lkhhdr as lh', function ($j) {
+                $j->on('lh.lkhno', '=', 'pl.lkhno')
+                  ->on('lh.companycode', '=', 'pl.companycode');
+            })
+            ->join('lkhdetailplot as ldp', function ($j) {
+                $j->on('ldp.lkhno', '=', 'pl.lkhno')
+                  ->on('ldp.companycode', '=', 'pl.companycode')
+                  ->on('ldp.plot', '=', 'pl.plot')
+                  ->on('ldp.blok', '=', 'pl.blok');
+            })
+            ->join('masterlist as ml', function ($j) {
+                $j->on('ml.companycode', '=', 'pl.companycode')
+                  ->on('ml.blok', '=', 'pl.blok')
+                  ->on('ml.plot', '=', 'pl.plot');
+            })
+            ->join('batch as b', function ($j) {
+                $j->on('b.companycode', '=', 'ml.companycode')
+                  ->on('b.plot', '=', 'ml.plot')
+                  ->on('b.batchno', '=', 'ml.activebatchno');
+            })
+            ->where('pl.companycode', $company)
+            ->whereDate('r.rkhdate', '>=', $startDate)
+            ->whereDate('r.rkhdate', '<=', $endDate)
+            ->when($search, fn($q) =>
+                $q->where(fn($qq) =>
+                    $qq->where('pl.rkhno', 'like', "%{$search}%")
+                       ->orWhere('pl.blok', 'like', "%{$search}%")
+                       ->orWhere('pl.plot', 'like', "%{$search}%")
                 )
-                ->orderBy('lkhdetailplot.blok')
-                ->orderBy('lkhdetailplot.plot')
-                ->get();
+            )
+            ->select(
+                'r.rkhdate as tgl',
+                'pl.blok',
+                'pl.plot',
+                'ldp.luasrkh as ha',
+                'b.tanggalpanen as tgl_tanam',
+                'b.lifecyclestatus as kategori',
+                'b.kodevarietas as varietas',
+                'pl.tj',
+                'pl.tc',
+                'pl.tv'
+            )
+            ->orderBy('r.rkhdate')
+            ->orderBy('pl.blok')
+            ->orderBy('pl.plot')
+            ->get()
+            ->map(function ($row) {
+                $tanam = $row->tgl_tanam ? Carbon::parse($row->tgl_tanam) : null;
+                $tgl   = Carbon::parse($row->tgl);
+                $bulan = $tanam ? (int) ceil(abs($tgl->diffInDays($tanam)) / 30) : '-';
 
-            if ($rowsDb->isEmpty()) {
-                return back()->withErrors(['data' => 'Data plot untuk RKH ini tidak ditemukan / belum di-approve.'])->withInput();
-            }
-
-            $companycode = $rowsDb->first()->companycode ?? (session('companycode') ?? 'DEFAULT');
-
-            // --- PERSENTASE PER BULAN ---
-            $pcts = [
-                1=>['tj'=>0.70,'tc'=>0.30], 2=>['tj'=>0.70,'tc'=>0.30], 3=>['tj'=>0.60,'tc'=>0.40],
-                4=>['tj'=>0.50,'tc'=>0.50], 5=>['tj'=>0.40,'tc'=>0.60], 6=>['tj'=>0.30,'tc'=>0.70],
-                7=>['tj'=>0.30,'tc'=>0.70], 8=>['tj'=>0.30,'tc'=>0.70], 9=>['tj'=>0.30,'tc'=>0.70],
-                10=>['tj'=>0.30,'tc'=>0.70],
-            ];
-
-            // --- HITUNG KEBUTUHAN PER PLOT ---
-            $rows = [];
-            foreach ($rowsDb as $row) {
-                $luas    = (float) ($row->luasrkh ?? 0);
-                $rkhDate = $row->rkhdate ? \Carbon\Carbon::parse($row->rkhdate) : null;
-                $tut     = $row->tanggalulangtahun ? \Carbon\Carbon::parse($row->tanggalulangtahun) : null;
-
-                if ($rkhDate && $tut) {
-                    $hari  = (int) abs($rkhDate->diffInDays($tut));
-                    $bulan = max(1, min(10, (int) ceil($hari / 30)));
-                } else {
-                    $hari  = 0;
-                    $bulan = 1;
-                }
-
-                $p = $pcts[$bulan] ?? ['tj'=>0.5,'tc'=>0.5];
-                $total = $luas * 25;
-
-                $needTJ = $total * $p['tj'];
-                $needTC = $total * $p['tc'];
-
-                $rows[] = [
-                    'companycode' => $companycode,
-                    'rkhno'       => $rkhno,
-                    'lkhno'       => $row->lkhno,
-                    'blok'        => $row->blok,
-                    'plot'        => $row->plot,
-                    // simpan need float (untuk proporsi); versi int disimpan saat insert ke piaslst
-                    'needTJ'      => $needTJ,
-                    'needTC'      => $needTC,
+                return (object) [
+                    'tgl'      => $row->tgl,
+                    'blok'     => $row->blok,
+                    'plot'     => $row->plot,
+                    'ha'       => $row->ha,
+                    'tgl_tanam'=> $row->tgl_tanam,
+                    'bulan'    => $bulan,
+                    'kategori' => $row->kategori,
+                    'varietas' => $row->varietas,
+                    'tj'       => (int) ($row->tj ?? 0),
+                    'tc'       => (int) ($row->tc ?? 0),
+                    'tv'       => (int) ($row->tv ?? 0),
                 ];
-            }
+            });
 
-            $needsTJ = array_column($rows, 'needTJ');
-            $needsTC = array_column($rows, 'needTC');
-            $ids     = array_map(fn($r) => $r['blok'].'|'.$r['plot'], $rows);
-            $seed    = crc32($rkhno);
+        // Group per tanggal untuk rowspan
+        $grouped = $rows->groupBy('tgl');
 
-            // --- ALOKASI (Equal-first + group-fair) ---
-            $allocTJ = $this->allocateInt($needsTJ, $stokTJ, $seed, $ids);
-            $allocTC = $this->allocateInt($needsTC, $stokTC, $seed, $ids);
-
-            if (count($allocTJ) !== count($rows) || count($allocTC) !== count($rows)) {
-                throw new \RuntimeException('Panjang alokasi tidak cocok dengan jumlah plot.');
-            }
-
-            // --- UPSERT DETAIL (needtj/needtc INT: round) ---
-            $rowsInsert = [];
-            foreach ($rows as $i => $r) {
-                $rowsInsert[] = [
-                    'companycode' => $r['companycode'],
-                    'rkhno'       => $r['rkhno'],
-                    'lkhno'       => $r['lkhno'],
-                    'blok'        => $r['blok'],
-                    'plot'        => $r['plot'],
-                    'tj'          => (int) $allocTJ[$i],
-                    'tc'          => (int) $allocTC[$i],
-                    'needtj'      => (int) round($r['needTJ']),
-                    'needtc'      => (int) round($r['needTC']),
-                ];
-            }
-
-            DB::table('piaslst')
-                ->where('companycode', $companycode)
-                ->where('rkhno', $rkhno)
-                ->delete();
-
-            if (!empty($rowsInsert)) {
-                DB::table('piaslst')->insert($rowsInsert);
-            }
-
-            // --- HEADER (PAKAI SUM ROUND) ---
-            $needTJIntArr = array_map(static fn($v) => (int) round($v), $needsTJ);
-            $needTCIntArr = array_map(static fn($v) => (int) round($v), $needsTC);
-            $sumNeedTJInt = array_sum($needTJIntArr);
-            $sumNeedTCInt = array_sum($needTCIntArr);
-
-            $sumAllocTJ = array_sum($allocTJ);
-            $sumAllocTC = array_sum($allocTC);
-
-            $tjOk  = $sumAllocTJ >= $sumNeedTJInt;
-            $tcOk  = $sumAllocTC >= $sumNeedTCInt;
-
-            $sisaTJ = (int) floor($stokTJ) - $sumAllocTJ;
-            $sisaTC = (int) floor($stokTC) - $sumAllocTC;
-
-            $headerKeys = ['companycode' => $companycode, 'rkhno' => $rkhno];
-            $now        = now();
-
-            $exists = DB::table('piashdr')->where($headerKeys)->exists();
-
-            if (!$exists) {
-                DB::table('piashdr')->insert($headerKeys + [
-                    'generateddate' => $now,
-                    'tj'            => $stokTJ,
-                    'tc'            => $stokTC,
-                    'tjstatus'      => $tjOk ? 1 : 0,
-                    'tcstatus'      => $tcOk ? 1 : 0,
-                    'sisatj'        => $sisaTJ,  // <- pakai nama kolom Anda
-                    'sisatc'        => $sisaTC,
-                    'inputby'       => auth()->user()->name ?? 'System',
-                ]);
-            } else {
-                DB::table('piashdr')->where($headerKeys)->update([
-                    'tj'          => $stokTJ,
-                    'tc'          => $stokTC,
-                    'tjstatus'    => $tjOk ? 1 : 0,
-                    'tcstatus'    => $tcOk ? 1 : 0,
-                    'sisatj'      => $sisaTJ,   // <- pakai nama kolom Anda
-                    'sisatc'      => $sisaTC,
-                    'updateby'    => auth()->user()->name ?? 'System',
-                    'updateddate' => $now,
-                ]);
-            }
-
-            return back()->with('success', 'Data pias berhasil disimpan');
-        });
-
-    } catch (\Throwable $e) {
-        Log::error('PIAS submit failed', [
-            'rkhno' => $rkhno,
-            'msg'   => $e->getMessage(),
-            'trace' => substr($e->getTraceAsString(), 0, 2000),
+        return view('transaction.pias.report')->with([
+            'title'     => $title,
+            'grouped'   => $grouped,
+            'search'    => $search,
+            'startDate' => $startDate,
+            'endDate'   => $endDate,
         ]);
-        return back()->withErrors(['save' => 'Gagal menyimpan PIAS: '.$e->getMessage()])->withInput();
     }
-}
-*/
+
+    public function exportExcel(Request $request)
+    {
+        $startDate = $request->input('start_date', now()->subDays(7)->format('Y-m-d'));
+        $endDate   = $request->input('end_date', now()->format('Y-m-d'));
+        $search    = $request->input('search');
+        $company   = session('companycode');
+
+        $rows = DB::table('piaslst as pl')
+            ->join('piashdr as ph', fn($j) => $j->on('ph.rkhno','=','pl.rkhno')->on('ph.companycode','=','pl.companycode'))
+            ->join('rkhhdr as r',   fn($j) => $j->on('r.rkhno','=','pl.rkhno')->on('r.companycode','=','pl.companycode'))
+            ->join('lkhhdr as lh',  fn($j) => $j->on('lh.lkhno','=','pl.lkhno')->on('lh.companycode','=','pl.companycode'))
+            ->join('lkhdetailplot as ldp', fn($j) =>
+                $j->on('ldp.lkhno','=','pl.lkhno')
+                  ->on('ldp.companycode','=','pl.companycode')
+                  ->on('ldp.plot','=','pl.plot')
+                  ->on('ldp.blok','=','pl.blok')
+            )
+            ->join('masterlist as ml', fn($j) =>
+                $j->on('ml.companycode','=','pl.companycode')
+                  ->on('ml.blok','=','pl.blok')
+                  ->on('ml.plot','=','pl.plot')
+            )
+            ->join('batch as b', fn($j) =>
+                $j->on('b.companycode','=','ml.companycode')
+                  ->on('b.plot','=','ml.plot')
+                  ->on('b.batchno','=','ml.activebatchno')
+            )
+            ->where('pl.companycode', $company)
+            ->whereDate('r.rkhdate', '>=', $startDate)
+            ->whereDate('r.rkhdate', '<=', $endDate)
+            ->when($search, fn($q) =>
+                $q->where(fn($qq) =>
+                    $qq->where('pl.rkhno','like',"%{$search}%")
+                       ->orWhere('pl.blok','like',"%{$search}%")
+                       ->orWhere('pl.plot','like',"%{$search}%")
+                )
+            )
+            ->select('r.rkhdate as tgl','pl.blok','pl.plot','ldp.luasrkh as ha',
+                     'b.tanggalpanen as tgl_tanam','b.lifecyclestatus as kategori',
+                     'b.kodevarietas as varietas','pl.tj','pl.tc','pl.tv')
+            ->orderBy('r.rkhdate')->orderBy('pl.blok')->orderBy('pl.plot')
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada data untuk diekspor.');
+        }
+
+        $grouped = $rows->groupBy('tgl');
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Pias Report');
+
+        // ── Style helpers ──
+        $center  = ['alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER]];
+        $right   = ['alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT,  'vertical' => Alignment::VERTICAL_CENTER]];
+        $bold    = ['font' => ['bold' => true]];
+        $borders = ['borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]];
+
+        $hdrStyle = fn(string $hex) => [
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $hex]],
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
+            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+        ];
+
+        $lastCol = 'K';
+
+        // ── Judul ──
+        $sheet->mergeCells("A1:{$lastCol}1");
+        $sheet->setCellValue('A1', 'LAPORAN PIAS HARIAN');
+        $sheet->getStyle('A1')->applyFromArray(['font' => ['bold' => true, 'size' => 14], 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]]);
+
+        $sheet->mergeCells("A2:{$lastCol}2");
+        $sheet->setCellValue('A2', 'Periode: ' . date('d/m/Y', strtotime($startDate)) . ' s/d ' . date('d/m/Y', strtotime($endDate)));
+        $sheet->getStyle('A2')->applyFromArray($center);
+
+        $sheet->mergeCells("A3:{$lastCol}3");
+        $sheet->setCellValue('A3', 'Dicetak: ' . now()->format('d/m/Y H:i'));
+        $sheet->getStyle('A3')->applyFromArray($center);
+
+        // ── Column widths ──
+        $widths = ['A'=>14,'B'=>8,'C'=>10,'D'=>8,'E'=>13,'F'=>8,'G'=>10,'H'=>12,'I'=>8,'J'=>8,'K'=>8];
+        foreach ($widths as $col => $w) {
+            $sheet->getColumnDimension($col)->setWidth($w);
+        }
+
+        $row = 5;
+
+        // ── Grand totals ──
+        $grandTJ = 0; $grandTC = 0; $grandTV = 0;
+
+        foreach ($grouped as $tgl => $items) {
+            // ── Tanggal header ──
+            $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
+            $sheet->setCellValue("A{$row}", 'TANGGAL: ' . date('d/m/Y', strtotime($tgl)));
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($hdrStyle('3B5998'));
+            $sheet->getRowDimension($row)->setRowHeight(18);
+            $row++;
+
+            // ── Column headers ──
+            $headers = ['TANGGAL','BLOK','PLOT','HA','TGL TANAM','BULAN','KATEGORI','VARIETAS','TJ','TC','TV'];
+            foreach ($headers as $ci => $h) {
+                $sheet->setCellValue([$ci + 1, $row], $h);
+            }
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($hdrStyle('374151'));
+            $sheet->getRowDimension($row)->setRowHeight(24);
+            $row++;
+
+            $dayTJ = 0; $dayTC = 0; $dayTV = 0;
+
+            foreach ($items as $item) {
+                $tanam = $item->tgl_tanam ? \Carbon\Carbon::parse($item->tgl_tanam) : null;
+                $t     = \Carbon\Carbon::parse($item->tgl);
+                $bulan = $tanam ? (int) ceil(abs($t->diffInDays($tanam)) / 30) : '-';
+
+                $sheet->setCellValue("A{$row}", date('d/m/Y', strtotime($item->tgl)));
+                $sheet->setCellValue("B{$row}", $item->blok);
+                $sheet->setCellValue("C{$row}", $item->plot);
+                $sheet->setCellValue("D{$row}", (float) $item->ha);
+                $sheet->setCellValue("E{$row}", $item->tgl_tanam ? date('d/m/Y', strtotime($item->tgl_tanam)) : '-');
+                $sheet->setCellValue("F{$row}", $bulan);
+                $sheet->setCellValue("G{$row}", $item->kategori ?? '-');
+                $sheet->setCellValue("H{$row}", $item->varietas ?? '-');
+                $sheet->setCellValue("I{$row}", (int) ($item->tj ?? 0));
+                $sheet->setCellValue("J{$row}", (int) ($item->tc ?? 0));
+                $sheet->setCellValue("K{$row}", (int) ($item->tv ?? 0));
+
+                $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($borders);
+                $sheet->getStyle("A{$row}:H{$row}")->applyFromArray($center);
+                $sheet->getStyle("D{$row}")->applyFromArray($right);
+                $sheet->getStyle("I{$row}:K{$row}")->applyFromArray($right);
+
+                // Warna kolom TJ/TC/TV
+                $sheet->getStyle("I{$row}")->applyFromArray(['fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DBEAFE']]]);
+                $sheet->getStyle("J{$row}")->applyFromArray(['fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DCFCE7']]]);
+                $sheet->getStyle("K{$row}")->applyFromArray(['fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FEF9C3']]]);
+
+                $dayTJ += (int)($item->tj ?? 0);
+                $dayTC += (int)($item->tc ?? 0);
+                $dayTV += (int)($item->tv ?? 0);
+                $row++;
+            }
+
+            // ── Subtotal per tanggal ──
+            $sheet->mergeCells("A{$row}:H{$row}");
+            $sheet->setCellValue("A{$row}", 'Subtotal ' . date('d/m/Y', strtotime($tgl)));
+            $sheet->setCellValue("I{$row}", $dayTJ);
+            $sheet->setCellValue("J{$row}", $dayTC);
+            $sheet->setCellValue("K{$row}", $dayTV);
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray(array_merge($borders, $bold));
+            $sheet->getStyle("A{$row}:H{$row}")->applyFromArray($right);
+            $sheet->getStyle("I{$row}:K{$row}")->applyFromArray($right);
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'BFDBFE']],
+            ]);
+            $row++;
+
+            $grandTJ += $dayTJ;
+            $grandTC += $dayTC;
+            $grandTV += $dayTV;
+        }
+
+        // ── Grand total ──
+        $sheet->mergeCells("A{$row}:H{$row}");
+        $sheet->setCellValue("A{$row}", 'GRAND TOTAL');
+        $sheet->setCellValue("I{$row}", $grandTJ);
+        $sheet->setCellValue("J{$row}", $grandTC);
+        $sheet->setCellValue("K{$row}", $grandTV);
+        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray(array_merge($borders, $bold, [
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '374151']],
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ]));
+        $sheet->getStyle("I{$row}:K{$row}")->applyFromArray($right);
+
+        $filename = 'Pias_Report_' . $startDate . '_' . $endDate . '.xlsx';
+
+        $writer = new Xlsx($spreadsheet);
+        ob_start();
+        $writer->save('php://output');
+        $content = ob_get_clean();
+
+        return response($content, 200, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
 /**
  * Equal-first + Group-fair (CRC32; target = sum(round(need)))
  */
@@ -723,46 +731,6 @@ private function allocateInt(array $kebutuhan, float $stok, int $seed = 0, ?arra
 }
 
 
-    
-
-// /** truncate 3 desimal tanpa pembulatan */
-// private function floor3(float $v): float
-// {
-//     return floor($v * 1000) / 1000;
-// }
-
-// /** alokasi stok equal-share; stok cukup → kembalikan needs apa adanya */
-// private function allocateEqual(array $needs, float $stock): array
-// {
-//     $n = count($needs);
-//     if ($n === 0 || $stock <= 0) return array_fill(0, $n, 0.0);
-
-//     $totalNeed = array_sum($needs);
-//     if ($stock >= $totalNeed) return $needs;
-
-//     $alloc  = array_fill(0, $n, 0.0);
-//     $remain = $stock;
-//     $active = array_keys(array_filter($needs, fn($v)=>$v>0));
-
-//     while ($remain > 0 && !empty($active)) {
-//         $share = $remain / count($active);
-//         $next  = [];
-//         foreach ($active as $i) {
-//             $gap  = $needs[$i] - $alloc[$i];
-//             $give = min($gap, $share);
-//             $alloc[$i] += $give;
-//             $remain    -= $give;
-//             if ($needs[$i] - $alloc[$i] > 1e-12) $next[] = $i;
-//         }
-//         if (count($next) === count($active)) break;
-//         $active = $next;
-//     }
-//     return $alloc;
-// }
-
-
-
-    
 
 
 }

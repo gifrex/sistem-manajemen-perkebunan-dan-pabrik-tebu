@@ -39,18 +39,17 @@ class RkhRepository
                 'app.idjabatanapproval1',
                 'app.idjabatanapproval2',
                 'app.idjabatanapproval3',
-                DB::raw('CASE 
+                DB::raw('
+                CASE 
+                    WHEN r.approval1flag = "0" THEN "Declined by Level 1"
+                    WHEN r.approval2flag = "0" THEN "Declined by Level 2"
+                    WHEN r.approval3flag = "0" THEN "Declined by Level 3"
+                    WHEN r.approvalstatus = "1" THEN "Approved"
                     WHEN app.jumlahapproval IS NULL OR app.jumlahapproval = 0 THEN "No Approval Required"
-                    WHEN r.approval1flag IS NULL AND app.idjabatanapproval1 IS NOT NULL THEN "Waiting Level 1"
-                    WHEN r.approval1flag = "0" THEN "Declined Level 1"
-                    WHEN r.approval1flag = "1" AND app.idjabatanapproval2 IS NOT NULL AND r.approval2flag IS NULL THEN "Waiting Level 2"
-                    WHEN r.approval2flag = "0" THEN "Declined Level 2"
-                    WHEN r.approval2flag = "1" AND app.idjabatanapproval3 IS NOT NULL AND r.approval3flag IS NULL THEN "Waiting Level 3"
-                    WHEN r.approval3flag = "0" THEN "Declined Level 3"
-                    WHEN (app.jumlahapproval = 1 AND r.approval1flag = "1") OR
-                        (app.jumlahapproval = 2 AND r.approval1flag = "1" AND r.approval2flag = "1") OR
-                        (app.jumlahapproval = 3 AND r.approval1flag = "1" AND r.approval2flag = "1" AND r.approval3flag = "1") THEN "Approved"
-                    ELSE "Waiting"
+                    WHEN r.approval1flag IS NULL AND app.idjabatanapproval1 IS NOT NULL THEN "Waiting for Approval"
+                    WHEN r.approval1flag = "1" AND app.idjabatanapproval2 IS NOT NULL AND r.approval2flag IS NULL THEN "Waiting for Approval"
+                    WHEN r.approval2flag = "1" AND app.idjabatanapproval3 IS NOT NULL AND r.approval3flag IS NULL THEN "Waiting for Approval"
+                    ELSE "Waiting for Approval"
                 END as approval_status'),
                 DB::raw('CASE 
                     WHEN r.status = "Completed" THEN "Completed"
@@ -182,6 +181,9 @@ class RkhRepository
                 'w.jumlahtenagakerja',
                 'hg.herbisidagroupname',
                 'a.activityname',
+                'a.usingvehicle',
+                'a.usingmaterial',
+                'a.isblokactivity',
                 'ag.groupname as activity_group_name',
                 'jtk.nama as jenistenagakerja_nama',
                 'a.jenistenagakerja',
@@ -194,7 +196,7 @@ class RkhRepository
 
     /**
      * Get latest outstanding RKH by mandor
-     * (status != Completed OR status IS NULL)
+     * (status != Completed AND status != Batal)
      * 
      * @param string $companycode
      * @param string $mandorId
@@ -206,12 +208,33 @@ class RkhRepository
             ->where('companycode', $companycode)
             ->where('mandorid', $mandorId)
             ->where(function($query) {
-                $query->where('status', '!=', 'Completed')
-                      ->orWhereNull('status');
+                $query->whereNull('status')
+                    ->orWhereNotIn('status', ['Completed', 'Batal']);
             })
             ->orderBy('rkhdate', 'desc')
             ->select(['rkhno', 'rkhdate', 'status'])
             ->first();
+    }
+
+    /**
+     * Get RKH by mandor and date (exclude Batal)
+     * 
+     * @param string $companycode
+     * @param string $mandorId
+     * @param string $date
+     * @return object|null
+     */
+    public function getRkhByMandorAndDate($companycode, $mandorId, $date)
+    {
+        return DB::table('rkhhdr')
+            ->where('companycode', $companycode)
+            ->where('mandorid', $mandorId)
+            ->whereDate('rkhdate', $date)
+            ->where(function($query) {
+                $query->whereNull('status')
+                    ->orWhere('status', '!=', 'Batal');
+            })
+            ->first(['rkhno', 'rkhdate', 'status']);
     }
 
     /**
@@ -288,9 +311,10 @@ class RkhRepository
 
     /**
      * Paginate RKH index with filters
+     * Updated: Handle 'Batal' status
      * 
      * @param string $companycode
-     * @param array $filters [search, filterApproval, filterStatus, filterDate, allDate]
+     * @param array $filters [search, filterApproval, filterStatus, filterDate, allDate, showBatal]
      * @param int $perPage
      * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
@@ -303,6 +327,7 @@ class RkhRepository
                     ->where('app.companycode', '=', $companycode);
             })
             ->leftJoin('activitygroup as ag', 'r.activitygroup', '=', 'ag.activitygroup')
+            ->leftJoin('user as bataluser', 'r.batalby', '=', 'bataluser.userid') // JOIN untuk nama pembatal
             ->where('r.companycode', $companycode)
             ->select([
                 'r.*',
@@ -313,19 +338,28 @@ class RkhRepository
                 'app.idjabatanapproval2',
                 'app.idjabatanapproval3',
                 'r.approvalstatus',
-                DB::raw('CASE 
+                'bataluser.name as batal_by_nama',
+
+                DB::raw('(SELECT COUNT(*) FROM lkhhdr 
+                      WHERE lkhhdr.companycode = r.companycode 
+                      AND lkhhdr.rkhno = r.rkhno 
+                      AND lkhhdr.status != "EMPTY") as non_empty_lkh_count'),
+
+                DB::raw('
+                CASE 
+                    WHEN r.approval1flag = "0" THEN "Declined by Level 1"
+                    WHEN r.approval2flag = "0" THEN "Declined by Level 2"
+                    WHEN r.approval3flag = "0" THEN "Declined by Level 3"
                     WHEN r.approvalstatus = "1" THEN "Approved"
-                    WHEN r.approvalstatus = "0" THEN "Rejected"
                     WHEN app.jumlahapproval IS NULL OR app.jumlahapproval = 0 THEN "No Approval Required"
-                    WHEN r.approval1flag IS NULL AND app.idjabatanapproval1 IS NOT NULL THEN "Waiting"
-                    WHEN r.approval1flag = "0" THEN "Declined"
-                    WHEN r.approval1flag = "1" AND app.idjabatanapproval2 IS NOT NULL AND r.approval2flag IS NULL THEN "Waiting"
-                    WHEN r.approval2flag = "0" THEN "Declined"
-                    WHEN r.approval2flag = "1" AND app.idjabatanapproval3 IS NOT NULL AND r.approval3flag IS NULL THEN "Waiting"
-                    WHEN r.approval3flag = "0" THEN "Declined"
-                    ELSE "Waiting"
+                    WHEN r.approval1flag IS NULL AND app.idjabatanapproval1 IS NOT NULL THEN "Waiting for Approval"
+                    WHEN r.approval1flag = "1" AND app.idjabatanapproval2 IS NOT NULL AND r.approval2flag IS NULL THEN "Waiting for Approval"
+                    WHEN r.approval2flag = "1" AND app.idjabatanapproval3 IS NOT NULL AND r.approval3flag IS NULL THEN "Waiting for Approval"
+                    ELSE "Waiting for Approval"
                 END as approval_status'),
+                
                 DB::raw('CASE 
+                    WHEN r.status = "Batal" THEN "Batal"
                     WHEN r.status = "Completed" THEN "Completed"
                     ELSE "In Progress"
                 END as current_status')
@@ -338,17 +372,32 @@ class RkhRepository
 
         // Apply approval filter
         if (!empty($filters['filterApproval'])) {
-            $query = $this->applyApprovalFilter($query, $filters['filterApproval']);
+            $this->applyApprovalFilter($query, $filters['filterApproval']);
         }
 
-        // Apply status filter
+        // Apply status filter (UPDATED: handle Batal)
         if (!empty($filters['filterStatus'])) {
             if ($filters['filterStatus'] === 'Completed') {
                 $query->where('r.status', 'Completed');
-            } else {
+            } elseif ($filters['filterStatus'] === 'Batal') {
+                $query->where('r.status', 'Batal');
+            } elseif ($filters['filterStatus'] === 'In Progress') {
                 $query->where(function($q) {
                     $q->whereNull('r.status')
-                    ->orWhere('r.status', '!=', 'Completed');
+                    ->orWhereNotIn('r.status', ['Completed', 'Batal']);
+                });
+            }
+        }
+
+        if (!empty($filters['filterStatus'])) {
+            if ($filters['filterStatus'] === 'Completed') {
+                $query->where('r.status', 'Completed');
+            } elseif ($filters['filterStatus'] === 'Batal') {
+                $query->where('r.status', 'Batal');
+            } elseif ($filters['filterStatus'] === 'In Progress') {
+                $query->where(function($q) {
+                    $q->whereNull('r.status')
+                    ->orWhereNotIn('r.status', ['Completed', 'Batal']);
                 });
             }
         }
@@ -489,7 +538,6 @@ class RkhRepository
 
         return DB::table('rkhhdr')
             ->where('companycode', $companycode)
-            ->whereDate('rkhdate', $carbonDate->format('Y-m-d'))
             ->where('rkhno', 'like', "RKH{$day}{$month}%{$year}")
             ->lockForUpdate()
             ->orderBy(DB::raw('CAST(SUBSTRING(rkhno, 8, 2) AS UNSIGNED)'), 'desc')
@@ -617,4 +665,239 @@ class RkhRepository
                 'updatedat' => $now
             ]);
     }
+
+    /**
+     * Cancel RKH (set status to Batal) and update material status to CANCEL
+     * 
+     * @param string $companycode
+     * @param string $rkhno
+     * @param string $userid
+     * @param string $alasan
+     * @return int
+     */
+    public function cancelRkh($companycode, $rkhno, $userid, $alasan)
+    {
+        DB::beginTransaction();
+        try {
+            // 1. Update RKH status to Batal
+            DB::table('rkhhdr')
+                ->where('companycode', $companycode)
+                ->where('rkhno', $rkhno)
+                ->update([
+                    'status' => 'Batal',
+                    'batalat' => now(),
+                    'batalby' => $userid,
+                    'batalalasan' => $alasan,
+                    'updateby' => $userid,
+                    'updatedat' => now()
+                ]);
+
+            // 2. Update Material status to CANCEL (only if ACTIVE)
+            $materialUpdated = DB::table('usematerialhdr')
+                ->where('companycode', $companycode)
+                ->where('rkhno', $rkhno)
+                ->where('flagstatus', 'ACTIVE')
+                ->update([
+                    'flagstatus' => 'CANCEL',
+                    'updateby' => $userid,
+                    'updatedat' => now()
+                ]);
+
+            DB::commit();
+            
+            \Log::info('RKH Cancelled Successfully', [
+                'rkhno' => $rkhno,
+                'companycode' => $companycode,
+                'material_updated' => $materialUpdated > 0 ? 'YES' : 'NO'
+            ]);
+            
+            return 1;
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            \Log::error('Cancel RKH Failed', [
+                'rkhno' => $rkhno,
+                'companycode' => $companycode,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            throw $e;
+        }
+    }
+
+    /**
+     * Check if RKH can be cancelled
+     * Rules: 
+     * - approvalstatus = '1' (fully approved)
+     * - status not Completed/Batal
+     * - All LKH must be EMPTY (no work done yet)
+     * - Material status must NOT be DISPATCHED
+     * 
+     * @param string $companycode
+     * @param string $rkhno
+     * @return array
+     */
+    public function canCancelRkh($companycode, $rkhno)
+    {
+        $rkh = DB::table('rkhhdr')
+            ->where('companycode', $companycode)
+            ->where('rkhno', $rkhno)
+            ->first(['status', 'approvalstatus']);
+        
+        if (!$rkh) {
+            return ['can_cancel' => false, 'reason' => 'RKH tidak ditemukan'];
+        }
+        
+        // Already cancelled
+        if ($rkh->status === 'Batal') {
+            return ['can_cancel' => false, 'reason' => 'RKH sudah dibatalkan'];
+        }
+        
+        // Already completed
+        if ($rkh->status === 'Completed') {
+            return ['can_cancel' => false, 'reason' => 'RKH sudah Completed, tidak bisa dibatalkan'];
+        }
+        
+        // Must be fully approved (approvalstatus = '1')
+        if ($rkh->approvalstatus !== '1') {
+            return ['can_cancel' => false, 'reason' => 'RKH belum fully approved. Gunakan tombol Hapus jika ingin menghapus.'];
+        }
+        
+        // Check if all LKH are still EMPTY
+        $nonEmptyLkhCount = DB::table('lkhhdr')
+            ->where('companycode', $companycode)
+            ->where('rkhno', $rkhno)
+            ->where('status', '!=', 'EMPTY')
+            ->count();
+        
+        if ($nonEmptyLkhCount > 0) {
+            return ['can_cancel' => false, 'reason' => 'Tidak dapat membatalkan RKH. Ada LKH yang sudah dikerjakan (status bukan EMPTY).'];
+        }
+        
+        // Check if material already DISPATCHED
+        $material = DB::table('usematerialhdr')
+            ->where('companycode', $companycode)
+            ->where('rkhno', $rkhno)
+            ->first(['flagstatus']);
+        
+        if ($material && $material->flagstatus === 'DISPATCHED') {
+            return ['can_cancel' => false, 'reason' => 'Tidak dapat membatalkan RKH. Material sudah diserahkan (DISPATCHED). Silakan gunakan proses retur material.'];
+        }
+        
+        return ['can_cancel' => true, 'reason' => null];
+    }
+
+    /**
+     * Get batal detail
+     * 
+     * @param string $companycode
+     * @param string $rkhno
+     * @return object|null
+     */
+    public function getBatalDetail($companycode, $rkhno)
+    {
+        return DB::table('rkhhdr as r')
+            ->leftJoin('user as u', 'r.batalby', '=', 'u.userid')
+            ->where('r.companycode', $companycode)
+            ->where('r.rkhno', $rkhno)
+            ->where('r.status', 'Batal')
+            ->first([
+                'r.rkhno',
+                'r.rkhdate',
+                'r.batalat',
+                'r.batalby',
+                'r.batalalasan',
+                'u.name as batal_by_nama'
+            ]);
+    }
+
+    public function getMaterialByRkhNo($companycode, $rkhno)
+    {
+        return DB::table('usemateriallst as uml')
+            ->join('lkhhdr as lh', function($join) use ($companycode) {
+                $join->on('uml.lkhno', '=', 'lh.lkhno')
+                    ->where('lh.companycode', '=', $companycode);
+            })
+            ->join('rkhlst as rl', function($join) use ($companycode, $rkhno) {
+                $join->on('uml.plot', '=', 'rl.plot')
+                    ->on('lh.activitycode', '=', 'rl.activitycode')
+                    ->where('rl.companycode', '=', $companycode)
+                    ->where('rl.rkhno', '=', $rkhno);
+            })
+            ->leftJoin('herbisidagroup as hg', function($join) {
+                $join->on('rl.herbisidagroupid', '=', 'hg.herbisidagroupid')
+                    ->on('lh.activitycode', '=', 'hg.activitycode');
+            })
+            ->leftJoin('activity as a', 'lh.activitycode', '=', 'a.activitycode')
+            ->where('uml.companycode', $companycode)
+            ->where('lh.rkhno', $rkhno)
+            ->select([
+                'uml.plot',
+                'uml.lkhno',
+                'uml.itemcode',
+                'uml.itemname',
+                'uml.qty',
+                'uml.unit',
+                'uml.dosageperha',
+                'lh.activitycode',
+                'hg.herbisidagroupid',
+                'hg.herbisidagroupname',
+                'a.activityname',
+                'rl.luasarea',
+            ])
+            ->orderBy('lh.activitycode')
+            ->orderBy('uml.plot')
+            ->orderBy('uml.itemcode')
+            ->get();
+    }
+
+    /**
+     * Get estimated material data (fallback when not yet generated)
+     * Calculates from herbisidadosage × rkhlst.luasarea per plot
+     * 
+     * @param string $companycode
+     * @param string $rkhno
+     * @return \Illuminate\Support\Collection
+     */
+    public function getEstimatedMaterialByRkhNo($companycode, $rkhno)
+    {
+        return DB::table('rkhlst as rl')
+            ->join('herbisidadosage as hd', function($join) use ($companycode) {
+                $join->on('rl.herbisidagroupid', '=', 'hd.herbisidagroupid')
+                    ->where('hd.companycode', '=', $companycode);
+            })
+            ->join('herbisidagroup as hg', function($join) {
+                $join->on('rl.herbisidagroupid', '=', 'hg.herbisidagroupid')
+                    ->on('rl.activitycode', '=', 'hg.activitycode');
+            })
+            ->join('herbisida as h', function($join) use ($companycode) {
+                $join->on('hd.itemcode', '=', 'h.itemcode')
+                    ->where('h.companycode', '=', $companycode);
+            })
+            ->leftJoin('activity as a', 'rl.activitycode', '=', 'a.activitycode')
+            ->where('rl.companycode', $companycode)
+            ->where('rl.rkhno', $rkhno)
+            ->where('rl.usingmaterial', 1)
+            ->whereNotNull('rl.herbisidagroupid')
+            ->select([
+                'rl.plot',
+                'rl.activitycode',
+                'rl.luasarea',
+                'rl.herbisidagroupid',
+                'hg.herbisidagroupname',
+                'hg.rounddosage',
+                'hd.itemcode',
+                'h.itemname',
+                'hd.dosageperha',
+                'h.measure as unit',
+                'a.activityname',
+            ])
+            ->orderBy('rl.activitycode')
+            ->orderBy('rl.plot')
+            ->orderBy('hd.itemcode')
+            ->get();
+    }
 }
+

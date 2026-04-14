@@ -1,0 +1,85 @@
+name: Deploy Production (AWS via SSM)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy_prod:
+    name: Deploy to EC2 via SSM
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Send SSM command
+        id: send
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          CMD_ID=$(aws ssm send-command \
+            --region "${{ secrets.AWS_REGION }}" \
+            --document-name "AWS-RunPowerShellScript" \
+            --targets "Key=instanceIds,Values=${{ secrets.SSM_INSTANCE_ID }}" \
+            --parameters commands='["cmd.exe /c C:\\Users\\admin2\\Desktop\\AutoGitPullTebu.bat"]' \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "command_id=$CMD_ID" >> "$GITHUB_OUTPUT"
+          echo "SSM CommandId: $CMD_ID"
+
+      - name: Wait & show output
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          CMD_ID="${{ steps.send.outputs.command_id }}"
+          INSTANCE_ID="${{ secrets.SSM_INSTANCE_ID }}"
+          REGION="${{ secrets.AWS_REGION }}"
+
+          for i in {1..60}; do
+            STATUS=$(aws ssm get-command-invocation \
+              --region "$REGION" \
+              --command-id "$CMD_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "Status" \
+              --output text || true)
+
+            echo "Status: $STATUS"
+            if [[ "$STATUS" == "Success" || "$STATUS" == "Failed" || "$STATUS" == "TimedOut" || "$STATUS" == "Cancelled" ]]; then
+              break
+            fi
+            sleep 5
+          done
+
+          aws ssm get-command-invocation \
+            --region "$REGION" \
+            --command-id "$CMD_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query "{Status:Status,RC:ResponseCode,Out:StandardOutputContent,Err:StandardErrorContent}" \
+            --output json
+
+          FINAL_STATUS=$(aws ssm get-command-invocation \
+            --region "$REGION" \
+            --command-id "$CMD_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query "Status" \
+            --output text)
+
+          if [[ "$FINAL_STATUS" != "Success" ]]; then
+            echo "SSM deploy failed with status: $FINAL_STATUS"
+            exit 1
+          fi

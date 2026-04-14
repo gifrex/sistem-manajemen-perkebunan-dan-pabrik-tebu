@@ -126,19 +126,63 @@ function notificationDropdown() {
         loading: false,
         notifications: [],
         unreadCount: 0,
-        refreshInterval: null,
+        echoChannel: null,
 
         init() {
             this.loadNotifications();
-            this.refreshInterval = setInterval(() => {
-                this.loadUnreadCount();
-            }, 30000);
+            
+            // ✅ SETUP WEBSOCKET LISTENER (ganti polling)
+            this.listenForNotifications();
         },
 
         toggleDropdown() {
             this.open = !this.open;
             if (this.open) {
                 this.loadNotifications();
+            }
+        },
+
+        // ✅ WEBSOCKET LISTENER - INI YANG PENTING!
+        listenForNotifications() {
+            const userId = document.querySelector('meta[name="user-id"]')?.getAttribute('content');
+            
+            if (!userId) {
+                console.warn('⚠️ User ID not found in meta tag');
+                return;
+            }
+
+            if (!window.Echo) {
+                console.warn('⚠️ Laravel Echo not initialized');
+                return;
+            }
+
+            try {
+                console.log('🔌 Connecting to WebSocket channel: user.' + userId);
+
+                // Listen to private channel
+                this.echoChannel = window.Echo.private(`user.${userId}`)
+                    .listen('.notification.new', (event) => {
+                        console.log('✅ New notification received via WebSocket:', event);
+                        
+                        // Update unread count
+                        this.unreadCount = event.unread_count;
+                        
+                        // Reload notifications if dropdown is open
+                        if (this.open) {
+                            this.loadNotifications();
+                        }
+                        
+                        // Optional: Show browser notification
+                        this.showBrowserNotification(event);
+                        
+                        // Optional: Show toast
+                        this.showToast('New notification received!');
+                    });
+
+                console.log('✅ WebSocket listener initialized successfully');
+
+            } catch (error) {
+                console.error('❌ Failed to setup WebSocket listener:', error);
             }
         },
 
@@ -161,24 +205,6 @@ function notificationDropdown() {
                 console.error('Failed to load notifications:', error);
             } finally {
                 this.loading = false;
-            }
-        },
-
-        async loadUnreadCount() {
-            try {
-                const response = await fetch('{{ route("info-updates.notifications.unread-count") }}', {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    }
-                });
-                
-                if (!response.ok) throw new Error('Network response was not ok');
-                
-                const data = await response.json();
-                this.unreadCount = data.unread_count;
-            } catch (error) {
-                console.error('Failed to load unread count:', error);
             }
         },
 
@@ -213,7 +239,7 @@ function notificationDropdown() {
                     if (notif) {
                         notif.is_read = true;
                     }
-                    this.unreadCount = Math.max(0, this.unreadCount - 1);
+                    // unreadCount akan auto-update via WebSocket broadcast
                 }
             } catch (error) {
                 console.error('Failed to mark notification as read:', error);
@@ -234,11 +260,43 @@ function notificationDropdown() {
                 
                 if (response.ok) {
                     this.notifications.forEach(n => n.is_read = true);
-                    this.unreadCount = 0;
+                    // unreadCount akan auto-update via WebSocket broadcast
                 }
             } catch (error) {
                 console.error('Failed to mark all as read:', error);
             }
+        },
+
+        showBrowserNotification(event) {
+            if (!('Notification' in window)) return;
+
+            if (Notification.permission === 'granted') {
+                new Notification('New Notification', {
+                    body: event.notification?.title || 'You have a new notification',
+                    icon: '/favicon.ico'
+                });
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        new Notification('New Notification', {
+                            body: event.notification?.title || 'You have a new notification',
+                            icon: '/favicon.ico'
+                        });
+                    }
+                });
+            }
+        },
+
+        showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded shadow-lg z-50';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         },
 
         formatDate(dateString) {
@@ -262,8 +320,11 @@ function notificationDropdown() {
         },
 
         destroy() {
-            if (this.refreshInterval) {
-                clearInterval(this.refreshInterval);
+            // Cleanup WebSocket connection
+            const userId = document.querySelector('meta[name="user-id"]')?.getAttribute('content');
+            if (userId && window.Echo) {
+                window.Echo.leave(`user.${userId}`);
+                console.log('✅ WebSocket connection cleaned up');
             }
         }
     }

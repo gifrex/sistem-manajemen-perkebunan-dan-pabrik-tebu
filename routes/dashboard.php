@@ -5,7 +5,10 @@
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\TimelineController;
 use App\Http\Controllers\Dashboard\MapsController;
+use App\Http\Controllers\Dashboard\DashboardPanenController;
+use App\Http\Controllers\Dashboard\SuratTeguranController as DashboardSuratTeguranController;
 use App\Http\Controllers\Pabrik\DashboardPanenPabrikController;
+
 
 Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(function () {
 
@@ -32,6 +35,7 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
 
     Route::middleware('permission:dashboard.timelineplot.view')->group(function () {
         Route::match(['GET', 'POST'], 'timeline-plot', [TimelineController::class, 'plot'])->name('timeline-plot');
+        Route::get('timeline-plot/detail', [TimelineController::class, 'plotQuery'])->name('timeline-plot.detail');
     });
 
     // ============================================================================
@@ -44,6 +48,23 @@ Route::middleware('auth')->prefix('dashboard')->name('dashboard.')->group(functi
         Route::match(['GET', 'POST'], 'maps/upload', [MapsController::class, 'upload'])->name('maps.upload');
     });
 
+    // ============================================================================
+    // SURAT TEGURAN DASHBOARD (Kebun)
+    // ============================================================================
+    Route::middleware('permission:dashboard.suratteguran.view')->group(function () {
+        Route::get('surat-teguran', [DashboardSuratTeguranController::class, 'index'])->name('surat-teguran.index');
+        Route::get('surat-teguran/{id}', [DashboardSuratTeguranController::class, 'show'])->name('surat-teguran.show');
+        Route::post('surat-teguran/{id}/mark-read', [DashboardSuratTeguranController::class, 'markAsRead'])->name('surat-teguran.mark-read');
+    });
+
+    // ============================================================================
+    // PANEN DASHBOARD
+    // ============================================================================
+    Route::middleware('permission:dashboard.panen.view')->group(function () {
+        Route::get('panen', [DashboardPanenController::class, 'index'])->name('panen');
+        Route::get('panen/data', [DashboardPanenController::class, 'getData'])->name('panen.data');
+    });
+
 });
 
 // ============================================================================
@@ -53,3 +74,4 @@ Route::middleware(['auth', 'permission:pabrik.panenpabrik.view'])->group(functio
     Route::get('pabrik/panen-pabrik', [DashboardPanenPabrikController::class, 'index'])->name('pabrik.panen-pabrik.index');
     Route::get('pabrik/panen-pabrik/data', [DashboardPanenPabrikController::class, 'getData'])->name('pabrik.panen-pabrik.data');
 });
+

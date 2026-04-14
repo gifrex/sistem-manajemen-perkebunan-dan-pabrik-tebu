@@ -1,0 +1,359 @@
+<?php
+
+namespace App\Http\Controllers\Approval;
+
+use App\Http\Controllers\Controller;
+use App\Repositories\Approval\AbsenApprovalRepository;
+use App\Repositories\Approval\LkhApprovalRepository;
+use App\Repositories\Approval\OtherApprovalRepository;
+use App\Repositories\Approval\PanenApprovalRepository;
+use App\Repositories\Approval\RkhApprovalRepository;
+use App\Repositories\Approval\UpahMingguanApprovalRepository;
+use App\Http\Controllers\Approval\OrderBbmApprovalController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
+
+/**
+ * ApprovalDashboardController
+ *
+ * Unified dashboard untuk semua jenis approval (RKH, LKH, Others)
+ * COPIED FROM: ApprovalController::index()
+ */
+class ApprovalDashboardController extends Controller
+{
+    protected $rkhRepository;
+    protected $lkhRepository;
+    protected $otherRepository;
+    protected $absenRepository;
+    protected $upahRepository;
+    protected $panenRepository;
+
+    public function __construct(
+        RkhApprovalRepository $rkhRepository,
+        LkhApprovalRepository $lkhRepository,
+        OtherApprovalRepository $otherRepository,
+        AbsenApprovalRepository $absenRepository,
+        UpahMingguanApprovalRepository $upahRepository,
+        PanenApprovalRepository $panenRepository
+    ) {
+        $this->rkhRepository   = $rkhRepository;
+        $this->lkhRepository   = $lkhRepository;
+        $this->otherRepository = $otherRepository;
+        $this->absenRepository = $absenRepository;
+        $this->upahRepository  = $upahRepository;
+        $this->panenRepository = $panenRepository;
+    }
+
+    /**
+     * Show approval dashboard with date filter
+     */
+    public function index(Request $request)
+    {
+        $companycode = Session::get('companycode');
+        $currentUser = Auth::user();
+
+        if (!$this->validateUserForApproval($currentUser)) {
+            return redirect()->route('home')
+                ->with('error', 'Anda tidak memiliki akses untuk approval');
+        }
+
+        // Default: all_date = true
+        $filterDate = $request->input('filter_date');
+        $allDate = $request->input('all_date', true); // <-- default true
+
+        $filters = [
+            'date' => $filterDate,
+            'all_date' => $allDate
+        ];
+
+        $pendingRKH   = $this->getPendingRKHWithDetails($companycode, $currentUser, $filters);
+        $pendingLKH   = $this->getPendingLKHWithDetails($companycode, $currentUser, $filters);
+        $pendingAbsen = $this->getPendingAbsenWithDetails($companycode, $currentUser, $filters);
+        $pendingOther = $this->getPendingOtherWithDetails($companycode, $currentUser, $filters);
+        $pendingPanen = $this->getPendingPanenWithDetails($companycode, $currentUser, $filters);
+        $othersDetail = $this->setOtherDetail($pendingOther);
+        $pendingUpah = $this->getPendingUpahWithDetails($companycode, $currentUser, $filters);
+        $pendingBBM = OrderBbmApprovalController::getPendingApprovals(
+            $companycode,
+            $currentUser->idjabatan,
+            $filters
+        );
+
+        // Load activity groups user punya akses
+        $userActivityGroups = DB::table('useractivity as ua')
+            ->join('activitygroup as ag', 'ua.activitygroup', '=', 'ag.activitygroup')
+            ->where('ua.userid', $currentUser->userid)
+            ->where('ua.companycode', $companycode)
+            ->where('ua.isactive', 1)
+            ->select('ag.activitygroup', 'ag.groupname')
+            ->orderBy('ag.activitygroup')
+            ->get();
+
+        return view('approval.index', [
+            'title'              => 'Approval Center',
+            'navbar'             => 'Input',
+            'nav'                => 'Approval',
+            'pendingRKH'         => $pendingRKH,
+            'pendingLKH'         => $pendingLKH,
+            'pendingOther'       => $pendingOther,
+            'pendingAbsen'       => $pendingAbsen,
+            'pendingUpah'        => $pendingUpah,
+            'pendingBBM'         => $pendingBBM,
+            'pendingPanen'       => $pendingPanen,
+            'userInfo'           => $this->getUserInfo($currentUser),
+            'filterDate'         => $filterDate,
+            'allDate'            => $allDate,
+            'otherDetail'        => $othersDetail,
+            'userActivityGroups' => $userActivityGroups,
+        ]);
+    }
+
+    /**
+     * Get pending RKH approvals with additional details
+     *
+     * @param string $companycode
+     * @param object $currentUser
+     * @param array $filters
+     * @return \Illuminate\Support\Collection
+     */
+    private function getPendingRKHWithDetails($companycode, $currentUser, array $filters)
+    {
+        $pendingRKH = $this->rkhRepository->getPendingApprovals(
+            $companycode,
+            $currentUser->idjabatan,
+            $currentUser->userid,  // tambah userid
+            $filters
+        );
+
+        return $pendingRKH->map(function ($rkh) use ($companycode) {
+            $rkh->activities_list = $this->rkhRepository->getActivitiesSummary($companycode, $rkh->rkhno);
+            $rkh->has_material = $this->rkhRepository->hasMaterial($companycode, $rkh->rkhno);
+            $rkh->has_kendaraan = $this->rkhRepository->hasKendaraan($companycode, $rkh->rkhno);
+            return $rkh;
+        });
+    }
+
+    /**
+     * Get pending LKH approvals with additional details
+     *
+     * @param string $companycode
+     * @param object $currentUser
+     * @param array $filters
+     * @return \Illuminate\Support\Collection
+     */
+    private function getPendingLKHWithDetails($companycode, $currentUser, array $filters)
+    {
+        $pendingLKH = $this->lkhRepository->getPendingApprovals(
+            $companycode,
+            $currentUser->idjabatan,
+            $currentUser->userid,  // tambah userid
+            $filters
+        );
+
+        return $pendingLKH->map(function ($lkh) use ($companycode) {
+            $lkh->has_material = $this->lkhRepository->hasMaterial($companycode, $lkh->lkhno);
+            $lkh->has_kendaraan = $this->lkhRepository->hasKendaraan($companycode, $lkh->lkhno);
+            return $lkh;
+        });
+    }
+
+    /**
+     * Get pending other approvals with additional details
+     *
+     * @param string $companycode
+     * @param object $currentUser
+     * @param array $filters
+     * @return \Illuminate\Support\Collection
+     */
+    private function getPendingOtherWithDetails($companycode, $currentUser, array $filters)
+    {
+        $pendingOther = $this->otherRepository->getPendingApprovals(
+            $companycode,
+            $currentUser->idjabatan,
+            $filters
+        );
+
+        // Enrich with decoded JSON and real batch areas
+        return $pendingOther->map(function ($approval) use ($companycode) {
+            // Decode JSON fields for Split/Merge
+            if ($approval->sourceplots) {
+                $approval->sourceplots_array = json_decode($approval->sourceplots, true);
+            }
+            if ($approval->resultplots) {
+                $approval->resultplots_array = json_decode($approval->resultplots, true);
+            }
+            if ($approval->sourcebatches) {
+                $approval->sourcebatches_array = json_decode($approval->sourcebatches, true);
+
+                // Fetch REAL batch area dari database
+                $batchAreas = [];
+                foreach ($approval->sourcebatches_array as $batchno) {
+                    $batch = DB::table('batch')
+                        ->where('companycode', $companycode)
+                        ->where('batchno', $batchno)
+                        ->select('plot', 'batcharea')
+                        ->first();
+
+                    if ($batch) {
+                        $batchAreas[$batch->plot] = $batch->batcharea;
+                    }
+                }
+                $approval->real_batch_areas = $batchAreas;
+            }
+            if ($approval->resultbatches) {
+                $approval->resultbatches_array = json_decode($approval->resultbatches, true);
+            }
+            if ($approval->areamap) {
+                $approval->areamap_array = json_decode($approval->areamap, true);
+            }
+
+            // Decode JSON for Open Rework
+            if ($approval->rework_plots) {
+                $approval->plots_array = json_decode($approval->rework_plots, true);
+            }
+            if ($approval->rework_activities) {
+                $approval->activities_array = json_decode($approval->rework_activities, true);
+            }
+
+            return $approval;
+        });
+    }
+
+    /**
+     * Validate user for approval
+     *
+     * @param object $currentUser
+     * @return bool
+     */
+    private function validateUserForApproval($currentUser): bool
+    {
+        return $currentUser && $currentUser->idjabatan;
+    }
+
+    /**
+     * Get user info with jabatan
+     *
+     * @param object $currentUser
+     * @return array
+     */
+    private function getUserInfo($currentUser): array
+    {
+        $jabatan = DB::table('jabatan')
+            ->where('idjabatan', $currentUser->idjabatan)
+            ->first();
+
+        return [
+            'userid' => $currentUser->userid,
+            'name' => $currentUser->name,
+            'idjabatan' => $currentUser->idjabatan,
+            'jabatan_name' => $jabatan ? $jabatan->namajabatan : 'Unknown'
+        ];
+    }
+
+    /**
+     * Get pending absen approvals with additional details
+     *
+     * @param string $companycode
+     * @param object $currentUser
+     * @param array $filters
+     * @return \Illuminate\Support\Collection
+     */
+    
+    private function getPendingAbsenWithDetails($companycode, $currentUser, array $filters)
+    {
+        $pendingAbsen = $this->absenRepository->getPendingApprovals(
+            $companycode,
+            $currentUser->idjabatan,
+            $filters
+        );
+
+        // Batch check LKH upload status
+        $lkhStatusMap = $this->absenRepository->checkLKHUploadedForAbsens(
+            $companycode,
+            $pendingAbsen
+        );
+
+        // Enrich setiap absen dengan flag lkh_uploaded
+        return $pendingAbsen->map(function ($absen) use ($lkhStatusMap) {
+            $absen->lkh_uploaded = $lkhStatusMap[$absen->absenno] ?? false;
+            return $absen;
+        });
+    }
+
+    private function getPendingUpahWithDetails(string $companycode, object $currentUser, array $filters)
+    {
+        $items = $this->upahRepository->getPendingApprovals(
+            $companycode,
+            $currentUser->idjabatan,
+            $filters
+        );
+
+        if ($items->isEmpty()) {
+            return $items;
+        }
+
+        // Group by mandoruserid + jenistenagakerja:
+        // - Satu card per mandor per jenis (Harian & Borongan dipisah)
+        // - Multiple transno untuk mandor+jenis yang sama digabung
+        $grouped = $items->groupBy(fn($i) => $i->mandoruserid . '_' . $i->jenistenagakerja);
+
+        return $grouped->map(function ($group) {
+            $first = $group->first();
+            return (object) [
+                'mandoruserid' => $first->mandoruserid,
+                'mandorname' => $first->mandorname,
+                'jenistenagakerja' => $first->jenistenagakerja,
+                'jenis_label' => $first->jenis_label,
+                'approval_level' => $first->approval_level,
+                'startdate' => $group->min('startdate'),
+                'enddate' => $group->max('enddate'),
+                'grandtotal' => $group->sum('grandtotal'),
+                'totalworkers' => $group->sum('totalworkers'),
+                'transno_list' => $group->pluck('transno')->toArray(),
+                'transno_count' => $group->count(),
+                // Detail per transaksi untuk ditampilkan di modal
+                'transactions' => $group->map(fn($t) => (object) [
+                    'transno' => $t->transno,
+                    'activityname' => $t->activityname,
+                    'generatedate' => $t->generatedate,
+                    'startdate' => $t->startdate,
+                    'enddate' => $t->enddate,
+                    'grandtotal' => $t->grandtotal,
+                    'totalworkers' => $t->totalworkers,
+                ])->values(),
+            ];
+        })->values();
+    }
+
+    private function getPendingPanenWithDetails(string $companycode, object $currentUser, array $filters)
+    {
+        return $this->panenRepository->getPendingApprovals(
+            $companycode,
+            $currentUser->idjabatan,
+            $filters
+        );
+    }
+
+    private function setOtherDetail($otherDetail)
+    {
+        $detail = array();
+        if (count($otherDetail) > 0) {
+            foreach ($otherDetail as $item) {
+                if ($item->category == "Use Material" OR $item->category == "Use Koreksi" OR $item->category == "Retur Koreksi") {
+                    $materialDetail = $this->otherRepository->getApprovalUseMaterialDetail(
+                        $item->companycode,
+                        $item->approvalno
+                    );
+
+                    // HANYA SIMPAN JIKA ADA ISI
+                    if (!empty($materialDetail)) {
+                        $detail[$item->approvalno] = $materialDetail;
+                    }
+                }
+            }
+        }
+        return $detail;
+    }
+}

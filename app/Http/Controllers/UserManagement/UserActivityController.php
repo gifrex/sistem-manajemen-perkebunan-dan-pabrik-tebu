@@ -5,7 +5,9 @@ namespace App\Http\Controllers\UserManagement;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\UserManagement\UserActivityService;
-use App\Models\{User, Company, ActivityGroup};
+use App\Models\User;
+use App\Models\MasterData\Company;
+use App\Models\MasterData\ActivityGroup;
 
 class UserActivityController extends Controller
 {

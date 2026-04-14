@@ -24,12 +24,12 @@
                         Mark all as read
                     </button>
                     @endif
-                    @if(hasPermission('infoupdates.notification.view'))
+                    @can('infoupdates.notification.view')
                     <a href="{{ route('info-updates.notifications.admin.index') }}" 
                        class="px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
                         Manage Notifications
                     </a>
-                    @endif
+                    @endcan
                 </div>
             </div>
         </div>

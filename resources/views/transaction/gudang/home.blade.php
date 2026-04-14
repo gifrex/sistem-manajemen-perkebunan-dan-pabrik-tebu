@@ -79,6 +79,11 @@
                 Reset
               </a>
             @endif
+            <button type="submit"
+              formaction="{{ route('transaction.gudang.report') }}" formmethod="GET"
+              class="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium">
+              Report
+            </button>
           </div>
           
         </div>

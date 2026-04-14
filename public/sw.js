@@ -1,5 +1,5 @@
 // SW.js - Fixed version untuk production dengan subdirectory
-const CACHE_VERSION = 'v10';
+const CACHE_VERSION = 'v11';
 const CACHE_NAME = `sb-tebu-${CACHE_VERSION}`;
 const STATIC_CACHE = `sb-tebu-static-${CACHE_VERSION}`;
 
@@ -160,6 +160,10 @@ self.addEventListener('fetch', event => {
     if (!url.startsWith('http')) {
         return;
     }
+
+    if (url.includes('amazonaws.com')) {
+        return;
+    }
     
     // CRITICAL: Bypass SW untuk service worker file itself
     if (url.includes('/sw.js')) {
@@ -181,17 +185,84 @@ self.addEventListener('fetch', event => {
     }
     
     // Skip dynamic content
-    if (shouldNeverCache(url, method)) {
-        if (isDev()) {
-            logSW('Dev: Not intercepting:', url);
-            return; // Let browser handle
+        if (shouldNeverCache(url, method)) {
+            if (isDev()) {
+                logSW('Dev: Not intercepting:', url);
+                return; // Let browser handle
+            }
+            event.respondWith(fetchWithTimeout(request));
+            return;
         }
-        event.respondWith(fetchWithTimeout(request));
+        
+        if (request.mode === 'navigate') {
+        event.respondWith(
+            fetchWithTimeout(request, 15000)
+                .then(response => {
+                    if (!response.ok) {
+                        logSW('Navigation error, status:', response.status);
+                        return response;
+                    }
+                    return response;
+                })
+                .catch(error => {
+                    logSW('Navigation failed, serving offline page:', error.message);
+                    return caches.match(`${BASE_PATH}offline.html`)
+                        .then(cached => cached || new Response('Offline', { status: 503 }));
+                })
+        );
         return;
     }
-    
-    // Continue with existing logic...
-    // [Rest remains unchanged]
+});
+
+// =============================================
+// INSTALL: Pre-cache offline fallback assets
+// =============================================
+self.addEventListener('install', event => {
+    logSW('SW installing, version:', CACHE_VERSION);
+    event.waitUntil(
+        caches.open(STATIC_CACHE)
+            .then(cache => {
+                logSW('Caching static assets:', STATIC_ASSETS);
+                // addAll gagal total jika salah satu asset 404
+                // pakai add satu-satu supaya tidak blocking
+                return Promise.allSettled(
+                    STATIC_ASSETS.map(asset =>
+                        cache.add(asset).catch(err => {
+                            logSW(`Failed to cache asset: ${asset}`, err.message, 'warn');
+                        })
+                    )
+                );
+            })
+            .then(() => {
+                logSW('Install complete, calling skipWaiting');
+                return self.skipWaiting();
+            })
+    );
+});
+
+// =============================================
+// ACTIVATE: Cleanup old caches, claim clients
+// =============================================
+self.addEventListener('activate', event => {
+    logSW('SW activating, cleaning old caches...');
+    event.waitUntil(
+        caches.keys()
+            .then(cacheNames => {
+                const validCaches = [CACHE_NAME, STATIC_CACHE];
+                return Promise.all(
+                    cacheNames
+                        .filter(name => name.startsWith('sb-tebu-') && !validCaches.includes(name))
+                        .map(name => {
+                            logSW('Deleting old cache:', name);
+                            return caches.delete(name);
+                        })
+                );
+            })
+            .then(() => {
+                logSW('Activate complete, claiming clients');
+                return self.clients.claim();
+            })
+    );
 });
 
 // Tambahkan message handler untuk debugging

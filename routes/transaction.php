@@ -2,25 +2,29 @@
 
 // routes\transaction.php
 
-use App\Http\Controllers\Transaction\HPTController;
-use App\Http\Controllers\Transaction\PiasController;
-use App\Http\Controllers\Transaction\GudangController;
 use App\Http\Controllers\Transaction\AgronomiController;
+use App\Http\Controllers\Transaction\KoreksiSJPanenController;
+use App\Http\Controllers\Transaction\SuratJalanNonNfcController;
 use App\Http\Controllers\Transaction\GudangBbmController;
+use App\Http\Controllers\Transaction\GudangController;
+use App\Http\Controllers\Transaction\HPTController;
 use App\Http\Controllers\Transaction\KendaraanController;
-use App\Http\Controllers\Transaction\RencanaKerjaMingguanController;
+use App\Http\Controllers\Transaction\KendaraanSupplyController;
 use App\Http\Controllers\Transaction\MappingBsmController;
 use App\Http\Controllers\Transaction\NfcController;
-
-use App\Http\Controllers\Transaction\RencanaKerjaHarian\RkhController;
-use App\Http\Controllers\Transaction\RencanaKerjaHarian\LkhController;
+use App\Http\Controllers\Transaction\OrderBbmController;
+use App\Http\Controllers\Transaction\PiasController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\ApprovalInfoController;
+use App\Http\Controllers\Transaction\RencanaKerjaHarian\Domain\MaterialUsageController;
+use App\Http\Controllers\Transaction\RencanaKerjaHarian\LkhController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\DthReportController;
-use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\RekapLkhReportController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\OperatorRekapReportController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\OperatorReportController;
+use App\Http\Controllers\Transaction\RencanaKerjaHarian\Report\RekapLkhReportController;
+use App\Http\Controllers\Transaction\RencanaKerjaHarian\RkhController;
 use App\Http\Controllers\Transaction\RencanaKerjaHarian\Utility\RkhUtilityController;
-use App\Http\Controllers\Transaction\RencanaKerjaHarian\MaterialUsageController;
+use App\Http\Controllers\Transaction\RencanaKerjaMingguanController;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(function () {
 
@@ -83,17 +87,29 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
     // ============================================================================
     // RENCANA KERJA MINGGUAN
     // ============================================================================
-    Route::middleware('permission:transaction.rencanakerjamingguan.view')->group(function () {
-        Route::match(['GET', 'POST'], 'rencana-kerja-mingguan', [RencanaKerjaMingguanController::class, 'index'])->name('rencana-kerja-mingguan.index');
-        Route::get('rencana-kerja-mingguan/show/{rkmno}', [RencanaKerjaMingguanController::class, 'show'])->name('rencana-kerja-mingguan.show');
-        Route::get('rencana-kerja-mingguan/create', [RencanaKerjaMingguanController::class, 'create'])->name('rencana-kerja-mingguan.create');
-        Route::post('rencana-kerja-mingguan/store', [RencanaKerjaMingguanController::class, 'store'])->name('rencana-kerja-mingguan.store');
-        Route::get('rencana-kerja-mingguan/{rkmno}/edit', [RencanaKerjaMingguanController::class, 'edit'])->name('rencana-kerja-mingguan.edit');
-        Route::put('rencana-kerja-mingguan/{rkmno}', [RencanaKerjaMingguanController::class, 'update'])->name('rencana-kerja-mingguan.update');
-        Route::delete('rencana-kerja-mingguan/{rkmno}', [RencanaKerjaMingguanController::class, 'destroy'])->name('rencana-kerja-mingguan.destroy');
-        Route::get('rencana-kerja-mingguan/excel', [RencanaKerjaMingguanController::class, 'excel'])->name('rencana-kerja-mingguan.exportExcel');
-        Route::get('/getplot/{blok}', [RencanaKerjaMingguanController::class, 'getPlot'])->name('rkm.getPlot');
-        Route::post('/getdata', [RencanaKerjaMingguanController::class, 'getData'])->name('rkm.getData');
+    Route::prefix('rencana-kerja-mingguan')->name('rencana-kerja-mingguan.')->controller(RencanaKerjaMingguanController::class)->group(function () {
+
+        Route::middleware('permission:transaction.rencanakerjamingguan.view')->group(function () {
+            Route::match(['GET', 'POST'], '/', 'index')->name('index');
+            Route::get('/show/{rkmno}', 'show')->name('show');
+            Route::get('/excel', 'excel')->name('exportExcel');
+            Route::get('/getplot/{blok}', 'getPlot')->name('getPlot');
+            Route::post('/getdata', 'getData')->name('getData');
+        });
+
+        Route::middleware('permission:transaction.rencanakerjamingguan.create')->group(function () {
+            Route::get('/create', 'create')->name('create');
+            Route::post('/store', 'store')->name('store');
+        });
+
+        Route::middleware('permission:transaction.rencanakerjamingguan.edit')->group(function () {
+            Route::get('/{rkmno}/edit', 'edit')->name('edit');
+            Route::put('/{rkmno}', 'update')->name('update');
+        });
+
+        Route::delete('/{rkmno}', 'destroy')
+            ->middleware('permission:transaction.rencanakerjamingguan.delete')
+            ->name('destroy');
     });
 
     // ============================================================================
@@ -108,11 +124,16 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
             Route::controller(RkhController::class)->group(function () {
                 Route::get('/', 'index')->name('index');
                 Route::get('/create', 'create')->name('create');
+                Route::get('/create-v2', 'createV2')->name('create-v2');
                 Route::post('/store', 'store')->name('store');
                 Route::get('/{rkhno}/show', 'show')->name('show');
-                Route::get('/{rkhno}/edit', 'edit')->name('edit');
+                Route::get('/{rkhno}/edit', 'editV2')->name('edit');
                 Route::put('/{rkhno}', 'update')->name('update');
                 Route::delete('/{rkhno}', 'destroy')->name('destroy');
+
+                Route::get('/{rkhno}/print', 'printView')->name('print');
+                Route::post('/{rkhno}/cancel', 'cancel')->name('cancel');
+                Route::get('/{rkhno}/batal-detail', 'getBatalDetail')->name('batalDetail');
             });
 
             // ============================================================
@@ -122,7 +143,7 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
                 // RKH Approval Info
                 Route::get('/{rkhno}/approval-detail', 'getRkhApprovalDetail')->name('getApprovalDetail');
                 Route::post('/update-status', 'updateRkhStatus')->name('updateStatus');
-                
+
                 // LKH Approval Info
                 Route::get('/lkh/{lkhno}/approval-detail', 'getLkhApprovalDetail')->name('getLkhApprovalDetail');
             });
@@ -137,6 +158,8 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
                 Route::put('/lkh/{lkhno}', 'updateLKH')->name('updateLKH');
                 Route::post('/lkh/submit', 'submitLKH')->name('submitLKH');
                 Route::post('/{rkhno}/generate-lkh', 'manualGenerateLkh')->name('manualGenerateLkh');
+                Route::post('/lkh/recalculate-wages', 'recalculateWages')->name('recalculateWages');
+                Route::get('/lkh/{lkhno}/print', 'printLKH')->name('printLKH');
             });
 
             // ============================================================
@@ -200,6 +223,12 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
         Route::post('gudang/submit', [GudangController::class, 'submit'])->name('gudang.submit');
         Route::any('gudang/retur', [GudangController::class, 'retur'])->name('gudang.retur');
         Route::any('gudang/returall', [GudangController::class, 'returAll'])->name('gudang.returall');
+        Route::get('gudang/report', [GudangController::class, 'report'])->name('gudang.report');
+        Route::get('gudang/koreksi-insert', [GudangController::class, 'koreksi_insert'])->name('gudang.koreksi');
+        Route::post('gudang/koreksi-submit', [GudangController::class, 'koreksi_submit'])->name('gudang.koreksi.submit');
+
+        Route::post('gudang/get-items-by-rkh', [GudangController::class, 'getItemsByRkh'])->name('gudang.getItemsByRkh');
+        Route::post('gudang/get-item-detail', [GudangController::class, 'getItemDetail'])->name('gudang.getItemDetail');
     });
 
     // ============================================================================
@@ -209,26 +238,55 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
         Route::get('pias', [PiasController::class, 'home'])->name('pias.index');
         Route::get('pias/detail', [PiasController::class, 'detail'])->name('pias.detail');
         Route::post('pias/submit', [PiasController::class, 'submit'])->name('pias.submit');
+        Route::get('pias/report', [PiasController::class, 'report'])->name('pias.report');
+        Route::get('pias/export', [PiasController::class, 'exportExcel'])->name('pias.export');
+    });
+
+
+    // ============================================================================
+    // KENDARAAN SUPPLY - Mandor Kendaraan
+    // ============================================================================
+    Route::middleware('permission:transaction.kendaraansupply.view')->group(function () {
+        Route::prefix('kendaraan-supply')->name('kendaraan-supply.')->group(function () {
+            Route::get('/', [KendaraanSupplyController::class, 'index'])->name('index');
+            Route::post('/store', [KendaraanSupplyController::class, 'store'])->name('store');
+            Route::put('/{id}', [KendaraanSupplyController::class, 'update'])->name('update');
+            Route::delete('/{id}', [KendaraanSupplyController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/submit', [KendaraanSupplyController::class, 'submit'])->name('submit');
+
+            // API
+            Route::get('/kendaraan-list', [KendaraanSupplyController::class, 'getKendaraanList'])->name('kendaraan-list');
+            Route::get('/operator-list', [KendaraanSupplyController::class, 'getOperatorList'])->name('operator-list');
+            Route::get('/pending-for-order', [KendaraanSupplyController::class, 'getPendingForOrder'])->name('pending-for-order');
+        });
     });
 
     // ============================================================================
-    // KENDARAAN WORKSHOP
+    // ORDER BBM - Admin Kendaraan
     // ============================================================================
-    Route::middleware('permission:transaction.kendaraanworkshop.view')->group(function () {
-        Route::get('kendaraan-workshop', [KendaraanController::class, 'index'])->name('kendaraan-workshop.index');
-        Route::post('kendaraan-workshop/store', [KendaraanController::class, 'store'])->name('kendaraan-workshop.store');
-        Route::put('kendaraan-workshop/update', [KendaraanController::class, 'update'])->name('kendaraan-workshop.update');
-        Route::post('kendaraan-workshop/{lkhno}/mark-printed', [KendaraanController::class, 'markPrinted'])->name('kendaraan-workshop.mark-printed');
-        Route::get('kendaraan-workshop/{lkhno}/print', [KendaraanController::class, 'print'])->name('kendaraan-workshop.print');
+    Route::middleware('permission:transaction.orderbbm.view')->group(function () {
+        Route::prefix('order-bbm')->name('order-bbm.')->group(function () {
+            Route::get('/', [OrderBbmController::class, 'index'])->name('index');
+            Route::post('/', [OrderBbmController::class, 'store'])->name('store');
+            Route::get('/{orderno}', [OrderBbmController::class, 'show'])->name('show');
+            Route::put('/{orderno}', [OrderBbmController::class, 'update'])->name('update');
+            Route::post('/{orderno}/submit', [OrderBbmController::class, 'submit'])->name('submit');
+            Route::get('/lkh/{lkhno}/kendaraan', [OrderBbmController::class, 'getKendaraanFromLkh'])->name('lkh-kendaraan');
+            Route::get('/{orderno}/items', [OrderBbmController::class, 'getItems'])->name('items');
+        });
     });
 
     // ============================================================================
-    // GUDANG BBM
+    // GUDANG BBM - Admin Gudang BBM
     // ============================================================================
     Route::middleware('permission:transaction.gudangbbm.view')->group(function () {
-        Route::get('gudang-bbm', [GudangBbmController::class, 'index'])->name('gudang-bbm.index');
-        Route::get('gudang-bbm/{ordernumber}', [GudangBbmController::class, 'show'])->name('gudang-bbm.show');
-        Route::post('gudang-bbm/{ordernumber}/confirm', [GudangBbmController::class, 'markConfirmed'])->name('gudang-bbm.confirm');
+        Route::prefix('gudang-bbm')->name('gudang-bbm.')->group(function () {
+            Route::get('/', [GudangBbmController::class, 'index'])->name('index');
+            Route::get('/{orderno}', [GudangBbmController::class, 'show'])->name('show');
+            Route::post('/{orderno}/confirm-item', [GudangBbmController::class, 'confirmItem'])->name('confirm-item');
+            Route::post('/{orderno}/finalize', [GudangBbmController::class, 'finalizeAll'])->name('finalize');
+            Route::post('/{orderno}/sync-citrix', [GudangBbmController::class, 'syncCitrix'])->name('sync-citrix');
+        });
     });
 
     // ============================================================================
@@ -246,6 +304,33 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
     });
 
     // ============================================================================
+    // KOREKSI SJ PANEN
+    // ============================================================================
+    Route::middleware('permission:transaction.koreksisjpanen.view')->group(function () {
+        Route::prefix('koreksi-sj-panen')->name('koreksi-sj-panen.')->group(function () {
+            Route::get('/', [KoreksiSJPanenController::class, 'index'])->name('index');
+            Route::post('/store', [KoreksiSJPanenController::class, 'store'])->name('store');
+            Route::get('/get-sj', [KoreksiSJPanenController::class, 'getSuratJalanDetail'])->name('get-sj');
+            Route::get('/check-plot', [KoreksiSJPanenController::class, 'checkPlot'])->name('check-plot');
+        });
+    });
+
+    // ============================================================================
+    // INPUT SJ NON-NFC
+    // ============================================================================
+    Route::middleware('permission:transaction.surat-jalan-non-nfc.view')->group(function () {
+        Route::prefix('surat-jalan-non-nfc')->name('surat-jalan-non-nfc.')->group(function () {
+            Route::get('/', [SuratJalanNonNfcController::class, 'index'])->name('index');
+            Route::post('/store', [SuratJalanNonNfcController::class, 'store'])->name('store');
+            Route::post('/mark-printed', [SuratJalanNonNfcController::class, 'markPrinted'])->name('mark-printed');
+            Route::get('/form-data', [SuratJalanNonNfcController::class, 'getFormData'])->name('form-data');
+            Route::get('/plot-data', [SuratJalanNonNfcController::class, 'getPlotData'])->name('plot-data');
+            Route::get('/attachment/{id}', [SuratJalanNonNfcController::class, 'getAttachment'])->name('attachment');
+            Route::get('/{id}', [SuratJalanNonNfcController::class, 'show'])->name('show');
+        });
+    });
+
+    // ============================================================================
     // MAPPING BSM
     // ============================================================================
     Route::middleware('permission:transaction.mappingbsm.view')->group(function () {
@@ -255,7 +340,8 @@ Route::middleware('auth')->prefix('transaction')->name('transaction.')->group(fu
         Route::post('update-bsm-bulk', [MappingBsmController::class, 'updateBsmBulk'])->name('mapping-bsm.update-bsm-bulk');
         Route::get('get-bsm-for-copy', [MappingBsmController::class, 'getBsmForCopy'])->name('mapping-bsm.get-bsm-for-copy');
         Route::post('copy-bsm', [MappingBsmController::class, 'copyBsm'])->name('mapping-bsm.copy-bsm');
+        Route::post('remap-bsm', [MappingBsmController::class, 'remapBsm'])->name('mapping-bsm.remap-bsm');
     });
 
-    
+
 });

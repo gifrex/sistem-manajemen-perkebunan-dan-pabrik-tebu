@@ -2,7 +2,10 @@
 
 namespace App\Services\UserManagement;
 
-use App\Models\{User, Permission, JabatanPermission, UserPermission};
+use App\Models\User;
+use App\Models\Permission;
+use App\Models\JabatanPermission;
+use App\Models\UserPermission;
 use Illuminate\Support\Facades\{Cache, Log};
 
 class CacheService

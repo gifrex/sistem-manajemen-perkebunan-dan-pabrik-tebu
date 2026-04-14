@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class PostController extends Controller
 {
@@ -23,22 +24,18 @@ class PostController extends Controller
     {
         $title = "Posting";
         $search = $request->input('search', '');
+        $posting = $request->input('posting', '');
 
-        if ($request->has('start_date')) {
-            session(['start_date_posting' => $request->start_date]);
-        }
-        if ($request->has('end_date')) {
-            session(['end_date_posting' => $request->end_date]);
-        }
-        $startDate = session('start_date_posting');
-        $endDate = session('end_date_posting');
+        $startDate = $request->input('start_date', now()->toDateString());
+        $endDate = $request->input('end_date', now()->toDateString());
+
         $userid = Auth::user()->userid;
         $companycode = DB::table('usercompany')
             ->where('userid', $userid)
             ->value('companycode');
         $companyArray = $companycode ? explode(',', $companycode) : [];
 
-        if ($request->isMethod('post')) {
+        if ($request->isMethod('post') && $request->has('perPage')) {
             $request->validate([
                 'perPage' => 'required|integer|min:1',
             ]);
@@ -47,14 +44,19 @@ class PostController extends Controller
         }
 
         $perPage = $request->session()->get('perPage', 10);
-
-        if ($request->has('posting')) {
-            session(['posting' => $request->posting]);
-        }
-        $session = session('posting');
         $companysession = session('companycode');
 
-        $table = $session === 'Agronomi' ? 'agrohdr' : 'hpthdr';
+        // Jika belum memilih jenis pengamatan, return dengan data kosong
+        if (empty($posting)) {
+            $posts = new LengthAwarePaginator([], 0, $perPage, 1, [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]);
+            return view('process.posting.index', compact('posts', 'perPage', 'startDate', 'endDate', 'title', 'search', 'posting'));
+        }
+
+        // Tentukan tabel berdasarkan input posting
+        $table = $posting === 'Agronomi' ? 'agrohdr' : 'hpthdr';
 
         $posts = DB::table($table)
             ->orderBy('createdat', 'desc')
@@ -66,11 +68,11 @@ class PostController extends Controller
         if (!empty($search)) {
             $posts->where(function ($query) use ($search) {
                 $query->where('nosample', 'like', '%' . $search . '%')
-                    // ->orWhere('idblokplot', 'like', '%' . $search . '%')
                     ->orWhere('varietas', 'like', '%' . $search . '%')
                     ->orWhere('kat', 'like', '%' . $search . '%');
             });
         }
+
         $posts = $posts->paginate($perPage);
 
         foreach ($posts as $index => $item) {
@@ -84,25 +86,17 @@ class PostController extends Controller
         }
 
         if ($request->ajax()) {
-            return view('process.posting.index', compact('posts', 'perPage', 'startDate', 'endDate', 'title', 'search'));
+            return view('process.posting.index', compact('posts', 'perPage', 'startDate', 'endDate', 'title', 'search', 'posting'));
         }
-        return view('process.posting.index', compact('posts', 'perPage', 'startDate', 'endDate', 'title', 'search'));
-    }
 
-    public function postSession(Request $request)
-    {
-        $request->validate([
-            'posting' => 'required|string',
-        ]);
-
-        session(['posting' => $request->posting]);
-
-        return redirect()->route('process.posting');
+        return view('process.posting.index', compact('posts', 'perPage', 'startDate', 'endDate', 'title', 'search', 'posting'));
     }
 
     public function posting(Request $request)
     {
         $selectedItems = json_decode($request->selected_items, true);
+        $posting = $request->input('posting_type'); // Ambil dari hidden input
+
         $selectedItems = array_map(function ($item) {
             $parts = explode(',', $item);
             return [
@@ -116,7 +110,7 @@ class PostController extends Controller
             return redirect()->back()->with('error', 'Tidak ada data yang dipilih.');
         }
 
-        $tables = session('posting') === 'Agronomi'
+        $tables = $posting === 'Agronomi'
             ? ['agrohdr', 'agrolst']
             : ['hpthdr', 'hptlst'];
 

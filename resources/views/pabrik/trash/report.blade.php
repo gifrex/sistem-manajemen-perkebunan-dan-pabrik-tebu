@@ -278,19 +278,19 @@
                                 <td class="px-3 py-2 text-sm text-center border-2 border-gray-300">
                                     {{ number_format($sumTonase, 0, ',', '.') }}
                                 </td>
-                                <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">{{ number_format($avgPucuk, 2, ',', '.') }}</td>
-                                <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">{{ number_format($avgDaun, 2, ',', '.') }}</td>
-                                <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">{{ number_format($avgSogolan, 2, ',', '.') }}</td>
-                                <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">{{ number_format($avgSiwilan, 2, ',', '.') }}</td>
-                                <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">{{ number_format($avgTebumati, 2, ',', '.') }}</td>
-                                <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">{{ number_format($avgTanah, 2, ',', '.') }}</td>
-                                <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">{{ number_format($totaltrash, 2, ',', '.') }}</td>
+                                <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">{{ number_format($avgPucuk, 3, ',', '.') }}</td>
+                                <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">{{ number_format($avgDaun, 3, ',', '.') }}</td>
+                                <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">{{ number_format($avgSogolan, 3, ',', '.') }}</td>
+                                <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">{{ number_format($avgSiwilan, 3, ',', '.') }}</td>
+                                <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">{{ number_format($avgTebumati, 3, ',', '.') }}</td>
+                                <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">{{ number_format($avgTanah, 3, ',', '.') }}</td>
+                                <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">{{ number_format($totaltrash, 3, ',', '.') }}</td>
                                 <!-- Trash Persentase - Bruto -->
                                 <td class="px-2 py-2 text-sm text-right border-2 border-gray-300">
                                     @php
                                     $totalAvgTrash = $avgPucuk + $avgDaun + $avgSogolan + $avgSiwilan + $avgTebumati + $avgTanah;
                                     @endphp
-                                    {{ number_format($totalAvgTrash, 2, ',', '.') }}
+                                    {{ number_format($totalAvgTrash, 3, ',', '.') }}
                                 </td>
                                 <!-- Trash Persentase - Netto (Pot 5%) -->
                                 <td class="px-2 py-2 text-sm text-right border-2 border-gray-300">
@@ -298,7 +298,7 @@
                                     $nettoTrash = $totalAvgTrash - 5; // Potong 5%
                                     $nettoTrash = $nettoTrash < 0 ? 0 : $nettoTrash;
                                         @endphp
-                                        {{ number_format($nettoTrash, 2, ',', '.') }}
+                                        {{ number_format($nettoTrash, 3, ',', '.') }}
                                         </td>
                                         <!-- KG Trash - Bruto -->
                                 <td class="px-2 py-2 text-sm text-right border-2 border-gray-300">
@@ -327,22 +327,22 @@
                                     <strong>{{ number_format($groupSumTonase, 0, ',', '.') }}</strong>
                                 </td>
                                 <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">
-                                    <strong>{{ number_format($groupTotalCompanies > 0 ? $groupTotalPucuk / $groupTotalCompanies : 0, 2, ',', '.') }}</strong>
+                                    <strong>{{ number_format($groupTotalCompanies > 0 ? $groupTotalPucuk / $groupTotalCompanies : 0, 3, ',', '.') }}</strong>
                                 </td>
                                 <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">
-                                    <strong>{{ number_format($groupTotalCompanies > 0 ? $groupTotalDaun / $groupTotalCompanies : 0, 2, ',', '.') }}</strong>
+                                    <strong>{{ number_format($groupTotalCompanies > 0 ? $groupTotalDaun / $groupTotalCompanies : 0, 3, ',', '.') }}</strong>
                                 </td>
                                 <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">
-                                    <strong>{{ number_format($groupTotalCompanies > 0 ? $groupTotalSogolan / $groupTotalCompanies : 0, 2, ',', '.') }}</strong>
+                                    <strong>{{ number_format($groupTotalCompanies > 0 ? $groupTotalSogolan / $groupTotalCompanies : 0, 3, ',', '.') }}</strong>
                                 </td>
                                 <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">
-                                    <strong>{{ number_format($groupTotalCompanies > 0 ? $groupTotalSiwilan / $groupTotalCompanies : 0, 2, ',', '.') }}</strong>
+                                    <strong>{{ number_format($groupTotalCompanies > 0 ? $groupTotalSiwilan / $groupTotalCompanies : 0, 3, ',', '.') }}</strong>
                                 </td>
                                 <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">
-                                    <strong>{{ number_format($groupTotalCompanies > 0 ? $groupTotalTebumati / $groupTotalCompanies : 0, 2, ',', '.') }}</strong>
+                                    <strong>{{ number_format($groupTotalCompanies > 0 ? $groupTotalTebumati / $groupTotalCompanies : 0, 3, ',', '.') }}</strong>
                                 </td>
                                 <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">
-                                    <strong>{{ number_format($groupTotalCompanies > 0 ? $groupTotalTanah / $groupTotalCompanies : 0, 2, ',', '.') }}</strong>
+                                    <strong>{{ number_format($groupTotalCompanies > 0 ? $groupTotalTanah / $groupTotalCompanies : 0, 3, ',', '.') }}</strong>
                                 </td>
                                 <!-- KOLOM TOTAL TRASH - CLEANED UP -->
                                 <td class="px-3 py-2 text-sm text-right border-2 border-gray-300">
@@ -368,15 +368,15 @@
                                         $trashpresentasebruto=$groupSumTonase> 0 ? ($groupKgTrashBruto / $groupSumTonase) * 100 : 0;
                                         $trashpresentasenetto = $groupSumTonase > 0 ? ($groupKgTrashNetto / $groupSumTonase) * 100 : 0;
                                         @endphp
-                                        <strong>{{ number_format($groupTotalTrash, 2, ',', '.') }}</strong>
+                                        <strong>{{ number_format($groupTotalTrash, 3, ',', '.') }}</strong>
                                 </td>
                                 <!-- Group Total - Trash Persentase Bruto -->
                                 <td class="px-2 py-2 text-sm text-right border-2 border-gray-300">
-                                    <strong>{{ number_format($trashpresentasebruto, 2, ',', '.') }}</strong>
+                                    <strong>{{ number_format($trashpresentasebruto, 3, ',', '.') }}</strong>
                                 </td>
                                 <!-- Group Total - Trash Persentase Netto -->
                                 <td class="px-2 py-2 text-sm text-right border-2 border-gray-300">
-                                    <strong>{{ number_format($trashpresentasenetto, 2, ',', '.') }}</strong>
+                                    <strong>{{ number_format($trashpresentasenetto, 3, ',', '.') }}</strong>
                                 </td>
                                 <!-- Group Total - KG Trash Bruto -->
                                 <td class="px-2 py-2 text-sm text-right border-2 border-gray-300">
@@ -459,14 +459,14 @@
                                 <td class="px-2 py-2 text-xs text-center border-2 border-gray-300">{{ $item['plot'] ?? '' }}</td>
                                 <td class="px-2 py-2 text-xs text-center border-2 border-gray-300">{{ $item['namakontraktor'] ?? '-' }}</td>
                                 <td class="px-2 py-2 text-xs text-center border-2 border-gray-300">{{ $item['namasubkontraktor'] ?? '-' }}</td>
-                                <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['pucuk'] ?? 0, 2, ',', '.') }}</td>
-                                <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['daungulma'] ?? 0, 2, ',', '.') }}</td>
-                                <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['sogolan'] ?? 0, 2, ',', '.') }}</td>
-                                <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['siwilan'] ?? 0, 2, ',', '.') }}</td>
-                                <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tebumati'] ?? 0, 2, ',', '.') }}</td>
-                                <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tanahetc'] ?? 0, 2, ',', '.') }}</td>
+                                <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['pucuk'] ?? 0, 3, ',', '.') }}</td>
+                                <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['daungulma'] ?? 0, 3, ',', '.') }}</td>
+                                <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['sogolan'] ?? 0, 3, ',', '.') }}</td>
+                                <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['siwilan'] ?? 0, 3, ',', '.') }}</td>
+                                <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tebumati'] ?? 0, 3, ',', '.') }}</td>
+                                <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tanahetc'] ?? 0, 3, ',', '.') }}</td>
                                 <td class="px-2 py-2 text-xs text-right font-semibold border-2 border-gray-300">{{ number_format($item['total'] ?? 0, 3, ',', '.') }}</td>
-                                <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['toleransi'] ?? 0, 2, ',', '.') }}</td>
+                                <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['toleransi'] ?? 0, 3, ',', '.') }}</td>
                                 <td class="px-2 py-2 text-xs text-right font-semibold border-2 border-gray-300">{{ number_format($item['nettotrash'] ?? 0, 3, ',', '.') }}</td>
                             </tr>
                             @endforeach
@@ -522,14 +522,14 @@
                                     <td class="px-2 py-2 text-xs border-2 border-gray-300">{{ $item['suratjalanno'] ?? '' }}</td>
                                     <td class="px-2 py-2 text-xs border-2 border-gray-300">{{ $item['namakontraktor'] ?? '-' }}</td>
                                     <td class="px-2 py-2 text-xs border-2 border-gray-300">{{ $item['namasubkontraktor'] ?? '-' }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['pucuk'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['daungulma'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['sogolan'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['siwilan'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tebumati'] ?? 0, 2, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tanahetc'] ?? 0, 2, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['pucuk'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['daungulma'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['sogolan'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['siwilan'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tebumati'] ?? 0, 3, ',', '.') }}</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['tanahetc'] ?? 0, 3, ',', '.') }}</td>
                                     <td class="px-2 py-2 text-xs text-right font-semibold border-2 border-gray-300">{{ number_format($item['total'] ?? 0, 3, ',', '.') }}</td>
-                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['toleransi'] ?? 0, 2, ',', '.') }}%</td>
+                                    <td class="px-2 py-2 text-xs text-right border-2 border-gray-300">{{ number_format($item['toleransi'] ?? 0, 3, ',', '.') }}%</td>
                                     <td class="px-2 py-2 text-xs text-right font-semibold border-2 border-gray-300">{{ number_format($item['nettotrash'] ?? 0, 3, ',', '.') }}</td>
                                 </tr>
                                 @endforeach

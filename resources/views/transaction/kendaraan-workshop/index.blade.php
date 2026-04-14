@@ -15,11 +15,30 @@
             
             {{-- Search & Filter --}}
             <div class="flex items-center space-x-2 mt-4 md:mt-0">
-                <form class="flex items-center space-x-2" action="{{ route('transaction.kendaraan-workshop.index') }}" method="GET">
+                <form id="filterForm" class="flex items-center space-x-2" action="{{ route('transaction.kendaraan-workshop.index') }}" method="GET">
                     <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Cari LKH No atau Kendaraan..."
                            class="text-sm border border-gray-300 rounded px-3 py-2 focus:ring-blue-500 focus:border-blue-500"/>
-                    <input type="date" name="filter_date" value="{{ $filterDate ?? '' }}" 
-                           class="text-sm border border-gray-300 rounded px-3 py-2 focus:ring-blue-500 focus:border-blue-500"/>
+                    
+                    {{--  NEW: Date Filter with Toggle --}}
+                    <input type="date" 
+                           id="filter_date"
+                           name="filter_date" 
+                           value="{{ $filterDate ?? '' }}" 
+                           {{ $showAllDate ? 'disabled' : '' }}
+                           class="text-sm border border-gray-300 rounded px-3 py-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"/>
+                    
+                    {{--  NEW: Show All Date Checkbox --}}
+                    <label class="flex items-center text-sm space-x-1 cursor-pointer">
+                        <input type="checkbox" 
+                               id="show_all_date"
+                               name="show_all_date" 
+                               value="1"
+                               onchange="toggleDateFilter()"
+                               {{ $showAllDate ? 'checked' : '' }}
+                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"/>
+                        <span class="text-gray-700 whitespace-nowrap">Show All Date</span>
+                    </label>
+                    
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm rounded">
                         Cari
                     </button>
@@ -73,8 +92,12 @@
                     @forelse($kendaraanData as $index => $item)
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-sm text-gray-900">{{ $loop->iteration }}</td>
-                        <td class="px-4 py-3 text-sm font-medium text-blue-600">
-                            {{ $item->lkhno }}
+                        <td class="px-4 py-3 text-sm font-medium">
+                            <a href="{{ route('transaction.rencanakerjaharian.showLKH', $item->lkhno) }}" 
+                            class="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                            target="_blank">
+                                {{ $item->lkhno }}
+                            </a>
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-900">
                             @if($item->ordernumber)
@@ -142,7 +165,6 @@
                         <td class="px-4 py-3 text-sm">
                             @if($item->status === 'PRINTED')
                                 <div class="flex items-center space-x-2">
-                                    
                                     <a href="{{ route('transaction.kendaraan-workshop.print', $item->lkhno) }}" target="_blank" 
                                        class="text-gray-600 hover:text-gray-800 p-1" title="Lihat/Print Ulang">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -292,6 +314,16 @@
 </div>
 
 <script>
+//  NEW: Toggle date filter function
+function toggleDateFilter() {
+    const dateInput = document.getElementById('filter_date');
+    const checkbox = document.getElementById('show_all_date');
+    dateInput.disabled = checkbox.checked;
+    
+    // Auto-submit form when toggling
+    document.getElementById('filterForm').submit();
+}
+
 function kendaraanData() {
     return {
         showInputModal: false,
@@ -352,8 +384,6 @@ function kendaraanData() {
 
         async printOrder(lkhno) {
             try {
-                // First, mark as printed - fix the URL to match the route
-                
                 const response = await fetch(`{{ url('transaction/kendaraan-workshop') }}/${lkhno}/mark-printed`, {
                     method: 'POST',
                     headers: {
@@ -364,10 +394,7 @@ function kendaraanData() {
 
                 const data = await response.json();
                 if (data.success) {
-                    // Open print page in new tab - fix the URL to match the route
                     window.open(`{{ url('transaction/kendaraan-workshop') }}/${lkhno}/print?ordernumber=${data.order_number}`, '_blank');
-
-                    // Reload current page to update status
                     setTimeout(() => location.reload(), 1000);
                 } else {
                     alert('Gagal generate order: ' + data.message);

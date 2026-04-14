@@ -14,11 +14,17 @@ class KontraktorController extends Controller
     {
         $perPage = (int) $request->input('perPage', 10);
         $search  = $request->input('search');
+        $status  = $request->input('status'); // '', '1', '0'
         $companycode = Session::get('companycode');
     
         $query = DB::table('kontraktor')
             ->where('companycode', $companycode);
     
+        // Filter by status
+        if ($status !== null && $status !== '') {
+            $query->where('isactive', (int) $status);
+        }
+
         if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
@@ -32,6 +38,7 @@ class KontraktorController extends Controller
             ->appends([
                 'perPage' => $perPage,
                 'search'  => $search,
+                'status'  => $status,
             ]);
     
         return view('masterdata.kontraktor.index', [
@@ -96,31 +103,17 @@ class KontraktorController extends Controller
         }
 
         $validated = $request->validate([
-            'id' => 'required|string|max:10',
+            // 'id' => 'required|string|max:10', // ID kontraktor tidak bisa diubah
             'namakontraktor' => 'required|string|max:100',
         ]);
         
-        // Cek duplicate jika ID diubah
-        if ($request->id !== $id) {
-            $exists = DB::table('kontraktor')
-                ->where('companycode', $companycode)
-                ->where('id', $request->id)
-                ->exists();
-    
-            if ($exists) {
-                return redirect()->back()
-                    ->withInput()
-                    ->withErrors([
-                        'id' => 'Duplicate Entry, ID Kontraktor sudah ada'
-                    ]);
-            }
-        }
+        // ID tidak bisa diubah, jadi tidak perlu cek duplicate
         
         DB::table('kontraktor')
             ->where('companycode', $companycode)
             ->where('id', $id)
             ->update([
-                'id' => strtoupper($validated['id']),
+                // 'id' tidak diubah
                 'namakontraktor' => $validated['namakontraktor'],
                 'updateby' => Auth::user()->userid,
                 'updatedat' => now(),
@@ -129,7 +122,7 @@ class KontraktorController extends Controller
         return redirect()->back()->with('success', 'Data kontraktor berhasil di-update.');
     }
 
-    public function destroy(Request $request, $companycode, $id)
+    public function toggleActive(Request $request, $companycode, $id)
     {
         $sessionCompanycode = Session::get('companycode');
         
@@ -137,24 +130,32 @@ class KontraktorController extends Controller
             abort(403, 'Unauthorized access to company data');
         }
 
-        // Cek apakah ada subkontraktor yang masih menggunakan kontraktor ini
-        $hasSubkontraktor = DB::table('subkontraktor')
+        $kontraktor = DB::table('kontraktor')
             ->where('companycode', $companycode)
-            ->where('kontraktorid', $id)
-            ->exists();
+            ->where('id', $id)
+            ->first();
 
-        if ($hasSubkontraktor) {
-            return redirect()->back()
-                ->withErrors([
-                    'delete' => 'Tidak dapat menghapus kontraktor karena masih memiliki subkontraktor'
-                ]);
+        if (!$kontraktor) {
+            abort(404, 'Data not found');
         }
+
+        $newStatus = $kontraktor->isactive ? 0 : 1;
 
         DB::table('kontraktor')
             ->where('companycode', $companycode)
             ->where('id', $id)
-            ->delete();
+            ->update([
+                'isactive' => $newStatus,
+                'updateby' => Auth::user()->userid,
+                'updatedat' => now(),
+            ]);
 
-        return redirect()->back()->with('success', 'Data kontraktor berhasil di-hapus.');
+        $message = $newStatus 
+            ? 'Kontraktor berhasil diaktifkan kembali.' 
+            : 'Kontraktor berhasil dinonaktifkan.';
+
+        return redirect()->back()->with('success', $message);
     }
+
+    // destroy method dihapus - gunakan toggleActive sebagai gantinya
 }

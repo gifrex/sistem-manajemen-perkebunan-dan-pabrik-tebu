@@ -23,7 +23,7 @@
         class="mx-auto py-4 bg-white shadow-md rounded-md">
 
         <div class="flex items-center justify-between mx-4 gap-2">
-            @if(hasPermission('Create Blok'))
+            @can('masterdata.blok.create')
                 <button @click="resetForm()"
                     class="bg-blue-500 text-white px-4 py-2 text-sm border border-transparent shadow-sm font-medium rounded-md hover:bg-blue-600 flex items-center gap-2">
                     <svg class="w-5 h-5 text-white dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
@@ -33,7 +33,7 @@
                     </svg>
                     <span class="text-sm">New Data</span>
                 </button>
-            @endif
+            @endcan
             <form method="POST" action="{{ url()->current() }}" class="flex items-center justify-end gap-2">
                 @csrf
                 <label for="perPage" class="text-xs font-medium text-gray-700">Items per page:</label>

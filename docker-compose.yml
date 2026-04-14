@@ -1,0 +1,33 @@
+services:
+  app:
+    image: sungaibudiwebdev/tebu-app:latest
+    container_name: tebu-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Jakarta
+    volumes:
+      - ./storage:/var/www/html/storage
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./docker/nginx/default.conf:/etc/nginx/http.d/default.conf:ro
+    networks:
+      - tebu-network
+      - web-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: tebu-redis
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Jakarta
+    networks:
+      - tebu-network
+
+networks:
+  tebu-network:
+    external: true
+  web-network:
+    external: true

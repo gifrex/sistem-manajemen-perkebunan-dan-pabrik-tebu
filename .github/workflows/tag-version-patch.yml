@@ -1,4 +1,4 @@
-name: Auto Tag Version (patch)
+name: Auto Tag Version
 
 on:
   push:
@@ -8,40 +8,51 @@ permissions:
   contents: write
 
 jobs:
-  tag_patch:
+  tag:
     runs-on: ubuntu-latest
-
+    if: "!contains(github.event.head_commit.message, '[skip tag]')"
     steps:
-      - name: Checkout (full history + tags)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Create and push next patch tag
-        shell: bash
+      - name: Create and push tag
         run: |
           set -euo pipefail
-
           git fetch --tags
 
-          LAST_TAG=$(git tag --sort=-v:refname | head -n 1)
+          MSG=$(git log -1 --pretty=%B)
 
-          if [ -z "${LAST_TAG:-}" ]; then
-            NEW_TAG="v1.0.0"
-          else
-            IFS='.' read -r MAJOR MINOR PATCH <<< "${LAST_TAG#v}"
-            PATCH=$((PATCH+1))
-            NEW_TAG="v$MAJOR.$MINOR.$PATCH"
+          # Aturan Main:
+          # big_update:   → v2.0.0 (major) - perubahan besar
+          # new_feature:  → v1.1.0 (minor) - fitur baru
+          # fix: / update: → v1.0.1 (patch) - perbaikan / update kecil
+          # selain itu    → skip, tidak bikin tag
+
+          BUMP="none"
+          if [[ "$MSG" == *"big_update:"* ]]; then BUMP="major";
+          elif [[ "$MSG" == *"new_feature:"* ]]; then BUMP="minor";
+          elif [[ "$MSG" == *"fix:"* ]] || [[ "$MSG" == *"update:"* ]]; then BUMP="patch";
           fi
 
-          echo "Last tag: ${LAST_TAG:-<none>}"
-          echo "New tag:  $NEW_TAG"
-
-          # Avoid failing if tag already exists (rare race)
-          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
-            echo "Tag $NEW_TAG already exists. Skipping."
+          if [ "$BUMP" == "none" ]; then
+            echo "No keyword found, skipping tag."
             exit 0
           fi
 
-          git tag "$NEW_TAG"
-          git push origin "$NEW_TAG"
+          LAST=$(git tag --sort=-v:refname | head -n 1)
+
+          if [ -z "${LAST:-}" ]; then
+            NEW="v1.0.0"
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<< "${LAST#v}"
+            case $BUMP in
+              major) NEW="v$((MAJOR+1)).0.0" ;;
+              minor) NEW="v$MAJOR.$((MINOR+1)).0" ;;
+              patch) NEW="v$MAJOR.$MINOR.$((PATCH+1))" ;;
+            esac
+          fi
+
+          echo "$BUMP → $NEW"
+          git tag "$NEW"
+          git push origin "$NEW"

@@ -90,6 +90,10 @@
             >
               Apply
             </button>
+            <a href="{{ route('transaction.pias.report', ['start_date' => $startDate, 'end_date' => $endDate]) }}"
+               class="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium text-center whitespace-nowrap">
+              Report
+            </a>
             
             @if(request()->hasAny(['search','start_date','end_date']) || request('perPage') != 15)
               <a 

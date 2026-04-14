@@ -9,6 +9,24 @@
             <h2 class="text-xl font-semibold text-gray-800 text-center">Berita Acara Panen Tebu Giling</h2>
         </div>
 
+        <!-- Alert Messages for Form -->
+        @if(session('error'))
+        <div class="mx-4 mt-4 p-4 bg-red-50 border-l-4 border-red-400 rounded-md">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-red-700">
+                        <strong>Error!</strong> {{ session('error') }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        @endif
+
         <!-- Form Berita Acara -->
         <div class="p-6">
             <form method="POST" action="{{ route('report.panen-tebu-report.proses') }}" class="space-y-6">
@@ -159,6 +177,170 @@
         </div>
     </div>
 
+    <!-- History Section -->
+    <div class="mx-auto py-4 bg-white rounded-md shadow-md w-full mt-6">
+        <!-- History Header -->
+        <div class="px-4 py-3 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-800">History Report Panen Tebu</h2>
+                    <p class="text-sm text-gray-600 mt-1">Daftar report yang pernah di-generate sebelumnya</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="refreshHistoryTable()" class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert Messages for History Actions -->
+        @if(session('success'))
+        <div class="mx-4 mt-4 p-4 bg-green-50 border-l-4 border-green-400 rounded-md">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-green-700">
+                        <strong>Berhasil!</strong> {{ session('success') }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        <!-- History Table -->
+        <div class="p-6">
+            <div class="overflow-x-auto">
+                <table id="historyTable" class="min-w-full divide-y divide-gray-200 border border-gray-300 display">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                No Doc
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                Nama Pembuat
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                Range Tanggal
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                Nama Kontraktor
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                Kode Harga
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                Grand Total
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">
+                                Tanggal Dibuat
+                            </th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Aksi
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @foreach($history as $item)
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-center font-medium">
+                                <a href="{{ route('report.panen-tebu-report.show', $item->nodoc) }}" 
+                                   class="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer underline hover:no-underline">
+                                    {{ $item->nodoc }}
+                                </a>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ $item->userid }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                {{ $item->startdate->format('d M Y') }} s/d {{ $item->enddate->format('d M Y') }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ $item->namakontraktor }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                {{ $item->kodeharga }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600 text-right">
+                                Rp {{ number_format($item->grandtotal, 0, ',', '.') }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center">
+                                {{ $item->createdat->format('d/m/Y H:i') }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                <button onclick="confirmDelete('{{ $item->nodoc }}', '{{ $item->nodoc }}', '{{ $item->namakontraktor }}', '{{ $item->startdate->format('d M Y') }} s/d {{ $item->enddate->format('d M Y') }}')" 
+                                        class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150 ease-in-out">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                    Hapus
+                                </button>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include DataTables CSS and JS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete_confirmation_modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeDeleteModal()"></div>
+            
+            <!-- Modal panel -->
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <!-- Modal content -->
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                Konfirmasi Hapus History
+                            </h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500" id="delete-message">
+                                    <!-- Message akan diisi oleh JavaScript -->
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <form id="delete-form" method="POST" style="display: inline;">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Hapus
+                        </button>
+                    </form>
+                    <button type="button" onclick="closeDeleteModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Batal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Info Detail Harga -->
     <div id="harga_detail_modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -220,6 +402,51 @@
     <script>
         // Data harga untuk modal (akan diisi oleh Blade)
         const hargaData = @json($tabel_harga);
+
+        // History DataTable
+        let historyTable;
+
+        // Initialize DataTables when document is ready
+        $(document).ready(function() {
+            historyTable = $('#historyTable').DataTable({
+                order: [[6, 'desc']], // Order by created date descending (index 6 = Tanggal Dibuat)
+                pageLength: 10,
+                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                language: {
+                    processing: '<div class="flex justify-center items-center p-4"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Loading...</div>',
+                    emptyTable: '<div class="text-center py-8 text-gray-500"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg><h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada history report</h3><p class="mt-1 text-sm text-gray-500">Generate report pertama Anda untuk melihat history di sini.</p></div>',
+                    search: 'Cari:',
+                    lengthMenu: 'Tampilkan _MENU_ data per halaman',
+                    info: 'Menampilkan _START_ sampai _END_ dari _TOTAL_ data',
+                    infoEmpty: 'Menampilkan 0 sampai 0 dari 0 data',
+                    infoFiltered: '(difilter dari _MAX_ total data)',
+                    paginate: {
+                        next: 'Selanjutnya',
+                        previous: 'Sebelumnya'
+                    },
+                    zeroRecords: '<div class="text-center py-8 text-gray-500"><svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg><h3 class="mt-2 text-sm font-medium text-gray-900">Tidak ada data ditemukan</h3><p class="mt-1 text-sm text-gray-500">Coba ubah kata kunci pencarian Anda.</p></div>'
+                },
+                dom: '<"flex flex-col sm:flex-row justify-between items-center mb-4"<"mb-2 sm:mb-0"l><"flex items-center"f>>rt<"flex flex-col sm:flex-row justify-between items-center mt-4"<"mb-2 sm:mb-0"i><"flex items-center"p>>',
+                responsive: true,
+                autoWidth: false,
+                className: 'table-auto w-full',
+                columnDefs: [
+                    { orderable: false, targets: [7] }, // Disable sorting for Actions column
+                    { searchable: false, targets: [7] }, // Disable search for Actions column
+                    { className: 'text-center', targets: [0, 2, 4, 6, 7] }, // Center align specific columns
+                    { className: 'text-right', targets: [5] }, // Right align Grand Total column
+                    { className: 'text-left', targets: [1, 3] } // Left align Name columns
+                ]
+            });
+        });
+
+        // Function to refresh history table
+        function refreshHistoryTable() {
+            if (historyTable) {
+                // For client-side DataTables, we need to reload the page to get fresh data
+                window.location.reload();
+            }
+        }
 
         // Searchable Select Functions
         function toggleDropdown() {
@@ -296,13 +523,13 @@
                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">Tebang</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500 border-r border-gray-300">Rp ${formatNumber(selectedHarga.manualtebang)}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500 border-r border-gray-300">Rp ${formatNumber(selectedHarga.glkebuntebang)}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">Rp ${formatNumber(selectedHarga.glkontraktor_tebang)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">Rp ${formatNumber(selectedHarga.glkontraktortebang)}</td>
                 </tr>
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">Muat</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500 border-r border-gray-300">Rp ${formatNumber(selectedHarga.manualmuat)}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500 border-r border-gray-300">Rp ${formatNumber(selectedHarga.glkebunmuat)}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">Rp ${formatNumber(selectedHarga.glkontraktor_muat)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">Rp ${formatNumber(selectedHarga.glkontraktormuat)}</td>
                 </tr>
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">Angkutan</td>
@@ -314,31 +541,31 @@
                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">Fee Kontraktor</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500 border-r border-gray-300">Rp ${formatNumber(selectedHarga.manualfeekont)}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500 border-r border-gray-300">Rp ${formatNumber(selectedHarga.glkebunfeekont)}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">Rp ${formatNumber(selectedHarga.glkontraktor_feekont)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">Rp ${formatNumber(selectedHarga.glkontraktorfeekont)}</td>
                 </tr>
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">Non Premi</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500 border-r border-gray-300">Rp ${formatNumber(selectedHarga.manualnonpremi)}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500 border-r border-gray-300">Rp ${formatNumber(selectedHarga.glkebunnonpremi)}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">Rp ${formatNumber(selectedHarga.glkontraktor_nonpremi)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">Rp ${formatNumber(selectedHarga.glkontraktornonpremi)}</td>
                 </tr>
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">BSM</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500 border-r border-gray-300">Rp ${formatNumber(selectedHarga.manualbsm)}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500 border-r border-gray-300">Rp ${formatNumber(selectedHarga.glkebunbsm)}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">Rp ${formatNumber(selectedHarga.glkontraktor_bsm)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">Rp ${formatNumber(selectedHarga.glkontraktorbsm)}</td>
                 </tr>
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">Tebu Sulit</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500 border-r border-gray-300">Rp ${formatNumber(selectedHarga.manualtebusulit)}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500 border-r border-gray-300">Rp ${formatNumber(selectedHarga.glkebuntebusulit)}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">Rp ${formatNumber(selectedHarga.glkontraktor_tebusulit)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">Rp ${formatNumber(selectedHarga.glkontraktortebusulit)}</td>
                 </tr>
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">Premi Ton</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500 border-r border-gray-300">Rp ${formatNumber(selectedHarga.manualpremiton)}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500 border-r border-gray-300">Rp ${formatNumber(selectedHarga.glkebunpremiton)}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">Rp ${formatNumber(selectedHarga.glkontraktor_premiton)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500">Rp ${formatNumber(selectedHarga.glkontraktorpremiton)}</td>
                 </tr>
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-300">Extra Fooding</td>
@@ -469,8 +696,28 @@
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeHargaModal();
+                closeDeleteModal();
             }
         });
+
+        // Delete confirmation functions
+        function confirmDelete(nodoc, noDoc, kontraktor, periode) {
+            document.getElementById('delete-message').innerHTML = 
+                'Apakah Anda yakin ingin menghapus history report ini?<br><br>' +
+                '<strong>No Doc:</strong> ' + noDoc + '<br>' +
+                '<strong>Kontraktor:</strong> ' + kontraktor + '<br>' +
+                '<strong>Periode:</strong> ' + periode + '<br><br>' +
+                '<span class="text-red-600">Tindakan ini tidak dapat dibatalkan.</span>';
+            
+            document.getElementById('delete-form').action = '{{ url("report/panen-tebu-report") }}/' + nodoc;
+            document.getElementById('delete_confirmation_modal').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete_confirmation_modal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
     </script>
 
     <style>
@@ -575,6 +822,132 @@
         
         .overflow-x-auto::-webkit-scrollbar-thumb:hover {
             background: #a8a8a8;
+        }
+
+        /* History table specific styles */
+        table tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        table tbody tr td {
+            vertical-align: middle;
+        }
+
+        /* Make No Doc links more prominent */
+        table tbody tr td a {
+            font-weight: 600;
+        }
+
+        table tbody tr td a:hover {
+            text-decoration: none;
+        }
+
+        /* DataTables custom styling */
+        .dataTables_wrapper .dataTables_length,
+        .dataTables_wrapper .dataTables_filter,
+        .dataTables_wrapper .dataTables_info,
+        .dataTables_wrapper .dataTables_processing,
+        .dataTables_wrapper .dataTables_paginate {
+            color: #374151;
+        }
+        
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            padding: 0.5rem 0.75rem !important;
+            margin: 0.125rem !important;
+            border-radius: 0.375rem !important;
+            border: 1px solid #d1d5db !important;
+            color: #374151 !important;
+            background: white !important;
+            text-decoration: none !important;
+            display: inline-block !important;
+            min-width: auto !important;
+        }
+        
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+            background: #f3f4f6 !important;
+            border-color: #9ca3af !important;
+            color: #374151 !important;
+        }
+        
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current,
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+            background: #3b82f6 !important;
+            border-color: #3b82f6 !important;
+            color: white !important;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button.disabled,
+        .dataTables_wrapper .dataTables_paginate .paginate_button.disabled:hover {
+            background: #f9fafb !important;
+            border-color: #e5e7eb !important;
+            color: #9ca3af !important;
+            cursor: not-allowed !important;
+        }
+        
+        .dataTables_wrapper .dataTables_length select,
+        .dataTables_wrapper .dataTables_filter input {
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            background: white;
+        }
+
+        /* DataTables search input styling */
+        .dataTables_wrapper .dataTables_filter input[type="search"] {
+            width: 300px;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .dataTables_wrapper .dataTables_filter input[type="search"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* DataTables wrapper styling */
+        .dataTables_wrapper {
+            width: 100%;
+        }
+
+        /* Pagination container styling */
+        .dataTables_wrapper .dataTables_paginate {
+            float: right;
+            text-align: right;
+            padding-top: 0.5rem;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .pagination {
+            margin: 0 !important;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        /* Empty state styling for DataTables */
+        .dataTables_empty {
+            padding: 3rem 1rem !important;
+            text-align: center;
+        }
+
+        /* History table specific styles for DataTables */
+        #historyTable tbody tr:hover {
+            background-color: #f8fafc !important;
+        }
+
+        #historyTable tbody tr td {
+            vertical-align: middle;
+        }
+
+        /* Fix for pagination buttons spacing */
+        .dataTables_wrapper .dataTables_paginate span {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .dataTables_wrapper .dataTables_paginate a {
+            margin: 0 2px;
         }
     </style>
 

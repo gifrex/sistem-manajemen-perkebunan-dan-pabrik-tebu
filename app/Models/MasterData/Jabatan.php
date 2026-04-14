@@ -3,6 +3,7 @@
 namespace App\Models\MasterData;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\JabatanPermission;
 
 class Jabatan extends Model
 {

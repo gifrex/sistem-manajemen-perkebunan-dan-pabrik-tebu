@@ -1,0 +1,37 @@
+# ============================================
+# Development Dockerfile (Dockerfile.dev)
+# Single stage - includes all dev tools
+# ============================================
+FROM php:8.4-fpm-alpine
+
+# Install PHP extensions
+ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+RUN chmod +x /usr/local/bin/install-php-extensions && \
+    install-php-extensions pdo_mysql mysqli zip gd intl imap bcmath exif mbstring xml curl opcache pcntl redis
+
+# Install nginx, supervisor, and dev tools
+RUN apk add --no-cache nginx supervisor nodejs npm git
+
+# Create necessary directories
+RUN mkdir -p /var/log/supervisor /var/log/nginx /var/cache/nginx \
+    && chown -R www-data:www-data /var/log/supervisor /var/log/nginx /var/cache/nginx
+
+# PHP development config (not production!)
+RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+
+# Copy config files
+COPY docker/php/www.conf /usr/local/etc/php-fpm.d/www.conf
+COPY docker/dev/nginx.conf /etc/nginx/http.d/default.conf
+COPY docker/dev/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html
+
+EXPOSE 80 5173
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

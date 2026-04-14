@@ -5,7 +5,8 @@ namespace App\Http\Controllers\UserManagement;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\UserManagement\{UserPermissionService, PermissionService};
-use App\Models\{User, Company};
+use App\Models\User;
+use App\Models\MasterData\Company;
 
 class UserPermissionController extends Controller
 {

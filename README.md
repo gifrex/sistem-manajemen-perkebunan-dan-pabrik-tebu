@@ -8,7 +8,7 @@ Sistem Enterprise Resource Planning (ERP) untuk manajemen operasional perkebunan
 
 ## Deskripsi
 
-Sistem ini mengelola seluruh alur kerja operasional perkebunan tebu, mulai dari perencanaan kerja harian, eksekusi lapangan, hingga pelaporan dan integrasi dengan pabrik. Sistem mencakup manajemen sumber daya (tenaga kerja, alat, material), alur persetujuan bertingkat, hingga monitoring hasil panen.
+Sistem ini mengelola seluruh alur kerja operasional perkebunan tebu, mulai dari perencanaan kerja harian, eksekusi lapangan, juga pelaporan dan integrasi dengan pabrik. Sistem mencakup manajemen sumber daya (tenaga kerja, alat, material), alur persetujuan bertingkat, hingga monitoring hasil panen.
 
 ---
 

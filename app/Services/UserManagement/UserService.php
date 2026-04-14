@@ -4,7 +4,8 @@ namespace App\Services\UserManagement;
 
 use Illuminate\Database\Eloquent\Collection;
 use App\Repositories\UserManagement\UserRepository;
-use App\Models\{UserCompany, UserActivity};
+use App\Models\UserCompany;
+use App\Models\UserActivity;
 use Illuminate\Support\Facades\{DB, Hash, Log};
 use Illuminate\Pagination\LengthAwarePaginator;
 

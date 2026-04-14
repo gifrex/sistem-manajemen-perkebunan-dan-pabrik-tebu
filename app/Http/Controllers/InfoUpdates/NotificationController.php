@@ -3,18 +3,26 @@
 namespace App\Http\Controllers\InfoUpdates;
 
 use App\Http\Controllers\Controller;
-use App\Models\Notification;
 use App\Models\MasterData\Company;
+use App\Repositories\InfoUpdates\NotificationRepository;
+use App\Services\InfoUpdates\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
 
 class NotificationController extends Controller
 {
-    public function __construct()
-    {
+    protected NotificationRepository $repository;
+    protected NotificationService $service;
+
+    public function __construct(
+        NotificationRepository $repository,
+        NotificationService $service
+    ) {
+        $this->repository = $repository;
+        $this->service = $service;
+
         View::share([
             'navbar' => 'Info & Updates',
             'routeName' => route('info-updates.notifications.index'),
@@ -28,9 +36,10 @@ class NotificationController extends Controller
     public function index()
     {
         $title = 'Notifications';
-        $userid = Auth::user()->userid;
+        $userId = Auth::user()->userid;
         
-        $notifications = Notification::getForUser($userid, 1000, false);
+        // ✅ No N+1: Single query with map
+        $notifications = $this->repository->getForUser($userId, 1000, false);
         $notifCount = $notifications->count();
         $unreadCount = $notifications->where('is_read', false)->count();
 
@@ -46,55 +55,14 @@ class NotificationController extends Controller
     {
         try {
             $userId = auth()->id();
-            $user = auth()->user();
             
-            // Get user's companies
-            $userCompanies = $user->userCompanies;
-            if ($userCompanies->isEmpty()) {
-                $userCompanyArray = $user->companycode ? explode(',', $user->companycode) : [];
-            } else {
-                $userCompanyArray = $userCompanies->pluck('companycode')->toArray();
-            }
-            $userCompanyArray = array_filter($userCompanyArray);
+            // ✅ No N+1: Repository handles everything in single query
+            $data = $this->repository->getDropdownData($userId);
             
-            // Get user's jabatan
-            $idjabatan = $user->idjabatan;
-            
-            // Query notifications
-            $notifications = DB::table('notification')
-                ->where('status', 'active')
-                ->where(function($query) use ($userCompanyArray) {
-                    // Check if user's company is in notification's companycode (comma-separated)
-                    foreach ($userCompanyArray as $companycode) {
-                        $query->orWhere('companycode', 'like', "%{$companycode}%");
-                    }
-                })
-                ->where(function($query) use ($idjabatan) {
-                    // Check target_jabatan: NULL = all jabatan, or specific jabatan
-                    $query->whereNull('target_jabatan')
-                        ->orWhere('target_jabatan', '')
-                        ->orWhere('target_jabatan', 'like', "%{$idjabatan}%");
-                })
-                ->orderBy('createdat', 'desc')
-                ->limit(10)
-                ->get()
-                ->map(function($notif) use ($userId) {
-                    // Check if already read
-                    $readBy = json_decode($notif->readby, true) ?? [];
-                    $notif->is_read = in_array($userId, $readBy);
-                    return $notif;
-                });
-            
-            // Count unread
-            $unreadCount = $notifications->where('is_read', false)->count();
-            
-            return response()->json([
-                'notifications' => $notifications,
-                'unread_count' => $unreadCount
-            ]);
+            return response()->json($data);
             
         } catch (\Exception $e) {
-            \Log::error('Notification dropdown error: ' . $e->getMessage());
+            Log::error('Notification dropdown error: ' . $e->getMessage());
             
             return response()->json([
                 'notifications' => [],
@@ -107,41 +75,9 @@ class NotificationController extends Controller
     {
         try {
             $userId = auth()->id();
-            $user = auth()->user();
             
-            // Get user's companies
-            $userCompanies = $user->userCompanies;
-            if ($userCompanies->isEmpty()) {
-                $userCompanyArray = $user->companycode ? explode(',', $user->companycode) : [];
-            } else {
-                $userCompanyArray = $userCompanies->pluck('companycode')->toArray();
-            }
-            $userCompanyArray = array_filter($userCompanyArray);
-            
-            // Get user's jabatan
-            $idjabatan = $user->idjabatan;
-            
-            // Query notifications
-            $notifications = DB::table('notification')
-                ->where('status', 'active')
-                ->where(function($query) use ($userCompanyArray) {
-                    foreach ($userCompanyArray as $companycode) {
-                        $query->orWhere('companycode', 'like', "%{$companycode}%");
-                    }
-                })
-                ->where(function($query) use ($idjabatan) {
-                    $query->whereNull('target_jabatan')
-                        ->orWhere('target_jabatan', '')
-                        ->orWhere('target_jabatan', 'like', "%{$idjabatan}%");
-                })
-                ->get()
-                ->map(function($notif) use ($userId) {
-                    $readBy = json_decode($notif->readby, true) ?? [];
-                    $notif->is_read = in_array($userId, $readBy);
-                    return $notif;
-                });
-            
-            $unreadCount = $notifications->where('is_read', false)->count();
+            // ✅ No N+1: Single optimized query
+            $unreadCount = $this->repository->getUnreadCount($userId);
             
             return response()->json([
                 'unread_count' => $unreadCount
@@ -159,10 +95,17 @@ class NotificationController extends Controller
     public function markAsRead($id)
     {
         try {
-            $notification = Notification::findOrFail($id);
-            $userid = Auth::user()->userid;
+            $userId = Auth::user()->userid;
 
-            $notification->markAsReadBy($userid);
+            // ✅ Service handles business logic + broadcast
+            $success = $this->service->markAsRead($id, $userId);
+
+            if (!$success) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Notification not found or already read'
+                ], 404);
+            }
 
             return response()->json([
                 'success' => true,
@@ -185,38 +128,15 @@ class NotificationController extends Controller
     public function markAllAsRead()
     {
         try {
-            $userid = Auth::user()->userid;
-            $user = Auth::user();
+            $userId = Auth::user()->userid;
             
-            $userCompanies = $user->userCompanies;
-            
-            if ($userCompanies->isEmpty()) {
-                $userCompanyArray = $user->companycode ? explode(',', $user->companycode) : [];
-            } else {
-                $userCompanyArray = $userCompanies->pluck('companycode')->toArray();
-            }
-            
-            $userCompanyArray = array_filter($userCompanyArray);
-            $idjabatan = $user->idjabatan;
-
-            $query = Notification::active()
-                                 ->forCompanies($userCompanyArray)
-                                 ->unreadBy($userid);
-
-            if ($idjabatan) {
-                $query->forJabatan($idjabatan);
-            }
-
-            $notifications = $query->get();
-            
-            foreach ($notifications as $notification) {
-                $notification->markAsReadBy($userid);
-            }
+            // ✅ Service handles bulk operation + broadcast
+            $count = $this->service->markAllAsRead($userId);
 
             return response()->json([
                 'success' => true,
                 'message' => 'All notifications marked as read',
-                'count' => $notifications->count()
+                'count' => $count
             ]);
 
         } catch (\Exception $e) {
@@ -245,20 +165,20 @@ class NotificationController extends Controller
         $search = request('search');
         $perPage = request('perPage', 15);
 
-        $query = Notification::with('supportTicket');
+        // ✅ No N+1: Eager load supportTicket relationship
+        $result = $this->repository->getAllForAdmin([
+            'search' => $search
+        ], $perPage);
 
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('body', 'like', "%{$search}%")
-                  ->orWhere('companycode', 'like', "%{$search}%");
-            });
-        }
-
-        $result = $query->orderBy('createdat', 'desc')->paginate($perPage);
+        // ✅ Single query for companies
         $companies = Company::orderBy('name')->get();
 
-        return view('info-updates.notifications.admin-index', compact('title', 'result', 'companies', 'perPage'));
+        return view('info-updates.notifications.admin-index', compact(
+            'title', 
+            'result', 
+            'companies', 
+            'perPage'
+        ));
     }
 
     public function create()
@@ -268,10 +188,16 @@ class NotificationController extends Controller
         }
 
         $title = 'Create Notification';
+        
+        // ✅ Single query each
         $companies = Company::orderBy('name')->get();
         $jabatan = \App\Models\MasterData\Jabatan::orderBy('namajabatan')->get();
 
-        return view('info-updates.notifications.create', compact('title', 'companies', 'jabatan'));
+        return view('info-updates.notifications.create', compact(
+            'title', 
+            'companies', 
+            'jabatan'
+        ));
     }
 
     public function store(Request $request)
@@ -305,7 +231,8 @@ class NotificationController extends Controller
                 $notificationData['target_jabatan'] = implode(',', $filteredJabatan);
             }
 
-            Notification::createManualNotification($notificationData);
+            // ✅ Service handles creation + broadcast
+            $this->service->createManualNotification($notificationData);
 
             return redirect()->route('info-updates.notifications.admin.index')
                            ->with('success', 'Notification berhasil dibuat dan dikirim');
@@ -327,7 +254,13 @@ class NotificationController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $notification = Notification::findOrFail($id);
+        // ✅ Single query
+        $notification = $this->repository->findById($id);
+        
+        if (!$notification) {
+            return redirect()->route('info-updates.notifications.admin.index')
+                           ->with('error', 'Notification tidak ditemukan');
+        }
         
         if ($notification->notification_type !== 'manual') {
             return redirect()->route('info-updates.notifications.admin.index')
@@ -335,23 +268,23 @@ class NotificationController extends Controller
         }
 
         $title = 'Edit Notification';
+        
+        // ✅ Single query each
         $companies = Company::orderBy('name')->get();
         $jabatan = \App\Models\MasterData\Jabatan::orderBy('namajabatan')->get();
 
-        return view('info-updates.notifications.edit', compact('title', 'notification', 'companies', 'jabatan'));
+        return view('info-updates.notifications.edit', compact(
+            'title', 
+            'notification', 
+            'companies', 
+            'jabatan'
+        ));
     }
 
     public function update(Request $request, $id)
     {
         if (!hasPermission('infoupdates.notification.edit')) {
             abort(403, 'Unauthorized action.');
-        }
-
-        $notification = Notification::findOrFail($id);
-
-        if ($notification->notification_type !== 'manual') {
-            return redirect()->route('info-updates.notifications.admin.index')
-                           ->with('error', 'Hanya manual notification yang bisa diedit');
         }
 
         $validated = $request->validate([
@@ -367,21 +300,21 @@ class NotificationController extends Controller
 
         try {
             $updateData = [
-                'companycode' => implode(',', $validated['companycodes']),
+                'companycodes' => $validated['companycodes'],
                 'title' => $validated['title'],
                 'body' => $validated['body'],
                 'priority' => $validated['priority'],
                 'action_url' => $validated['action_url'] ?? null,
-                'updatedat' => now()
             ];
 
             if (!empty($validated['target_jabatan'])) {
-                $updateData['target_jabatan'] = implode(',', $validated['target_jabatan']);
+                $updateData['target_jabatan'] = $validated['target_jabatan'];
             } else {
                 $updateData['target_jabatan'] = null;
             }
 
-            $notification->update($updateData);
+            // ✅ Service handles update logic
+            $this->service->updateManualNotification($id, $updateData);
 
             return redirect()->route('info-updates.notifications.admin.index')
                            ->with('success', 'Notification berhasil diperbarui');
@@ -405,12 +338,8 @@ class NotificationController extends Controller
         }
 
         try {
-            $notification = Notification::findOrFail($id);
-
-            $notification->update([
-                'status' => 'deleted',
-                'updatedat' => now()
-            ]);
+            // ✅ Service handles soft delete
+            $this->service->deleteNotification($id);
 
             return redirect()->route('info-updates.notifications.admin.index')
                            ->with('success', 'Notification berhasil dihapus');
@@ -427,13 +356,15 @@ class NotificationController extends Controller
     }
 
     // ============================================================================
-    // SYSTEM NOTIFICATION HELPER
+    // SYSTEM NOTIFICATION HELPER (untuk dipanggil dari controller lain)
     // ============================================================================
 
     public static function notifyNewSupportTicket($ticket)
     {
         try {
-            Notification::createForSupportTicket($ticket);
+            // ✅ Use service via container
+            $service = app(NotificationService::class);
+            $service->createForSupportTicket($ticket);
             
             Log::info('Support ticket notification created', [
                 'ticket_id' => $ticket->ticket_id,

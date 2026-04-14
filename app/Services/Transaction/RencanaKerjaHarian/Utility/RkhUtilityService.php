@@ -58,50 +58,51 @@ class RkhUtilityService
      * @param string $activitycode
      * @return array
      */
-    public function getPlotInfo($companycode, $plot, $activitycode)
+    public function getPlotInfo($companycode, $plot, $activitycode, $rkhdate = null)
     {
         // Get plot with active batch
         $plotData = $this->batchRepo->getPlotWithActiveBatch($companycode, $plot);
-
         if (!$plotData) {
             return [
                 'success' => false,
                 'message' => 'Plot tidak ditemukan di masterlist / tidak aktif'
             ];
         }
-
+        
         // Calculate work progress
         $luasPlot = (float) ($plotData->batcharea ?? 0);
-        
+
+        // Detect panen activities
+        $panenActivities = ['4.3.3', '4.4.3', '4.5.2', '2.2.2a', '2.2.2b'];
+        $isPanenActivity = in_array($activitycode, $panenActivities);
+
+        // Panen activities share a single saldo — sum across all panen activity codes
+        $queryActivitycode = $isPanenActivity ? $panenActivities : $activitycode;
+
+        $beforeDate = $rkhdate ?? now()->format('Y-m-d');
+
         $totalSudahDikerjakan = $this->batchRepo->getTotalApprovedWorkByPlotActivityBeforeDate(
             $companycode,
             $plot,
-            $activitycode,
-            now()->format('Y-m-d')
+            $queryActivitycode,
+            $beforeDate,
+            $plotData->activebatchno
         );
-
-        $luasSisa = $luasPlot - $totalSudahDikerjakan;
-
-        // Detect panen activities
-        $panenActivities = ['4.3.3', '4.4.3', '4.5.2'];
-        $isPanenActivity = in_array($activitycode, $panenActivities);
-
+        $luasSisa = max(0, $luasPlot - $totalSudahDikerjakan);
         $batchInfo = null;
-
+        
         // If panen, calculate batch progress (STC)
         if ($isPanenActivity && $plotData->activebatchno) {
             $batchInfo = $this->buildPanenBatchInfo($companycode, $plotData);
         }
-
-        // Get last activity date
+        
+        // Get last activity info
         $tanggalActivity = null;
-        if (!$isPanenActivity) {
-            $tanggalActivity = $this->batchRepo->getLastApprovedActivityDateForPlot($companycode, $plot);
-            if ($tanggalActivity) {
-                $tanggalActivity = Carbon::parse($tanggalActivity)->format('d/m/Y');
-            }
+        $lastActivityInfo = $this->batchRepo->getLastApprovedActivityInfoForPlot($companycode, $plot, $plotData->activebatchno);
+        if ($lastActivityInfo) {
+            $tanggalActivity = Carbon::parse($lastActivityInfo->last_activity_date)->format('d/m/Y');
         }
-
+        
         return [
             'success' => true,
             'plot' => $plot,
@@ -116,6 +117,9 @@ class RkhUtilityService
             'batchinfo' => $batchInfo,
             'blok' => $plotData->blok ?? null,
             'activebatchno' => $plotData->activebatchno,
+            'last_activitycode' => $lastActivityInfo->last_activitycode ?? null,
+            'last_activityname' => $lastActivityInfo->last_activityname ?? null,
+            'last_activity_date' => $lastActivityInfo->last_activity_date ?? null,
         ];
     }
 
@@ -155,6 +159,41 @@ class RkhUtilityService
             'hasOutstanding' => false,
             'message' => 'Mandor tidak memiliki RKH outstanding'
         ];
+    }
+
+    /**
+     * Check if RKH already exists for mandor on specific date
+     * 
+     * @param string $companycode
+     * @param string $mandorId
+     * @param string $date
+     * @return array
+     */
+    public function checkDuplicateRkh($companycode, $mandorId, $date)
+    {
+        try {
+            // Use repository to check existing RKH
+            $existing = $this->rkhRepo->getRkhByMandorAndDate($companycode, $mandorId, $date);
+
+            if ($existing) {
+                return [
+                    'exists' => true,
+                    'rkhno' => $existing->rkhno,
+                    'rkhdate' => Carbon::parse($existing->rkhdate)->format('d/m/Y'),
+                    'status' => $existing->status
+                ];
+            }
+
+            return ['exists' => false];
+
+        } catch (\Exception $e) {
+            \Log::error("Error checking duplicate RKH for mandor {$mandorId} on date {$date}: " . $e->getMessage());
+            
+            return [
+                'exists' => false,
+                'error' => 'Gagal memeriksa duplikasi RKH'
+            ];
+        }
     }
 
     /**

@@ -161,9 +161,8 @@
                 </div>
 
                 <!-- DataTable - UPDATED -->
-                <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                    <div class="overflow-x-auto">
-                        <table id="mapping-bsm-table" class="min-w-full divide-y divide-gray-300">
+                <div class="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                    <table id="mapping-bsm-table" class="min-w-full divide-y divide-gray-300">
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
@@ -209,7 +208,6 @@
                                 @endforeach
                             </tbody>
                         </table>
-                    </div>
                 </div>
                 @else
                 <!-- No Data Found -->
@@ -237,24 +235,26 @@
 
     <!-- Detail BSM Modal -->
     <div id="detail_modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="flex min-h-full items-end justify-center p-0 sm:items-center sm:p-4">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeDetailModal()"></div>
-            
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-7xl sm:w-full">
-                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <h3 class="text-lg leading-6 font-bold text-gray-900 mb-1">Detail BSM per Surat Jalan</h3>
-                            <p class="text-sm text-gray-600" id="modal_detail_subtitle"></p>
+
+            <div class="relative w-full sm:max-w-7xl bg-white rounded-t-xl sm:rounded-xl shadow-xl flex flex-col max-h-screen sm:max-h-[90vh]">
+                <!-- Header -->
+                <div class="bg-white px-4 pt-4 pb-3 border-b border-gray-200 flex-shrink-0">
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <h3 class="text-base sm:text-lg leading-6 font-bold text-gray-900">Detail BSM per Surat Jalan</h3>
+                            <p class="text-xs sm:text-sm text-gray-600 mt-0.5 truncate" id="modal_detail_subtitle"></p>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <button type="button" id="bulk-save-btn" onclick="saveBulkChanges()" class="hidden inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <button type="button" id="bulk-save-btn" onclick="saveBulkChanges()" class="hidden inline-flex items-center px-2 py-1.5 sm:px-3 sm:py-2 border border-transparent text-xs sm:text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition">
+                                <svg class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                 </svg>
-                                Simpan Semua Perubahan
+                                <span class="hidden sm:inline">Simpan Semua Perubahan</span>
+                                <span class="sm:hidden">Simpan Semua</span>
                             </button>
-                            <button type="button" onclick="closeDetailModal()" class="rounded-md bg-white text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <button type="button" onclick="closeDetailModal()" class="rounded-md text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                 <span class="sr-only">Close</span>
                                 <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -262,7 +262,10 @@
                             </button>
                         </div>
                     </div>
+                </div>
 
+                <!-- Scrollable body -->
+                <div class="flex-1 overflow-y-auto overflow-x-auto px-4 py-4">
                     <div id="modal_loading" class="flex justify-center items-center py-8 hidden">
                         <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -271,7 +274,7 @@
                         <span class="text-gray-600">Memuat data...</span>
                     </div>
 
-                    <div class="overflow-x-auto" id="modal_detail_content"></div>
+                    <div id="modal_detail_content"></div>
 
                     <div id="modal_error" class="text-center py-8 hidden">
                         <svg class="mx-auto h-12 w-12 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -282,8 +285,9 @@
                     </div>
                 </div>
 
-                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button type="button" onclick="closeDetailModal()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
+                <!-- Footer -->
+                <div class="bg-gray-50 px-4 py-3 flex justify-end border-t border-gray-200 flex-shrink-0">
+                    <button type="button" onclick="closeDetailModal()" class="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         Tutup
                     </button>
                 </div>
@@ -291,19 +295,20 @@
         </div>
     </div>
 
-    <!-- BSM Copy Modal - ENHANCED with higher z-index -->
+    <!-- BSM Copy Modal -->
     <div id="copy_bsm_modal" class="fixed inset-0 z-[60] overflow-y-auto hidden" aria-labelledby="copy-modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="flex min-h-full items-end justify-center p-0 sm:items-center sm:p-4">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-90 transition-opacity z-[61]" aria-hidden="true"></div>
-            
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full z-[62] relative">
-                <div class="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4">
+
+            <div class="relative w-full sm:max-w-4xl bg-white rounded-t-xl sm:rounded-xl shadow-xl flex flex-col max-h-screen sm:max-h-[85vh] z-[62]">
+                <!-- Header -->
+                <div class="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 sm:px-6 py-4 flex-shrink-0 rounded-t-xl sm:rounded-t-xl">
                     <div class="flex items-center justify-between">
-                        <div>
-                            <h3 class="text-lg font-bold text-white">📋 Copy Data BSM</h3>
-                            <p class="text-purple-100 text-sm" id="copy_modal_subtitle"></p>
+                        <div class="min-w-0 mr-2">
+                            <h3 class="text-base sm:text-lg font-bold text-white">📋 Copy Data BSM</h3>
+                            <p class="text-purple-100 text-xs sm:text-sm truncate" id="copy_modal_subtitle"></p>
                         </div>
-                        <button type="button" onclick="closeCopyModal()" class="rounded-md bg-white bg-opacity-20 text-white hover:bg-opacity-30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white">
+                        <button type="button" onclick="closeCopyModal()" class="flex-shrink-0 rounded-md bg-white bg-opacity-20 text-white hover:bg-opacity-30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white p-1">
                             <span class="sr-only">Close</span>
                             <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -312,7 +317,8 @@
                     </div>
                 </div>
 
-                <div class="px-6 py-4">
+                <!-- Scrollable body -->
+                <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
                     <div id="copy_modal_loading" class="flex justify-center items-center py-8 hidden">
                         <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -332,8 +338,44 @@
                     </div>
                 </div>
 
-                <div class="bg-gray-50 px-6 py-3 flex justify-end">
-                    <button type="button" onclick="closeCopyModal()" class="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <!-- Footer -->
+                <div class="bg-gray-50 px-4 sm:px-6 py-3 flex justify-end border-t border-gray-200 flex-shrink-0">
+                    <button type="button" onclick="closeCopyModal()" class="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Batal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BSM Remap Modal -->
+    <div id="remap_bsm_modal" class="fixed inset-0 z-[70] overflow-y-auto hidden" aria-labelledby="remap-modal-title" role="dialog" aria-modal="true">
+        <div class="flex min-h-full items-end justify-center p-0 sm:items-center sm:p-4">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-90 transition-opacity z-[71]" aria-hidden="true"></div>
+
+            <div class="relative w-full sm:max-w-2xl bg-white rounded-t-xl sm:rounded-xl shadow-xl flex flex-col max-h-screen sm:max-h-[80vh] z-[72]">
+                <!-- Header -->
+                <div class="bg-gradient-to-r from-orange-500 to-red-500 px-4 sm:px-6 py-4 flex-shrink-0 rounded-t-xl sm:rounded-t-xl">
+                    <div class="flex items-center justify-between">
+                        <div class="min-w-0 mr-2">
+                            <h3 class="text-base sm:text-lg font-bold text-white">🔗 Hubungkan BSM ke Surat Jalan</h3>
+                            <p class="text-orange-100 text-xs sm:text-sm truncate" id="remap_modal_subtitle"></p>
+                        </div>
+                        <button type="button" onclick="closeRemapModal()" class="flex-shrink-0 rounded-md bg-white bg-opacity-20 text-white hover:bg-opacity-30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white p-1">
+                            <span class="sr-only">Close</span>
+                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Scrollable body -->
+                <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4" id="remap_modal_content"></div>
+
+                <!-- Footer -->
+                <div class="bg-gray-50 px-4 sm:px-6 py-3 flex justify-end border-t border-gray-200 flex-shrink-0">
+                    <button type="button" onclick="closeRemapModal()" class="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         Batal
                     </button>
                 </div>
@@ -365,6 +407,7 @@
         window.copyBsmUrl = '{{ route('transaction.mapping-bsm.copy-bsm') }}';
         window.updateBsmUrl = '{{ route('transaction.mapping-bsm.update-bsm') }}';
         window.updateBsmBulkUrl = '{{ route('transaction.mapping-bsm.update-bsm-bulk') }}';
+        window.remapBsmUrl = '{{ route('transaction.mapping-bsm.remap-bsm') }}';
         window.exportTitle = 'Ringkasan RKH - {{ request("tanggalawal") ?? "" }} s/d {{ request("tanggalakhir") ?? "" }}';
         window.exportMessageTop = 'Periode: {{ request("tanggalawal") ?? "" }} s/d {{ request("tanggalakhir") ?? "" }}';
     </script>
@@ -458,12 +501,15 @@
         }
 
         @media (max-width: 768px) {
-            .modal table {
-                font-size: 0.8rem;
+            #modal_detail_content table {
+                font-size: 0.75rem;
             }
-            
-            .modal th, .modal td {
-                padding: 0.5rem 0.25rem;
+            #modal_detail_content th,
+            #modal_detail_content td {
+                padding: 0.4rem 0.35rem;
+            }
+            #modal_detail_content .w-28 {
+                width: 4.5rem;
             }
         }
 
@@ -543,26 +589,16 @@
         }
 
         /* Z-index fix for modal layering */
-        #detail_modal {
-            z-index: 50;
-        }
+        #detail_modal   { z-index: 50; }
+        #copy_bsm_modal { z-index: 60; }
+        #remap_bsm_modal { z-index: 70; }
 
-        #copy_bsm_modal {
-            z-index: 60 !important;
-        }
-
-        /* Ensure copy modal appears above detail modal */
-        .z-\[60\] {
-            z-index: 60 !important;
-        }
-
-        .z-\[61\] {
-            z-index: 61 !important;
-        }
-
-        .z-\[62\] {
-            z-index: 62 !important;
-        }
+        .z-\[60\] { z-index: 60 !important; }
+        .z-\[61\] { z-index: 61 !important; }
+        .z-\[62\] { z-index: 62 !important; }
+        .z-\[70\] { z-index: 70 !important; }
+        .z-\[71\] { z-index: 71 !important; }
+        .z-\[72\] { z-index: 72 !important; }
 
         /* Copy button styling fix */
         #execute-copy-btn:disabled {

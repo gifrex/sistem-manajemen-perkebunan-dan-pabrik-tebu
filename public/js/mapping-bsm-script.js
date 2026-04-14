@@ -119,9 +119,9 @@ function showDetailModal(rkhno) {
     })
     .then(data => {
         document.getElementById('modal_loading').classList.add('hidden');
-        
+
         if (data.success && data.data && data.data.length > 0) {
-            buildEditableTable(data.data, rkhno);
+            buildEditableTable(data.data, rkhno, data.orphan_data || []);
         } else {
             showNoDataMessage(rkhno);
         }
@@ -134,15 +134,16 @@ function showDetailModal(rkhno) {
     });
 }
 
-function buildEditableTable(data, rkhno) {
-    const hasEditableRows = data.some(item => !item.grade || item.grade.trim() === '');
+function buildEditableTable(data, rkhno, orphanData) {
+    const isBsmEmpty = item => (!item.nilaibersih || item.nilaibersih == 0) && (!item.nilaisegar || item.nilaisegar == 0) && (!item.nilaimanis || item.nilaimanis == 0);
+    const hasEditableRows = data.some(item => isBsmEmpty(item));
     
     let tableHTML = `
         <div class="mb-4">
             <div class="flex justify-between items-center mb-3">
                 <div class="text-sm text-gray-600">
                     Total: <span class="font-medium text-indigo-600">${data.length}</span> surat jalan ditemukan
-                    ${hasEditableRows ? `<span class="ml-4 text-amber-600 font-medium">⚠️ ${data.filter(item => !item.grade || item.grade.trim() === '').length} data dapat diedit</span>` : ''}
+                    ${hasEditableRows ? `<span class="ml-4 text-amber-600 font-medium">⚠️ ${data.filter(item => isBsmEmpty(item)).length} data dapat diedit</span>` : ''}
                 </div>
                 <div class="text-sm text-gray-500">
                     Data BSM untuk RKH: <span class="font-medium">${rkhno}</span>
@@ -201,7 +202,7 @@ function buildEditableTable(data, rkhno) {
     `;
     
     data.forEach((item, index) => {
-        const isEditable = !item.grade || item.grade.trim() === '';
+        const isEditable = isBsmEmpty(item);
         const rowClass = isEditable ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50';
         const hasParent = item.parentbsm && item.parentbsm > 0;
         
@@ -301,7 +302,177 @@ function buildEditableTable(data, rkhno) {
         </div>
     `;
     
+    // ── Section 2: BSM Orphan (SJ tidak dikenali) ──
+    if (orphanData && orphanData.length > 0) {
+        // Daftar SJ yang belum punya BSM (editable rows) = kandidat target remap
+        const emptySjList = data.filter(item => isBsmEmpty(item));
+
+        tableHTML += `
+        <div class="mt-8">
+            <div class="flex items-center mb-3">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-800 mr-2">
+                    ⚠️ ${orphanData.length} BSM tidak teridentifikasi
+                </span>
+                <span class="text-sm text-gray-500">Nomor SJ pada data BSM ini tidak ditemukan di sistem. Hubungkan ke SJ yang benar.</span>
+            </div>
+
+            <div class="shadow ring-1 ring-orange-300 rounded-lg overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-300">
+                    <thead class="bg-orange-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No SJ (Salah/Typo)</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai Bersih</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai Segar</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai Manis</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+        `;
+
+        orphanData.forEach((item, index) => {
+            tableHTML += `
+                <tr class="bg-orange-50 hover:bg-orange-100">
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center">${index + 1}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm">
+                        <span class="text-red-600 font-medium line-through">${item.wrong_suratjalanno || '(kosong)'}</span>
+                        <span class="ml-1 text-xs text-gray-400">tidak dikenali</span>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center">${formatNumber(item.nilaibersih)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center">${formatNumber(item.nilaisegar)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center">${formatNumber(item.nilaimanis)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBsmGradeColor(item.grade)}">
+                            ${item.grade || '-'}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-center">
+                        <button type="button"
+                                onclick="showRemapModal(${item.id}, '${item.wrong_suratjalanno}')"
+                                class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition duration-150 ease-in-out">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                            </svg>
+                            Hubungkan
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        tableHTML += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        `;
+
+        // Simpan emptySjList agar bisa dipakai di remap modal
+        window._emptySjList = emptySjList;
+    }
+
     document.getElementById('modal_detail_content').innerHTML = tableHTML;
+}
+
+// ── Remap Modal ──────────────────────────────────────────────────────────────
+
+let currentRemapTarget = null;
+
+function showRemapModal(bsmId, wrongSj) {
+    currentRemapTarget = { bsmId, wrongSj };
+
+    const emptySjList = window._emptySjList || [];
+
+    document.getElementById('remap_modal_subtitle').textContent = `BSM dengan No SJ: ${wrongSj || '(kosong)'}`;
+
+    let optionsHTML = '<option value="">-- Pilih surat jalan yang benar --</option>';
+    emptySjList.forEach(item => {
+        optionsHTML += `<option value="${item.suratjalanno}">${item.suratjalanno} (Plot: ${item.plot || '-'})</option>`;
+    });
+
+    const noOptions = emptySjList.length === 0;
+
+    document.getElementById('remap_modal_content').innerHTML = `
+        <div class="space-y-4">
+            <div class="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <div class="text-sm text-orange-700">
+                    <strong>No SJ tersimpan (salah/typo):</strong>
+                    <span class="ml-2 font-mono text-red-600 line-through">${wrongSj || '(kosong)'}</span>
+                </div>
+                <div class="text-xs text-orange-600 mt-1">Pilih surat jalan yang belum memiliki BSM untuk dihubungkan.</div>
+            </div>
+
+            ${noOptions
+                ? `<div class="text-center py-6 text-gray-500 text-sm">Tidak ada surat jalan kosong yang tersedia untuk dihubungkan.</div>`
+                : `<div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Surat jalan yang benar:</label>
+                    <select id="remap-sj-select" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500">
+                        ${optionsHTML}
+                    </select>
+                   </div>
+                   <div class="flex justify-end pt-2">
+                        <button type="button" id="execute-remap-btn" onclick="executeRemap()"
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition duration-150 ease-in-out">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                            </svg>
+                            Hubungkan BSM
+                        </button>
+                    </div>`
+            }
+        </div>
+    `;
+
+    document.getElementById('remap_bsm_modal').classList.remove('hidden');
+}
+
+function closeRemapModal() {
+    document.getElementById('remap_bsm_modal').classList.add('hidden');
+    document.getElementById('remap_modal_content').innerHTML = '';
+    currentRemapTarget = null;
+}
+
+function executeRemap() {
+    const targetSj = document.getElementById('remap-sj-select')?.value;
+    if (!targetSj || !currentRemapTarget) {
+        showNotification('Pilih surat jalan tujuan terlebih dahulu', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('execute-remap-btn');
+    btn.disabled = true;
+    btn.textContent = 'Menyimpan...';
+
+    fetch(window.remapBsmUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            bsm_id: currentRemapTarget.bsmId,
+            target_suratjalanno: targetSj,
+            rkhno: currentRkhno
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeRemapModal();
+            setTimeout(() => showDetailModal(currentRkhno), 800);
+        } else {
+            throw new Error(data.message || 'Gagal menghubungkan BSM');
+        }
+    })
+    .catch(err => {
+        showNotification(err.message || 'Terjadi kesalahan', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Hubungkan BSM';
+    });
 }
 
 function showCopyModal(targetSuratjalanno, plot) {
@@ -927,7 +1098,9 @@ function closeDetailModal() {
 // Event listeners
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
-        if (!document.getElementById('copy_bsm_modal').classList.contains('hidden')) {
+        if (!document.getElementById('remap_bsm_modal').classList.contains('hidden')) {
+            closeRemapModal();
+        } else if (!document.getElementById('copy_bsm_modal').classList.contains('hidden')) {
             closeCopyModal();
         } else {
             closeDetailModal();

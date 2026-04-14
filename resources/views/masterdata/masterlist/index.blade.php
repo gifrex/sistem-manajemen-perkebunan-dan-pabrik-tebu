@@ -31,7 +31,7 @@
     <div class="flex items-center justify-between px-4 py-2">
 
       {{-- Create Button --}}
-      @if(hasPermission('Create MasterList'))
+      @can('masterdata.masterlist.create')
         <button @click="resetForm()"
                 class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2">
                 <svg class="w-5 h-5 text-white dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
@@ -40,7 +40,7 @@
                             d="M5 12h14m-7 7V5" />
                     </svg> New Data
         </button>
-      @endif
+      @endcan
         
         {{-- Search Form --}}
       <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-2">
@@ -248,7 +248,7 @@
                             {{-- Edit Button --}}
                               <td class="py-2 px-4 border-b">
                                 <div class="flex items-center justify-center space-x-2">
-                                  @if(hasPermission('Edit MasterList'))
+                                  @can('masterdata.masterlist.edit')
                                   <button
                                     @click="
                                       mode = 'edit';
@@ -271,9 +271,9 @@
                                     </svg>
                                     <span class="w-0.5"></span>
                                   </button>
-                                  @endif
+                                  @endcan
                                   {{-- Delete Button --}}
-                                  @if(hasPermission('Hapus MasterList'))
+                                  @can('masterdata.masterlist.delete')
                                     <form action="{{ url("masterdata/master-list/{$data->companycode}/{$data->plot}") }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus data ini?');" class="inline">
                                       @csrf
                                       @method('DELETE')
@@ -286,7 +286,7 @@
                                         </svg>
                                       </button>
                                     </form>
-                                  @endif
+                                  @endcan
                                 </div>
                               </td>
                         </tr>

@@ -30,7 +30,7 @@
     <div class="flex items-center justify-between px-4 py-2">
 
       {{-- Create Button (Modal)--}}
-      @if(hasPermission('Create Herbisida'))
+      @can('masterdata.herbisida.create')
         <button @click="resetForm()"
                 class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2">
                 <svg class="w-5 h-5 text-white dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
@@ -39,7 +39,7 @@
                             d="M5 12h14m-7 7V5" />
                     </svg> New Data
         </button>
-      @endif
+      @endcan
         
         {{-- Search Form --}}
       <form method="GET" action="{{ url()->current() }}" class="flex items-center gap-2">
@@ -188,7 +188,7 @@
                             {{-- Edit Button (Modal)--}}
                               <td class="py-2 px-4 border-b">
                                 <div class="flex items-center justify-center space-x-2">
-                                  @if(hasPermission('Edit Herbisida'))
+                                  @can('masterdata.herbisida.edit')
                                   <button
                                     @click="
                                       mode = 'edit';
@@ -219,9 +219,9 @@
                                     </svg>
                                     <span class="w-0.5"></span>
                                   </button>
-                                  @endif
+                                  @endcan
                                   {{-- Delete Button --}}
-                                  @if(hasPermission('Hapus Herbisida'))
+                                  @can('masterdata.herbisida.delete')
                                     <form 
                                       action="{{ url("masterdata/herbisida/{$data->companycode}/{$data->itemcode}") }}" 
                                       method="POST"
@@ -250,7 +250,7 @@
                                         </svg>
                                       </button>
                                     </form>
-                                  @endif
+                                  @endcan
                                 </div> {{-- Untuk membungkus 2 button edit dan delete agar sebelahan --}}
                               </td>
                         </tr>

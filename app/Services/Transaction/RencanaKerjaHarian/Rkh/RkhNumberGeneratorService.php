@@ -41,7 +41,6 @@ class RkhNumberGeneratorService
 
         $lastRkh = DB::table('rkhhdr')
             ->where('companycode', $companycode)
-            ->whereDate('rkhdate', $targetDate)
             ->where('rkhno', 'like', "RKH{$day}{$month}%{$year}")
             ->orderBy(DB::raw('CAST(SUBSTRING(rkhno, 8, 2) AS UNSIGNED)'), 'desc')
             ->first();

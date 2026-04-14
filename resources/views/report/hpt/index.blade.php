@@ -3,338 +3,523 @@
     <x-slot:navbar>{{ $navbar }}</x-slot:navbar>
     <x-slot:nav>{{ $nav }}</x-slot:nav>
 
-    <div class="mx-auto py-4 bg-white rounded-md shadow-md {{ $startDate && $endDate ? 'w-full' : 'w-fit' }}">
-        @if (!$startDate && !$endDate)
-            <div class="px-4 py-2 text-gray-500 font-medium text-sm text-center">*(silahkan pilih range tanggal
-                pengamatan untuk menampilkan data)</div>
-        @endif
-        <div
-            class="flex lg:justify-between mx-4 items-center gap-2 {{ $startDate && $endDate ? 'lg:justify-between justify-center' : 'justify-center' }} flex-wrap">
-            @if ($startDate && $endDate)
-                <div class="flex gap-2 text-sm">
-                    @if (hasPermission('Excel HPT'))
+    <div class="mx-auto py-6 bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg border border-gray-200">
+        <!-- Header Section -->
+        <div class="px-6 pb-4 border-b border-gray-200">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <!-- Title & Info -->
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                        <svg class="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Report HPT (Hama & Penyakit Tanaman)
+                    </h2>
+                    <p class="text-sm text-gray-500 mt-1">Data monitoring serangan hama dan penyakit pada tanaman tebu
+                    </p>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-3">
+                    @can('report.hpt.export')
                         <button data-export="hpt"
-                            class="bg-green-500 text-white px-4 py-2 rounded-md text-sm border border-transparent shadow-sm font-medium hover:bg-green-600 flex items-center space-x-2">
-                            <svg class="w-5 h-5 text-white dark:text-white" aria-hidden="true"
-                                xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
-                                viewBox="0 0 24 24">
+                            class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                                 <path fill-rule="evenodd"
                                     d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Zm2 0V2h7a2 2 0 0 1 2 2v9.293l-2-2a1 1 0 0 0-1.414 1.414l.293.293h-6.586a1 1 0 1 0 0 2h6.586l-.293.293A1 1 0 0 0 18 16.707l2-2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9h5a2 2 0 0 0 2-2Z"
                                     clip-rule="evenodd" />
                             </svg>
-                            <span>Export to Excel</span>
+                            <span>Export Excel</span>
                         </button>
-                    @endif
-
-                    @if (hasPermission('Pivot HPT'))
+                    @endcan
+                    @can('dashboard.hpt.pivot')
                         <button
-                            class="bg-blue-700 text-white px-4 py-2 border border-transparent shadow-sm rounded-md font-medium hover:bg-blue-800 flex items-center space-x-2"
-                            onclick="window.location.href='{{ route('pivotTableHPT', ['start_date' => old('start_date', request()->start_date), 'end_date' => old('end_date', request()->end_date)]) }}'">
-                            <svg class="w-5
-                            h-5 dark:text-white" aria-hidden="true"
-                                xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
-                                viewBox="0 0 24 24">
+                            class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
+                            onclick="window.location.href='{{ route('report.pivotTableHPT', ['start_date' => old('start_date', request()->start_date), 'end_date' => old('end_date', request()->end_date)]) }}'">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                                 <path fill-rule="evenodd"
                                     d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Zm2 0V2h7a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9h5a2 2 0 0 0 2-2Zm-1 9a1 1 0 1 0-2 0v2a1 1 0 1 0 2 0v-2Zm2-5a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1Zm4 4a1 1 0 1 0-2 0v3a1 1 0 1 0 2 0v-3Z"
                                     clip-rule="evenodd" />
                             </svg>
-                            <span>Export to Pivot</span>
+                            <span>Export Pivot</span>
                         </button>
-                    @endif
+                    @endcan
                 </div>
-            @endif
+            </div>
+        </div>
 
-            <form method="POST" action="{{ route('report.hpt.index') }}">
-                @csrf
-                <div class="flex items-center gap-2 flex-wrap justify-center">
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm text-gray-700 font-medium">Range tanggal pengamatan : </span>
-                        <div class="relative inline-block w-fit">
+        <!-- Filter Section -->
+        <form method="POST" action="{{ route('report.hpt.index') }}">
+            @csrf
+            <div class="px-6 py-5 bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
+                <div class="flex items-center gap-4 flex-wrap justify-between">
+                    <!-- Date Filter -->
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            Range Tanggal:
+                        </label>
+                        <div class="relative">
                             <button type="button"
-                                class="inline-flex justify-center w-fit items-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                id="menu-button" aria-expanded="false" aria-haspopup="true" onclick="toggleDropdown()">
-                                <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true"
-                                    class="h-4 w-4 mr-2 text-gray-400" viewbox="0 0 20 20" fill="currentColor">
+                                class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm font-medium text-gray-700"
+                                id="menu-button" onclick="toggleDropdown()">
+                                <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd"
                                         d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z"
                                         clip-rule="evenodd" />
                                 </svg>
-                                <span>Date Filter</span>
-                                <svg class="-mr-1 ml-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <span id="date-label">
+                                    {{ \Carbon\Carbon::parse($startDate)->format('d-M-Y') }} s/d
+                                    {{ \Carbon\Carbon::parse($endDate)->format('d-M-Y') }}
+                                </span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
 
-                            <div class="absolute left-0 z-10 mt-[1px] w-auto rounded-md bg-white border border-gray-300 shadow-lg hidden"
+                            <div class="absolute left-0 z-10 mt-2 w-56 rounded-lg bg-white border border-gray-200 shadow-xl hidden"
                                 id="menu-dropdown">
-                                <div class="py-1 px-4" role="menu" aria-orientation="vertical"
-                                    aria-labelledby="menu-button">
-                                    <div class="py-2">
-                                        <label for="start_date" class="block text-sm font-medium text-gray-700">Start
-                                            Date</label>
+                                <div class="p-4 space-y-4">
+                                    <div>
+                                        <label for="start_date"
+                                            class="block text-sm font-semibold text-gray-700 mb-2">Tanggal Mulai</label>
                                         <input type="date" id="start_date" name="start_date" required
                                             value="{{ old('start_date', $startDate ?? '') }}"
-                                            class="mt-1 block w-auto rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-gray-400"
-                                            oninput="this.className = this.value ? 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-black' : 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-gray-400'">
+                                            class="w-full px-3 py-2 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-200">
                                     </div>
 
-                                    <div class="py-2">
-                                        <label for="end_date" class="block text-sm font-medium text-gray-700">End
-                                            Date</label>
+                                    <div>
+                                        <label for="end_date"
+                                            class="block text-sm font-semibold text-gray-700 mb-2">Tanggal Akhir</label>
                                         <input type="date" id="end_date" name="end_date" required
                                             value="{{ old('end_date', $endDate ?? '') }}"
-                                            class="mt-1 block w-auto rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-gray-400"
-                                            oninput="this.className = this.value ? 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-black' : 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-gray-400'">
+                                            class="w-full px-3 py-2 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-200">
                                     </div>
 
-                                    @if (!$startDate && !$endDate)
-                                        <div class="py-2">
-                                            <button type="submit" name="filter"
-                                                class="w-full py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                                Apply
-                                            </button>
-                                        </div>
-                                    @endif
+                                    <button type="button" id="btn-apply-filter"
+                                        onclick="
+                                                document.getElementById('menu-dropdown').classList.add('hidden');
+                                                document.getElementById('date-label').textContent =
+                                                    fmtDate(document.getElementById('start_date').value) + ' s/d ' +
+                                                    fmtDate(document.getElementById('end_date').value);
+                                            "
+                                        class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-all duration-200">
+                                        Terapkan
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div id="ajax-data" data-url="{{ route('report.hpt.index') }}">
-                        <div class="flex items-center gap-2 w-full">
-                            <div>
-                                <label for="perPage" class="text-sm font-medium text-gray-700">Items per
+
+                    <!-- Items per page & Search -->
+                    <div class="flex items-center gap-4 flex-wrap">
+                        <div id="ajax-data" data-url="{{ route('report.hpt.index') }}">
+                            <div class="flex items-center gap-2">
+                                <label for="perPage"
+                                    class="text-sm font-semibold text-gray-700 whitespace-nowrap">Items per
                                     page:</label>
                                 <input type="text" name="perPage" id="perPage" value="{{ $perPage }}"
                                     min="1" autocomplete="off"
-                                    class="w-10 p-2 border border-gray-300 rounded-md text-sm text-center focus:ring-blue-500 focus:border-blue-500" />
+                                    class="w-16 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all duration-200" />
                             </div>
                         </div>
-                    </div>
-                    @if ($startDate && $endDate)
+
                         <div class="relative">
-                            <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
-                                <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true"
-                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                                        stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
+                            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
                             </div>
                             <input type="text" id="search" autocomplete="off" name="search"
                                 value="{{ old('search', $search) }}"
-                                class="block w-[350px] p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                                placeholder="Search Sample, Plot, Variety, or Category..." />
+                                class="w-80 pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                placeholder="Cari Sample, Plot, Variety, Category..." />
                         </div>
-                    @endif
+                    </div>
                 </div>
-            </form>
+            </div>
+        </form>
+
+        <!-- Table Section -->
+        <div class="px-6 py-5">
+            <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                <table class="min-w-full bg-white text-sm" id="tables">
+                    <thead>
+                        <tr class="bg-gradient-to-r from-gray-100 to-gray-50">
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                No.</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                No. Sample</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Blok</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Plot</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Luas</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Tanggal Tanam</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Umur Tanam</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Varietas</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Tanggal Pengamatan</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Bulan Pengamatan</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                ni</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Jumlah Batang</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-red-50">
+                                PPT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-red-50">
+                                PPT Aktif</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-orange-50">
+                                PBT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-orange-50">
+                                PBT Aktif</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-blue-50">
+                                Skor 0</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-blue-50">
+                                Skor 1</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-blue-50">
+                                Skor 2</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-blue-50">
+                                Skor 3</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-blue-50">
+                                Skor 4</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-yellow-50">
+                                %PPT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-yellow-50">
+                                %PPT Aktif</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-yellow-50">
+                                %PBT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-yellow-50">
+                                %PBT Aktif</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap">
+                                Σni*vi</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-red-100">
+                                Intensitas Kerusakan</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-green-50">
+                                Telur PPT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-green-50">
+                                Larva PPT 1</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-green-50">
+                                Larva PPT 2</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-green-50">
+                                Larva PPT 3</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-green-50">
+                                Larva PPT 4</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-green-50">
+                                Pupa PPT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-green-50">
+                                Ngengat PPT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-green-50">
+                                Kosong PPT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-purple-50">
+                                Telur PBT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-purple-50">
+                                Larva PBT 1</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-purple-50">
+                                Larva PBT 2</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-purple-50">
+                                Larva PBT 3</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-purple-50">
+                                Larva PBT 4</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-purple-50">
+                                Pupa PBT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-purple-50">
+                                Ngengat PBT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-purple-50">
+                                Kosong PBT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-pink-50">
+                                DH</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-pink-50">
+                                DT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-pink-50">
+                                KBP</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-pink-50">
+                                KBB</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-pink-50">
+                                KP</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-pink-50">
+                                Cabuk</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-pink-50">
+                                Belalang</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-amber-50">
+                                BTG Terserang Ul.grayak</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-amber-50">
+                                Jumlah Ul.Grayak</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-cyan-50">
+                                BTG Terserang SMUT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-cyan-50">
+                                SMUT Stadia 1</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-cyan-50">
+                                SMUT Stadia 2</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-cyan-50">
+                                SMUT Stadia 3</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-indigo-50">
+                                Jumlah Larva PPT</th>
+                            <th
+                                class="py-3 px-4 border-b-2 border-gray-300 text-gray-700 font-bold text-center whitespace-nowrap bg-indigo-50">
+                                Jumlah Larva PBT</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        @forelse ($hpt as $item)
+                            <tr>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->no }}.</td>
+                                <td class="py-3 px-4 text-center text-gray-700 font-medium">{{ $item->nosample }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->blokName ?? '-' }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->plotName ?? '-' }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->luasarea ?? '-' }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->tanggaltanam_fmt ?? '-' }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700">
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        {{ round($item->umur_tanam) }} Bulan
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->varietas ?? '-' }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">
+                                    {{ $item->tanggalpengamatan_fmt ?? '-' }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->bulanPengamatan }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700">{{ $item->nourut }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 font-medium">{{ $item->jumlahbatang }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-red-50">{{ $item->ppt }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-red-50">{{ $item->ppt_aktif }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-orange-50">{{ $item->pbt }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-orange-50">{{ $item->pbt_aktif }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-blue-50">{{ $item->skor0 }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-blue-50">{{ $item->skor1 }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-blue-50">{{ $item->skor2 }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-blue-50">{{ $item->skor3 }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-blue-50">{{ $item->skor4 }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-yellow-50">
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-200 text-yellow-800">
+                                        {{ $item->per_ppt * 100 }}%
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-yellow-50">
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-200 text-yellow-800">
+                                        {{ $item->per_ppt_aktif * 100 }}%
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-yellow-50">
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-200 text-orange-800">
+                                        {{ $item->per_pbt * 100 }}%
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-yellow-50">
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-200 text-orange-800">
+                                        {{ $item->per_pbt_aktif * 100 }}%
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 font-medium">{{ $item->sum_ni }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-red-100">
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-200 text-red-900">
+                                        {{ $item->int_rusak * 100 }}%
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-green-50">{{ $item->telur_ppt }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-green-50">{{ $item->larva_ppt1 }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-green-50">{{ $item->larva_ppt2 }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-green-50">{{ $item->larva_ppt3 }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-green-50">{{ $item->larva_ppt4 }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-green-50">{{ $item->pupa_ppt }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-green-50">{{ $item->ngengat_ppt }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-green-50">{{ $item->kosong_ppt }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-purple-50">{{ $item->telur_pbt }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-purple-50">{{ $item->larva_pbt1 }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-purple-50">{{ $item->larva_pbt2 }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-purple-50">{{ $item->larva_pbt3 }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-purple-50">{{ $item->larva_pbt4 }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-purple-50">{{ $item->pupa_pbt }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-purple-50">{{ $item->ngengat_pbt }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-purple-50">{{ $item->kosong_pbt }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-pink-50">{{ $item->dh }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-pink-50">{{ $item->dt }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-pink-50">{{ $item->kbp }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-pink-50">{{ $item->kbb }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-pink-50">{{ $item->kp }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-pink-50">{{ $item->cabuk }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-pink-50">{{ $item->belalang }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-amber-50">{{ $item->serang_grayak }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-amber-50">{{ $item->jum_grayak }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-cyan-50">{{ $item->serang_smut }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-cyan-50">{{ $item->smut_stadia1 }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-cyan-50">{{ $item->smut_stadia2 }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-cyan-50">{{ $item->smut_stadia3 }}
+                                </td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-indigo-50 font-medium">
+                                    {{ $item->jum_larva_ppt }}</td>
+                                <td class="py-3 px-4 text-center text-gray-700 bg-indigo-50 font-medium">
+                                    {{ $item->jum_larva_pbt }}</td>
+                            </tr>
+                        @empty
+                            <tr class="!bg-white hover:!bg-white">
+                                <td colspan="57" class="p-0 border-0">
+                                    <div
+                                        style="
+                                            position: sticky;
+                                            left: 0;
+                                            width: calc(100vw - 330px);
+                                            max-width: calc(100vw - 330px);
+                                            display: flex;
+                                            flex-direction: column;
+                                            align-items: center;
+                                            justify-content: center;
+                                            gap: 12px;
+                                            padding: 64px 16px;
+                                        ">
+                                        <div
+                                            style="
+                                                width: 64px;
+                                                height: 64px;
+                                                border-radius: 9999px;
+                                                background-color: #f3f4f6;
+                                                display: flex;
+                                                align-items: center;
+                                                justify-content: center;
+                                            ">
+                                            <svg style="width:32px;height:32px;color:#9ca3af" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="1.5"
+                                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                        </div>
+                                        <div style="text-align:center">
+                                            <p style="color:#4b5563;font-weight:600;font-size:0.875rem">Tidak ada data
+                                                ditemukan</p>
+                                            <p style="color:#9ca3af;font-size:0.75rem;margin-top:4px">Coba ubah rentang
+                                                tanggal atau kata kunci pencarian</p>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        @if ($startDate && $endDate)
-            <div class="mx-auto px-4 py-4">
-                <div class="overflow-x-auto rounded-md border border-gray-300">
-                    <table class="min-w-full bg-white text-sm text-center" id="tables">
-                        <thead>
-                            <tr>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">No.</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">No.
-                                    Sample</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Blok
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Plot
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Luas
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Tanggal
-                                    Tanam</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Umur
-                                    Tanam</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Varietas
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Tanggal
-                                    Pengamatan</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Bulan
-                                    Pengamatan</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">ni</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Jumlah
-                                    Batang</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">PPT</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">PPT Aktif</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">PBT</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">PBT Aktif</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Skor 0
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Skor 1
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Skor 2
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Skor 3
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Skor 4
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">%PPT</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">%PPT Aktif
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">%PBT</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">%PBT Aktif
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Σni*vi
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">
-                                    Intensitas Kerusakan</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Telur
-                                    PPT</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Larva
-                                    PPT 1</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Larva
-                                    PPT 2</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Larva
-                                    PPT 3</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Larva
-                                    PPT 4</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Pupa PPT
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Ngengat
-                                    PPT</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Kosong
-                                    PPT</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Telur
-                                    PBT</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Larva
-                                    PBT 1</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Larva
-                                    PBT 2</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Larva
-                                    PBT 3</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Larva
-                                    PBT 4</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Pupa PBT
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Ngengat
-                                    PBT</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Kosong
-                                    PBT</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">DH</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">DT</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">KBP</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">KBB</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">KP</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Cabuk
-                                </th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Belalang</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">BTG Terserang
-                                    Ul.grayak</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">
-                                    Jumlah Ul.Grayak</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">BTG
-                                    Terserang SMUT</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">SMUT
-                                    Stadia 1</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">SMUT
-                                    Stadia 2</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">SMUT
-                                    Stadia 3</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Jumlah Larva
-                                    PPT</th>
-                                <th class="py-2 px-4 border-b border-gray-300 bg-gray-100 text-gray-700">Jumlah Larva
-                                    PBT</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($hpt as $item)
-                                <tr>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->no }}.</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->nosample }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->blokName ?? '' }}
-                                    </td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->plotName ?? '' }}
-                                    </td>
-                                    <td class="py-2 px-4 border-b border-gray-300">
-                                        {{ $item->luas_area ?? '' }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->tanggaltanam ?? '' }}
-                                    </td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ round($item->umur_tanam) }}
-                                        Bulan
-                                    </td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->varietas ?? '' }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">
-                                        {{ $item->tanggalpengamatan ?? '' }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->bulanPengamatan }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->nourut }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->jumlahbatang }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->ppt }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->ppt_aktif }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->pbt }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->pbt_aktif }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->skor0 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->skor1 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->skor2 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->skor3 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->skor4 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->per_ppt * 100 }}%</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->per_ppt_aktif * 100 }}%
-                                    </td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->per_pbt * 100 }}%</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->per_pbt_aktif * 100 }}%
-                                    </td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->sum_ni }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->int_rusak * 100 }}%</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->telur_ppt }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->larva_ppt1 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->larva_ppt2 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->larva_ppt3 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->larva_ppt4 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->pupa_ppt }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->ngengat_ppt }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->kosong_ppt }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->telur_pbt }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->larva_pbt1 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->larva_pbt2 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->larva_pbt3 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->larva_pbt4 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->pupa_pbt }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->ngengat_pbt }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->kosong_pbt }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->dh }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->dt }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->kbp }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->kbb }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->kp }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->cabuk }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->belalang }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->serang_grayak }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->jum_grayak }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->serang_smut }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->smut_stadia1 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->smut_stadia2 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->smut_stadia3 }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->jum_larva_ppt }}</td>
-                                    <td class="py-2 px-4 border-b border-gray-300">{{ $item->jum_larva_pbt }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-
+        <!-- Pagination Section -->
+        <div class="px-6 pb-2" id="pagination-links">
+            @if ($hpt->hasPages())
+                {{ $hpt->appends(['perPage' => $hpt->perPage(), 'start_date' => $startDate, 'end_date' => $endDate])->links() }}
+            @else
+                <div class="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg">
+                    <p class="text-sm text-gray-600">
+                        Menampilkan <span class="font-semibold text-gray-800">{{ $hpt->count() }}</span> dari <span
+                            class="font-semibold text-gray-800">{{ $hpt->total() }}</span> hasil
+                    </p>
                 </div>
-            </div>
-
-            <div class="mx-4 mt-1" id="pagination-links">
-                @if ($hpt->hasPages())
-                    {{ $hpt->appends(['perPage' => $hpt->perPage(), 'start_date' => $startDate, 'end_date' => $endDate])->links() }}
-                @else
-                    <div class="flex items-center justify-between">
-                        <p class="text-sm text-gray-600">
-                            Showing <span class="font-medium">{{ $hpt->count() }}</span> of <span
-                                class="font-medium">{{ $hpt->total() }}</span> results
-                        </p>
-                    </div>
-                @endif
-            </div>
-        @endif
+            @endif
+        </div>
     </div>
 
     <script>
+        function fmtDate(d) {
+            if (!d) return '';
+            const [y, m, day] = d.split('-');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${day}-${months[+m - 1]}-${y}`;
+        }
+
         function toggleDropdown() {
             const dropdown = document.getElementById('menu-dropdown');
             dropdown.classList.toggle('hidden');
@@ -354,14 +539,37 @@
         th,
         td {
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
 
-        .max-h-96 {
-            max-height: 24rem;
-            overflow-x: auto;
-            overflow-y: hidden;
+        /* Custom scrollbar */
+        .overflow-x-auto::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .overflow-x-auto::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .overflow-x-auto::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 10px;
+        }
+
+        .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+
+        /* Sticky first column for better UX */
+        #tables thead tr th:first-child,
+        #tables tbody tr td:first-child {
+            position: sticky;
+            left: 0;
+            background: white;
+        }
+
+        #tables thead tr th:first-child {
+            background: linear-gradient(to right, #f3f4f6, #e5e7eb);
         }
     </style>
 

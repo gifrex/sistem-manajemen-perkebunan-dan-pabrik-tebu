@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class UnpostController extends Controller
 {
@@ -23,22 +24,18 @@ class UnpostController extends Controller
     {
         $title = "Unposting";
         $search = $request->input('search', '');
+        $unposting = $request->input('unposting', '');
 
-        if ($request->has('start_date')) {
-            session(['start_date_unposting' => $request->start_date]);
-        }
-        if ($request->has('end_date')) {
-            session(['end_date_unposting' => $request->end_date]);
-        }
-        $startDate = session('start_date_unposting');
-        $endDate = session('end_date_unposting');
+        $startDate = $request->input('start_date', now()->toDateString());
+        $endDate = $request->input('end_date', now()->toDateString());
+
         $userid = Auth::user()->userid;
         $companycode = DB::table('usercompany')
             ->where('userid', $userid)
             ->value('companycode');
         $companyArray = $companycode ? explode(',', $companycode) : [];
 
-        if ($request->isMethod('post')) {
+        if ($request->isMethod('post') && $request->has('perPage')) {
             $request->validate([
                 'perPage' => 'required|integer|min:1',
             ]);
@@ -47,14 +44,19 @@ class UnpostController extends Controller
         }
 
         $perPage = $request->session()->get('perPage', 10);
-
-        if ($request->has('unposting')) {
-            session(['unposting' => $request->unposting]);
-        }
-        $session = session('unposting');
         $companysession = session('companycode');
 
-        $table = $session === 'Agronomi' ? 'agrohdr' : 'hpthdr';
+        // Jika belum memilih jenis pengamatan, return dengan data kosong
+        if (empty($unposting)) {
+            $unposts = new LengthAwarePaginator([], 0, $perPage, 1, [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]);
+            return view('process.unposting.index', compact('unposts', 'perPage', 'startDate', 'endDate', 'title', 'search', 'unposting'));
+        }
+
+        // Tentukan tabel berdasarkan input unposting
+        $table = $unposting === 'Agronomi' ? 'agrohdr' : 'hpthdr';
 
         $unposts = DB::table($table)
             ->orderBy('createdat', 'desc')
@@ -66,7 +68,6 @@ class UnpostController extends Controller
         if (!empty($search)) {
             $unposts->where(function ($query) use ($search) {
                 $query->where('nosample', 'like', '%' . $search . '%')
-                    // ->orWhere('idblokplot', 'like', '%' . $search . '%')
                     ->orWhere('varietas', 'like', '%' . $search . '%')
                     ->orWhere('kat', 'like', '%' . $search . '%');
             });
@@ -85,25 +86,17 @@ class UnpostController extends Controller
         }
 
         if ($request->ajax()) {
-            return view('process.unposting.index', compact('unposts', 'perPage', 'startDate', 'endDate', 'title', 'search'));
+            return view('process.unposting.index', compact('unposts', 'perPage', 'startDate', 'endDate', 'title', 'search', 'unposting'));
         }
-        return view('process.unposting.index', compact('unposts', 'perPage', 'startDate', 'endDate', 'title', 'search'));
-    }
 
-    public function unpostSession(Request $request)
-    {
-        $request->validate([
-            'unposting' => 'required|string',
-        ]);
-
-        session(['unposting' => $request->unposting]);
-
-        return redirect()->route('process.unposting');
+        return view('process.unposting.index', compact('unposts', 'perPage', 'startDate', 'endDate', 'title', 'search', 'unposting'));
     }
 
     public function unposting(Request $request)
     {
         $selectedItems = json_decode($request->selected_items, true);
+        $unposting = $request->input('unposting_type'); // Ambil dari hidden input
+
         $selectedItems = array_map(function ($item) {
             $parts = explode(',', $item);
             return [
@@ -117,7 +110,7 @@ class UnpostController extends Controller
             return redirect()->back()->with('error', 'Tidak ada data yang dipilih.');
         }
 
-        $tables = session('unposting') === 'Agronomi'
+        $tables = $unposting === 'Agronomi'
             ? ['agrohdr', 'agrolst']
             : ['hpthdr', 'hptlst'];
 

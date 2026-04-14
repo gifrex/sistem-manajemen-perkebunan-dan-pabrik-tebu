@@ -4,6 +4,7 @@ namespace App\Services\Transaction\RencanaKerjaHarian\Generator;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 /**
@@ -20,50 +21,108 @@ class MaterialUsageGeneratorService
     /**
      * Generate material usage data from approved RKH
      */
-    public function generateMaterialUsageFromRkh($rkhno)
+    public function generateMaterialUsageFromRkh($rkhno, $companycode = null)
     {
         try {
-            DB::beginTransaction();
+            Log::info("===== MaterialUsageGenerator START =====", [
+                'rkhno' => $rkhno,
+                'companycode_param' => $companycode,
+                'timestamp' => now()->toDateTimeString()
+            ]);
             
-            // Get RKH header data
+            // PENTING: Gunakan companycode dari parameter
+            if (!$companycode) {
+                $companycode = session('companycode');
+            }
+            
+            if (!$companycode) {
+                throw new \Exception("Company code tidak ditemukan");
+            }
+            
+            Log::info("Using company code from parameter/session", ['companycode' => $companycode]);
+            
+            // Step 1: Get RKH header data - WITH COMPANYCODE FILTER
+            Log::info("Step 1: Fetching RKH header", [
+                'rkhno' => $rkhno,
+                'companycode' => $companycode
+            ]);
+            
             $rkhHeader = DB::table('rkhhdr')
                 ->where('rkhno', $rkhno)
+                ->where('companycode', $companycode)  // PENTING: Filter by companycode
                 ->first();
                 
             if (!$rkhHeader) {
-                throw new \Exception("RKH tidak ditemukan: {$rkhno}");
+                Log::error("Step 1 FAILED: RKH not found", [
+                    'rkhno' => $rkhno,
+                    'companycode' => $companycode
+                ]);
+                throw new \Exception("RKH tidak ditemukan: {$rkhno} untuk company {$companycode}");
             }
             
-            $companycode = $rkhHeader->companycode;
+            // Gunakan companycode dari parameter, BUKAN dari header
+            Log::info("Step 1 SUCCESS: RKH header found", [
+                'rkhno' => $rkhno,
+                'companycode_used' => $companycode,
+                'rkhdate' => $rkhHeader->rkhdate,
+                'mandorid' => $rkhHeader->mandorid
+            ]);
             
-            // Check if material usage already exists
+            // Step 2: Check if material usage already exists
+            Log::info("Step 2: Checking existing material usage");
+            
             $existingUsage = DB::table('usematerialhdr')
                 ->where('companycode', $companycode)
                 ->where('rkhno', $rkhno)
                 ->first();
                 
             if ($existingUsage) {
+                Log::warning("Step 2: Material usage already exists", [
+                    'rkhno' => $rkhno,
+                    'created_at' => $existingUsage->createdat,
+                    'created_by' => $existingUsage->inputby
+                ]);
                 throw new \Exception("Material usage sudah pernah di-generate untuk RKH: {$rkhno}");
             }
             
-            // Get LKH list untuk RKH ini
+            Log::info("Step 2 SUCCESS: No existing material usage found");
+            
+            // Step 3: Get LKH list untuk RKH ini
+            Log::info("Step 3: Fetching LKH list");
+            
             $lkhList = DB::table('lkhhdr')
                 ->where('companycode', $companycode)
                 ->where('rkhno', $rkhno)
                 ->get();
+            
+            Log::info("Step 3: LKH list retrieved", [
+                'lkh_count' => $lkhList->count(),
+                'lkh_numbers' => $lkhList->pluck('lkhno')->toArray()
+            ]);
                 
             if ($lkhList->isEmpty()) {
+                Log::error("Step 3 FAILED: No LKH found", ['rkhno' => $rkhno]);
                 throw new \Exception("Tidak ada LKH ditemukan untuk RKH: {$rkhno}. Generate LKH terlebih dahulu.");
             }
             
-            // Get RKH details that use material
+            // Step 4: Get RKH details that use material
+            Log::info("Step 4: Fetching RKH details with material usage");
+            
             $rkhDetails = DB::table('rkhlst')
                 ->where('companycode', $companycode)
                 ->where('rkhno', $rkhno)
                 ->where('usingmaterial', 1)
                 ->get();
+            
+            Log::info("Step 4: RKH details retrieved", [
+                'total_details' => $rkhDetails->count(),
+                'details_with_herbisida' => $rkhDetails->whereNotNull('herbisidagroupid')->count(),
+                'plots' => $rkhDetails->pluck('plot')->unique()->toArray(),
+                'activity_codes' => $rkhDetails->pluck('activitycode')->unique()->toArray()
+            ]);
                 
             if ($rkhDetails->isEmpty()) {
+                Log::info("Step 4: No material usage activities found");
                 return [
                     'success' => true,
                     'message' => 'Tidak ada aktivitas yang menggunakan material',
@@ -71,46 +130,148 @@ class MaterialUsageGeneratorService
                 ];
             }
             
-            // Calculate total luas for header
+            // Step 5: Calculate total luas for header
             $totalLuas = $rkhDetails->sum('luasarea');
+            Log::info("Step 5: Total luas calculated", ['total_luas' => $totalLuas]);
             
-            // Create material usage header
-            DB::table('usematerialhdr')->insert([
+            // Step 6: Get current user - FIX FOR PRODUCTION
+            Log::info("Step 6: Getting current user");
+            
+            $userid = 'SYSTEM'; // Default value
+            
+            try {
+                $currentUser = Auth::user();
+                if ($currentUser && isset($currentUser->userid)) {
+                    $userid = $currentUser->userid;
+                    Log::info("Step 6: Auth user found", [
+                        'userid' => $userid,
+                        'user_name' => $currentUser->name ?? 'N/A'
+                    ]);
+                } else {
+                    Log::warning("Step 6: No auth user, using SYSTEM", [
+                        'auth_check' => Auth::check(),
+                        'guard' => Auth::getDefaultDriver()
+                    ]);
+                }
+            } catch (\Exception $authError) {
+                Log::warning("Step 6: Auth error, using SYSTEM", [
+                    'error' => $authError->getMessage()
+                ]);
+            }
+            
+            // Step 7: Create material usage header
+            Log::info("Step 7: Creating material usage header", [
                 'companycode' => $companycode,
                 'rkhno' => $rkhno,
                 'totalluas' => $totalLuas,
-                'flagstatus' => 'ACTIVE',
-                'inputby' => auth()->user()->userid ?? 'system',
-                'createdat' => now(),
-                'updateby' => null,
-                'updatedat' => null
+                'inputby' => $userid
             ]);
+            
+            try {
+                DB::table('usematerialhdr')->insert([
+                    'companycode' => $companycode,
+                    'rkhno' => $rkhno,
+                    'totalluas' => $totalLuas,
+                    'flagstatus' => 'ACTIVE',
+                    'inputby' => $userid,
+                    'createdat' => now(),
+                    'updateby' => null,
+                    'updatedat' => null
+                ]);
+                
+                Log::info("Step 7 SUCCESS: Header created");
+            } catch (\Exception $e) {
+                Log::error("Step 7 FAILED: Cannot create header", [
+                    'error' => $e->getMessage(),
+                    'sql_error' => $e->getCode()
+                ]);
+                throw new \Exception("Failed to create material usage header: " . $e->getMessage());
+            }
+            
+            // Step 8: Process each LKH
+            Log::info("Step 8: Processing LKH details");
             
             $totalItemsInserted = 0;
             $errors = [];
+            $successfulLKH = [];
             
-            // Process each LKH
-            foreach ($lkhList as $lkh) {
+            foreach ($lkhList as $index => $lkh) {
+                Log::info("Step 8.{$index}: Processing LKH", [
+                    'lkhno' => $lkh->lkhno,
+                    'activitycode' => $lkh->activitycode,
+                    'jenistenagakerja' => $lkh->jenistenagakerja
+                ]);
+                
                 try {
-                    $itemsInserted = $this->processLkhMaterialUsagePerPlot($lkh, $companycode, $rkhno, $rkhDetails);
+                    $itemsInserted = $this->processLkhMaterialUsagePerPlot(
+                        $lkh, 
+                        $companycode, 
+                        $rkhno, 
+                        $rkhDetails
+                    );
+                    
                     $totalItemsInserted += $itemsInserted;
                     
+                    if ($itemsInserted > 0) {
+                        $successfulLKH[] = $lkh->lkhno;
+                    }
+                    
+                    Log::info("Step 8.{$index} SUCCESS", [
+                        'lkhno' => $lkh->lkhno,
+                        'items_inserted' => $itemsInserted,
+                        'total_so_far' => $totalItemsInserted
+                    ]);
+                    
                 } catch (\Exception $e) {
-                    $errors[] = "Error processing LKH {$lkh->lkhno}: " . $e->getMessage();
+                    $errorMsg = "Error processing LKH {$lkh->lkhno}: " . $e->getMessage();
+                    $errors[] = $errorMsg;
+                    
+                    Log::error("Step 8.{$index} FAILED", [
+                        'lkhno' => $lkh->lkhno,
+                        'error' => $e->getMessage()
+                    ]);
                 }
             }
             
-            if ($totalItemsInserted === 0) {
-                $errorDetail = empty($errors) ? "No matching material configuration found" : implode('; ', $errors);
-                throw new \Exception("Tidak ada item material yang berhasil di-generate. Details: " . $errorDetail);
-            }
+            // Step 9: Final validation
+            Log::info("Step 9: Final validation", [
+                'total_items_inserted' => $totalItemsInserted,
+                'successful_lkh_count' => count($successfulLKH),
+                'error_count' => count($errors)
+            ]);
             
-            DB::commit();
+            if ($totalItemsInserted === 0) {
+                $errorDetail = empty($errors) ? 
+                    "No matching material configuration found (check herbisidagroup and herbisidadosage data)" : 
+                    implode('; ', $errors);
+                    
+                Log::warning("Step 9 WARNING: No items generated", [
+                    'error_detail' => $errorDetail,
+                    'errors' => $errors
+                ]);
+                
+                // Return success with 0 items (don't throw error)
+                return [
+                    'success' => true,
+                    'message' => 'Material usage header created but no items generated (check herbisida configuration)',
+                    'total_items' => 0,
+                    'total_lkh_processed' => $lkhList->count(),
+                    'errors' => $errors
+                ];
+            }
             
             $message = "Material usage berhasil di-generate per plot ({$totalItemsInserted} items)";
             if (!empty($errors)) {
                 $message .= ". Warnings: " . implode('; ', $errors);
             }
+            
+            Log::info("===== MaterialUsageGenerator SUCCESS =====", [
+                'rkhno' => $rkhno,
+                'total_items' => $totalItemsInserted,
+                'total_lkh_processed' => $lkhList->count(),
+                'successful_lkh' => $successfulLKH,
+                'message' => $message
+            ]);
             
             return [
                 'success' => true,
@@ -121,13 +282,15 @@ class MaterialUsageGeneratorService
             ];
             
         } catch (\Exception $e) {
-            DB::rollBack();
+            Log::error("===== MaterialUsageGenerator FAILED =====", [
+                'rkhno' => $rkhno,
+                'companycode' => $companycode ?? 'unknown',
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
             
-            return [
-                'success' => false,
-                'message' => 'Gagal generate material usage: ' . $e->getMessage(),
-                'total_items' => 0
-            ];
+            throw $e;
         }
     }
     
@@ -186,7 +349,8 @@ class MaterialUsageGeneratorService
                     'hd.itemcode',
                     'hd.dosageperha',
                     'h.itemname',
-                    'h.measure'
+                    'h.measure',
+                    'hg.rounddosage',
                 ])
                 ->get();
                 
@@ -196,7 +360,22 @@ class MaterialUsageGeneratorService
             
             // Insert each item for this specific plot (NO MERGING)
             foreach ($herbisidaDosages as $dosage) {
-                $qtyForThisPlot = $plotLuas * $dosage->dosageperha;
+                $qtyRaw = $plotLuas * $dosage->dosageperha;
+
+                if ($qtyRaw > 0) {
+                    if ($dosage->rounddosage == 1) {
+                        // Normal rounding ke kelipatan 0.05
+                        $truncated = floor($qtyRaw * 100) / 100;
+                        $qty = round($truncated / 0.05) * 0.05;
+                        if ($qty == 0) $qty = 0.05;
+                    } else {
+                        // No rounding, round normal 2 desimal
+                        $qty = round($qtyRaw, 2);
+                        if ($qty == 0) $qty = 0.01;
+                    }
+                } else {
+                    $qty = 0;
+                }
                 
                 // Insert record per plot
                 DB::table('usemateriallst')->insert([
@@ -205,7 +384,7 @@ class MaterialUsageGeneratorService
                     'lkhno' => $lkh->lkhno,
                     'plot' => $lkhPlot->plot, // PLOT SPECIFIC
                     'itemcode' => $dosage->itemcode,
-                    'qty' => $qtyForThisPlot,
+                    'qty' => $qty,
                     'qtydigunakan' => null,
                     'qtyretur' => 0,
                     'unit' => $dosage->measure,

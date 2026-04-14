@@ -48,7 +48,7 @@ class UserActivityRepository
         $companyCodes = $results->pluck('companycode')->unique();
         
         $users = \App\Models\User::whereIn('userid', $userIds)->get()->keyBy('userid');
-        $companies = \App\Models\Company::whereIn('companycode', $companyCodes)->get()->keyBy('companycode');
+        $companies = \App\Models\MasterData\Company::whereIn('companycode', $companyCodes)->get()->keyBy('companycode');
         
         $results->getCollection()->transform(function ($item) use ($users, $companies) {
             $item->user = $users->get($item->userid);

@@ -22,7 +22,8 @@
             .then(response => response.json())
             .then(data => {
                 const unreadCount = data.unread_count || 0;
-                const isNotificationPage = window.location.pathname.includes('{{ route('info-updates.notifications.index') }}');
+                const isNotificationPage = window.location.pathname.includes(
+                    '{{ route('info-updates.notifications.index') }}');
                 const dialog = document.getElementById('unread-notification-dialog');
 
                 if (dialog) {
@@ -108,7 +109,6 @@
 
         let timeout = null;
 
-        // Config untuk multiple export URLs
         const exportConfigs = {
             'hpt-export': {
                 baseUrl: '{{ route('transaction.hpt.exportExcel') }}',
@@ -118,16 +118,14 @@
                 baseUrl: '{{ route('transaction.agronomi.exportExcel') }}',
                 buttonSelector: '[data-export="agronomi"]'
             }
-            // Tambahkan config lainnya di sini
         };
 
-        // Function untuk update semua URL export
         function updateAllExportUrls() {
             const startDate = startDateInput ? startDateInput.value : "";
             const endDate = endDateInput ? endDateInput.value : "";
             const search = searchInput ? searchInput.value : "";
 
-            // Loop melalui semua config export
+
             Object.keys(exportConfigs).forEach(configKey => {
                 const config = exportConfigs[configKey];
                 let exportUrl = config.baseUrl;
@@ -141,7 +139,6 @@
                     exportUrl += '?' + params.join('&');
                 }
 
-                // Update semua tombol export dengan config ini
                 document.querySelectorAll(config.buttonSelector).forEach(button => {
                     button.onclick = function() {
                         window.location.href = exportUrl;
@@ -150,7 +147,70 @@
             });
         }
 
+        function showTableLoading() {
+            const tables = document.getElementById("tables");
+            if (!tables) return;
+
+            // Pastikan parent element punya position relative sebagai anchor overlay
+            const wrapper = tables.closest(".overflow-x-auto") || tables.parentElement;
+            if (!wrapper) return;
+
+            // Hindari duplikasi overlay
+            if (wrapper.querySelector("#table-loading-overlay")) return;
+
+            // Set position relative pada wrapper agar overlay bisa absolute di dalamnya
+            const prevPosition = wrapper.style.position;
+            wrapper.style.position = "relative";
+            wrapper.dataset.prevPosition = prevPosition;
+
+            const overlay = document.createElement("div");
+            overlay.id = "table-loading-overlay";
+            overlay.innerHTML = `
+                <div class="flex flex-col items-center justify-center gap-3">
+                    <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-gray-600 text-sm font-semibold tracking-wide">Memuat data...</span>
+                </div>
+            `;
+
+            Object.assign(overlay.style, {
+                position: "absolute",
+                inset: "0",
+                top: "0",
+                left: "0",
+                right: "0",
+                bottom: "0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(255, 255, 255, 0.75)",
+                backdropFilter: "blur(2px)",
+                zIndex: "50",
+                borderRadius: "inherit",
+                minHeight: "100px",
+            });
+
+            wrapper.appendChild(overlay);
+        }
+
+        function hideTableLoading() {
+            const overlay = document.getElementById("table-loading-overlay");
+            if (!overlay) return;
+
+            const wrapper = overlay.parentElement;
+            overlay.remove();
+
+            if (wrapper) {
+                wrapper.style.position = wrapper.dataset.prevPosition || "";
+                delete wrapper.dataset.prevPosition;
+            }
+        }
+
         function fetchData(url = baseUrl) {
+            showTableLoading();
+
             const search = searchInput ? searchInput.value : "";
             const perPage = perPageInput ? perPageInput.value : 10;
             const startDate = startDateInput ? startDateInput.value : "";
@@ -183,13 +243,18 @@
                         pages.innerHTML = newPagination.innerHTML;
                     }
 
-                    // Update semua URL export setelah data berhasil di-load
+                    hideTableLoading();
                     updateAllExportUrls();
                 })
-                .catch(error => console.error("AJAX Fetch Error:", error));
+                .catch(error => {
+                    console.error("AJAX Fetch Error:", error);
+                    hideTableLoading();
+                });
         }
 
-        // Event listeners
+        window._triggerAjaxFetch = fetchData;
+
+
         if (searchInput) {
             searchInput.addEventListener("input", () => {
                 clearTimeout(timeout);
@@ -210,31 +275,24 @@
             });
         }
 
-        if (startDateInput) {
-            startDateInput.addEventListener("change", function() {
+        const applyFilterBtn = document.getElementById("btn-apply-filter");
+        if (applyFilterBtn) {
+            applyFilterBtn.addEventListener("click", function() {
                 fetchData();
                 updateAllExportUrls();
             });
         }
 
-        if (endDateInput) {
-            endDateInput.addEventListener("change", function() {
-                fetchData();
-                updateAllExportUrls();
-            });
-        }
-
-        // Inisialisasi URL export pertama kali
-        updateAllExportUrls();
 
         document.addEventListener("click", function(event) {
             const target = event.target.closest("#pagination-links a");
             if (target) {
                 event.preventDefault();
-                const url = target.href;
-                fetchData(url);
+                fetchData(target.href);
             }
         });
+
+        updateAllExportUrls();
     });
 </script>
 
@@ -262,10 +320,10 @@
 
 <script>
     window.addEventListener('scroll', function() {
-    const scrollToTopButton = document.getElementById('scrollToTop');
-    if (!scrollToTopButton) return; // Langsung return kalau tidak ada
-    
-    scrollToTopButton.style.display = (window.scrollY > 100) ? 'block' : 'none';
+        const scrollToTopButton = document.getElementById('scrollToTop');
+        if (!scrollToTopButton) return;
+
+        scrollToTopButton.style.display = (window.scrollY > 100) ? 'block' : 'none';
     });
 
     function scrollToTop() {

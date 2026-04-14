@@ -12,7 +12,7 @@
                     <h2 class="text-xl font-semibold text-gray-900">Notification Management</h2>
                     <p class="text-sm text-gray-600 mt-1">Manage and create notifications for users</p>
                 </div>
-                @if(hasPermission('infoupdates.notification.create'))
+                @can('infoupdates.notification.create')
                 <a href="{{ route('info-updates.notifications.admin.create') }}" 
                    class="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -20,7 +20,7 @@
                     </svg>
                     <span>Create Notification</span>
                 </a>
-                @endif
+                @endcan
             </div>
         </div>
 
@@ -108,13 +108,13 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex items-center space-x-3">
                                     @if($notif->notification_type === 'manual')
-                                        @if(hasPermission('infoupdates.notification.edit'))
+                                        @can('infoupdates.notification.edit')
                                         <a href="{{ route('info-updates.notifications.admin.edit', $notif->notification_id) }}" 
                                            class="text-blue-600 hover:text-blue-900">
                                             Edit
                                         </a>
-                                        @endif
-                                        @if(hasPermission('infoupdates.notification.delete'))
+                                        @endcan
+                                        @can('infoupdates.notification.delete')
                                         <form action="{{ route('info-updates.notifications.admin.destroy', $notif->notification_id) }}" 
                                               method="POST" 
                                               onsubmit="return confirm('Are you sure you want to delete this notification?');"
@@ -125,7 +125,7 @@
                                                 Delete
                                             </button>
                                         </form>
-                                        @endif
+                                        @endcan
                                     @else
                                         <span class="text-gray-400">System Generated</span>
                                     @endif

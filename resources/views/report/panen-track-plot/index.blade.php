@@ -74,6 +74,7 @@
                                 <th class="px-4 py-3 text-center font-semibold text-gray-700">Status</th>
                                 <th class="px-4 py-3 text-right font-semibold text-gray-700">HC (ha)</th>
                                 <th class="px-4 py-3 text-right font-semibold text-gray-700">Sisa (ha)</th>
+                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Mandor</th>
                                 <th class="px-4 py-3 text-right font-semibold text-gray-700">FB Rit</th>
                                 <th class="px-4 py-3 text-right font-semibold text-gray-700">FB Ton</th>
                                 <th class="px-4 py-3 text-center font-semibold text-gray-700">Jumlah SJ</th>
@@ -525,10 +526,18 @@
                     ? `<div class="space-y-1">${day.list_sj.map(sj => `
                         <div class="flex items-center gap-2">
                             <span class="w-1.5 h-1.5 bg-gray-800 rounded-full flex-shrink-0"></span>
-                            <a href="{{ route('report.report-surat-jalan-timbangan.index') }}/${sj}" target="_blank" class="text-gray-800 font-mono text-xs font-semibold underline">${sj}</a>
+                            <a href="{{ route('report.report-surat-jalan-timbangan.index') }}/${sj}" class="text-gray-800 font-mono text-xs font-semibold underline">${sj}</a>
                         </div>
                     `).join('')}</div>`
                     : '<span class="text-gray-400 italic text-xs">-</span>';
+
+                const mandorCell = day.mandors && day.mandors.length > 0
+                    ? day.mandors.map(m => `
+                        <div class="flex items-center gap-1 text-xs">
+                            <span class="font-semibold text-gray-800">${m.mandor_name || m.mandorid}</span>
+                            <span class="text-gray-400">${parseFloat(m.hc).toFixed(2)} Ha</span>
+                        </div>`).join('')
+                    : '<span class="text-gray-400">-</span>';
 
                 row.innerHTML = `
                     <td class="px-4 py-3 text-center font-bold text-gray-900 text-base">${day.hari_ke}</td>
@@ -539,6 +548,7 @@
                     <td class="px-4 py-3 text-center">${statusBadge}</td>
                     <td class="px-4 py-3 text-right font-bold ${day.has_harvest ? 'text-gray-900' : 'text-gray-400'}">${day.has_harvest ? parseFloat(day.hc).toFixed(2) : '-'}</td>
                     <td class="px-4 py-3 text-right font-bold text-gray-900">${parseFloat(day.remaining_area).toFixed(2)}</td>
+                    <td class="px-4 py-3">${mandorCell}</td>
                     <td class="px-4 py-3 text-right text-gray-700">${day.field_balance_rit ? parseFloat(day.field_balance_rit).toFixed(0) : '-'}</td>
                     <td class="px-4 py-3 text-right text-gray-700">${day.field_balance_ton ? parseFloat(day.field_balance_ton).toFixed(2) : '-'}</td>
                     <td class="px-4 py-3 text-center text-gray-900 font-semibold">
@@ -565,6 +575,7 @@
                     <td colspan="3" class="px-4 py-3 text-right text-gray-900 uppercase font-bold">Total:</td>
                     <td class="px-4 py-3 text-right text-gray-900 font-bold">${parseFloat(summary.total_hc).toFixed(2)}</td>
                     <td class="px-4 py-3 text-right text-gray-900 font-bold">${parseFloat(summary.remaining_area).toFixed(2)}</td>
+                    <td class="px-4 py-3"></td>
                     <td class="px-4 py-3 text-center text-gray-500">-</td>
                     <td class="px-4 py-3 text-center text-gray-500">-</td>
                     <td class="px-4 py-3 text-center text-gray-900 font-bold">${summary.total_sj}</td>

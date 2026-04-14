@@ -174,6 +174,7 @@ class RkhService
         });
     }
 
+    
     /**
      * Get data for show page
      */
@@ -183,23 +184,88 @@ class RkhService
         if (!$header) {
             throw new \Exception('RKH not found');
         }
-        
-        $details = $this->rkhRepo->getDetails($companycode, $rkhno);
-        $workers = $this->workerRepo->getWorkersByActivityForRkh($companycode, $rkhno);
+
+        $this->authorizeActivityGroup($header->activitygroup, $companycode);
+
+        $details   = $this->rkhRepo->getDetails($companycode, $rkhno, $header->rkhdate);
+        $workers   = $this->workerRepo->getWorkersByActivityForRkh($companycode, $rkhno);
         $kendaraan = $this->kendaraanRepo->getKendaraanByActivity($companycode, $rkhno);
-        
         $absenData = $this->absenRepo->getAttendanceData($companycode, $header->rkhdate, $header->mandorid);
         $herbisidaData = $this->masterDataRepo->getFullHerbisidaGroupData($companycode);
-        
+
+        // ============================================================
+        // Material Data: pakai hasil generate (usemateriallst) dulu,
+        // kalau kosong fallback hitung manual dari herbisidadosage
+        // ============================================================
+        $materialRaw = $this->rkhRepo->getMaterialByRkhNo($companycode, $rkhno);
+        $isEstimated = false;
+
+        if ($materialRaw->isEmpty()) {
+            // Fallback: hitung manual
+            $materialRaw = $this->buildEstimatedMaterial($companycode, $rkhno);
+            $isEstimated = true;
+        }
+
+        $materialData = $materialRaw
+            ->groupBy(fn($row) => $row->activitycode . '||' . $row->herbisidagroupid)
+            ->map(fn($items) => $items->values())
+            ->toArray();
+
         return [
-            // ✅ FIX: Match God Controller variable names
-            'rkhHeader' => $header,                      // header → rkhHeader
-            'rkhDetails' => $details,                    // details → rkhDetails
-            'workersByActivity' => $workers,             // workers → workersByActivity
-            'kendaraanByActivity' => $kendaraan,         // kendaraan → kendaraanByActivity
-            'absentenagakerja' => $absenData,
-            'herbisidagroups' => $herbisidaData,
+            'rkhHeader'           => $header,
+            'rkhDetails'          => $details,
+            'workersByActivity'   => $workers,
+            'kendaraanByActivity' => $kendaraan,
+            'absentenagakerja'    => $absenData,
+            'herbisidagroups'     => $herbisidaData,
+            'materialData'        => $materialData,
+            'isMaterialEstimated' => $isEstimated,
         ];
+    }
+
+    /**
+     * Build estimated material data (fallback)
+     * Same rounding logic as MaterialUsageGeneratorService
+     * 
+     * @param string $companycode
+     * @param string $rkhno
+     * @return \Illuminate\Support\Collection
+     */
+    private function buildEstimatedMaterial($companycode, $rkhno)
+    {
+        $raw = $this->rkhRepo->getEstimatedMaterialByRkhNo($companycode, $rkhno);
+
+        return $raw->map(function ($row) {
+            $qtyRaw = (float) $row->luasarea * (float) $row->dosageperha;
+
+            if ($qtyRaw > 0) {
+                if ($row->rounddosage == 1) {
+                    $truncated = floor($qtyRaw * 100) / 100;
+                    $qty = round($truncated / 0.05) * 0.05;
+                    if ($qty == 0) $qty = 0.05;
+                } else {
+                    $qty = round($qtyRaw, 2);
+                    if ($qty == 0) $qty = 0.01;
+                }
+            } else {
+                $qty = 0;
+            }
+
+            return (object) [
+                'plot'               => $row->plot,
+                'lkhno'              => null,
+                'itemcode'           => $row->itemcode,
+                'itemname'           => $row->itemname,
+                'qty'                => round($qty, 3),
+                'unit'               => $row->unit,
+                'dosageperha'        => $row->dosageperha,
+                'activitycode'       => $row->activitycode,
+                'herbisidagroupid'   => $row->herbisidagroupid,
+                'herbisidagroupname' => $row->herbisidagroupname,
+                'activityname'       => $row->activityname,
+                'luasarea'           => $row->luasarea,
+            ];
+        });
     }
 
     /**
@@ -211,39 +277,42 @@ class RkhService
         if (!$header) {
             throw new \Exception('RKH not found');
         }
-        
-        $details = $this->rkhRepo->getDetailsForEdit($companycode, $rkhno);
-        $workers = $this->workerRepo->getWorkersByActivityForRkh($companycode, $rkhno);
+
+        if ($header->approvalstatus === '1') {
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                'RKH sudah fully approved, tidak dapat diedit'
+            );
+        }
+
+        // Authorization check
+        $this->authorizeActivityGroup($header->activitygroup, $companycode);
+
+        $details   = $this->rkhRepo->getDetailsForEdit($companycode, $rkhno);
+        $workers   = $this->workerRepo->getWorkersByActivityForRkh($companycode, $rkhno);
         $kendaraan = $this->kendaraanRepo->getKendaraanByActivity($companycode, $rkhno);
-        
-        // Get all master data from respective repositories
-        $activities = $this->masterDataRepo->getActivitiesActive();
+
+        $activities    = $this->masterDataRepo->getActivitiesActive();
         $herbisidaData = $this->masterDataRepo->getFullHerbisidaGroupData($companycode);
-        $blokData = $this->masterDataRepo->getBlokData($companycode);
-        $masterlistData = $this->batchRepo->getAllActivePlotsWithBatch($companycode);
-        $absenData = $this->absenRepo->getDataAbsenFull($companycode, $header->rkhdate, $header->mandorid);
-        $vehicles = $this->kendaraanRepo->getVehiclesWithOperators($companycode);
-        $helpersData = $this->workerRepo->getHelpersByCompany($companycode);
-        
+        $blokData      = $this->masterDataRepo->getBlokData($companycode);
+        $masterlistData= $this->batchRepo->getAllActivePlotsWithBatch($companycode);
+        $absenData     = $this->absenRepo->getDataAbsenFull($companycode, $header->rkhdate, $header->mandorid);
+        $vehicles      = $this->kendaraanRepo->getVehiclesWithOperators($companycode);
+        $helpersData   = $this->workerRepo->getHelpersByCompany($companycode);
+
         return [
-            // ✅ FIX: Match God Controller variable names
-            'rkhHeader' => $header,              // header → rkhHeader
-            'rkhDetails' => $details,            // details → rkhDetails
-            'existingWorkers' => $workers,       // workers → existingWorkers
-            'existingKendaraan' => $kendaraan,   // kendaraan → existingKendaraan
-            
-            // Master data (sudah benar)
-            'activities' => $activities,
-            'bloks' => $blokData,
-            'masterlist' => $masterlistData,
-            'herbisida' => $herbisidaData,
-            'herbisidagroups' => $herbisidaData,
-            'vehiclesData' => $vehicles,
-            'helpersData' => $helpersData,
+            'rkhHeader'        => $header,
+            'rkhDetails'       => $details,
+            'existingWorkers'  => $workers,
+            'existingKendaraan'=> $kendaraan,
+            'activities'       => $activities,
+            'bloks'            => $blokData,
+            'masterlist'       => $masterlistData,
+            'herbisida'        => $herbisidaData,
+            'herbisidagroups'  => $herbisidaData,
+            'vehiclesData'     => $vehicles,
+            'helpersData'      => $helpersData,
             'absentenagakerja' => $absenData,
-            
-            // ✅ TAMBAH: oldInput (dipake di view)
-            'oldInput' => old(),
+            'oldInput'         => old(),
         ];
     }
 
@@ -254,26 +323,32 @@ class RkhService
     {
         return DB::transaction(function() use ($rkhno, $dto, $companycode, $userid) {
             
-            // ✅ FIX: Get header dulu untuk ambil rkhhdrid
+            // Get header dulu untuk ambil rkhhdrid
             $existingHeader = $this->rkhRepo->getHeaderForEdit($companycode, $rkhno);
             
             if (!$existingHeader) {
                 throw new \Exception("RKH {$rkhno} tidak ditemukan");
             }
+
+            if ($existingHeader->approvalstatus === '1') {
+                throw new \Illuminate\Auth\Access\AuthorizationException(
+                    'RKH sudah fully approved, tidak dapat diedit'
+                );
+            }
             
             $rkhhdrid = $existingHeader->id;
             
-            // ✅ FIX: Build components sama kayak create
+            // Build components sama kayak create
             $activityGroup = $this->getPrimaryActivityGroup($dto['rows']);
             $workers = $this->groupWorkersByActivity($dto['workers'] ?? []);
             $kendaraan = $this->groupKendaraanByActivity($dto['kendaraan'] ?? []);
             $approvalData = $this->getApprovalDataForUpdate($dto['rows'], $companycode);
             
-            // ✅ FIX: Calculate totals
+            // Calculate totals
             $totalLuas = collect($dto['rows'])->sum('luas');
             $totalManpower = collect($workers)->sum('jumlahtenagakerja');
             
-            // ✅ Update header dengan approval reset
+            // Update header dengan approval reset
             $headerData = array_merge([
                 'rkhdate' => $dto['rkhdate'],
                 'totalluas' => $totalLuas,
@@ -287,22 +362,22 @@ class RkhService
             
             $this->rkhRepo->updateHeader($companycode, $rkhno, $headerData);
             
-            // ✅ Delete old details
+            // Delete old details
             $this->rkhRepo->deleteDetails($companycode, $rkhno);
             
-            // ✅ Build & insert new details
+            // Build & insert new details
             $details = $this->buildRkhDetails($dto['rows'], $companycode, $rkhno, $dto['rkhdate'], $rkhhdrid);
             
             if (!empty($details)) {
                 $this->rkhRepo->insertDetails($details);
             }
             
-            // ✅ Replace workers
+            // Replace workers
             if (!empty($workers)) {
                 $this->workerRepo->replaceWorkersForRkh($companycode, $rkhno, $rkhhdrid, $workers);
             }
             
-            // ✅ Replace kendaraan
+            // Replace kendaraan
             if (!empty($kendaraan)) {
                 $this->kendaraanRepo->replaceKendaraanForRkh($companycode, $rkhno, $rkhhdrid, $kendaraan);
             }
@@ -617,5 +692,128 @@ class RkhService
             'jumlah_approval' => $rkh->jumlahapproval ?? 0,
             'levels' => $levels
         ];
+    }
+
+    /**
+     * Cancel RKH
+     * 
+     * @param string $rkhno
+     * @param string $alasan
+     * @param string $companycode
+     * @param string $userid
+     * @return array
+     */
+    public function cancelRkh($rkhno, $alasan, $companycode, $userid)
+    {
+        // Validate can cancel
+        $canCancel = $this->rkhRepo->canCancelRkh($companycode, $rkhno);
+        
+        if (!$canCancel['can_cancel']) {
+            return [
+                'success' => false,
+                'message' => $canCancel['reason']
+            ];
+        }
+        
+        // Validate alasan
+        if (empty(trim($alasan))) {
+            return [
+                'success' => false,
+                'message' => 'Alasan pembatalan wajib diisi'
+            ];
+        }
+        
+        if (strlen(trim($alasan)) < 10) {
+            return [
+                'success' => false,
+                'message' => 'Alasan pembatalan minimal 10 karakter'
+            ];
+        }
+        
+        // Execute cancel
+        try {
+            $updated = $this->rkhRepo->cancelRkh($companycode, $rkhno, $userid, trim($alasan));
+            
+            if ($updated) {
+                \Log::info('RKH Cancelled', [
+                    'rkhno' => $rkhno,
+                    'companycode' => $companycode,
+                    'cancelled_by' => $userid,
+                    'reason' => $alasan
+                ]);
+                
+                return [
+                    'success' => true,
+                    'message' => 'RKH berhasil dibatalkan. Material (jika ada dengan status ACTIVE) telah diupdate menjadi CANCEL.'
+                ];
+            }
+            
+            return [
+                'success' => false,
+                'message' => 'Gagal membatalkan RKH'
+            ];
+            
+        } catch (\Exception $e) {
+            \Log::error('Cancel RKH Service Error', [
+                'rkhno' => $rkhno,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat membatalkan RKH: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get batal detail
+     * 
+     * @param string $rkhno
+     * @param string $companycode
+     * @return array|null
+     */
+    public function getBatalDetail($rkhno, $companycode)
+    {
+        $rkh = $this->rkhRepo->getBatalDetail($companycode, $rkhno);
+        
+        if (!$rkh) {
+            return null;
+        }
+        
+        return [
+            'rkhno' => $rkh->rkhno,
+            'rkhdate_formatted' => \Carbon\Carbon::parse($rkh->rkhdate)->format('d/m/Y'),
+            'batalat_formatted' => \Carbon\Carbon::parse($rkh->batalat)->format('d/m/Y H:i'),
+            'batal_by_nama' => $rkh->batal_by_nama ?? 'Unknown',
+            'batalalasan' => $rkh->batalalasan
+        ];
+    }
+
+    /**
+     * Authorize current user for given activitygroup.
+     * Throws AuthorizationException if not permitted.
+     *
+     * @param string $activitygroup
+     * @param string $companycode
+     * @throws \Illuminate\Auth\Access\AuthorizationException
+     */
+    private function authorizeActivityGroup($activitygroup, $companycode): void
+    {
+        $userid = \Illuminate\Support\Facades\Auth::user()->userid;
+
+        $allowed = $this->masterDataRepo->hasActivityGroupPermission($userid, $companycode, $activitygroup);
+
+        if (!$allowed) {
+            \Log::warning('RKH Authorization Failed', [
+                'userid'        => $userid,
+                'companycode'   => $companycode,
+                'activitygroup' => $activitygroup,
+            ]);
+
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                "User {$userid} tidak memiliki akses ke activity group {$activitygroup}"
+            );
+        }
     }
 }

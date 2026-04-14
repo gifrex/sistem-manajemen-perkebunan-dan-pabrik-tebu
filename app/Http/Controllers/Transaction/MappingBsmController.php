@@ -75,11 +75,14 @@ class MappingBsmController extends Controller
         try {
             $Rkhhdr = new Rkhhdr();
             $data = $Rkhhdr->getBsmDetailByRkh($companycode, $rkhno);
-            
+            $orphanData = $Rkhhdr->getOrphanBsmByRkh($companycode, $rkhno);
+
             return response()->json([
                 'success' => true,
                 'data' => $data,
-                'total' => count($data)
+                'total' => count($data),
+                'orphan_data' => $orphanData,
+                'orphan_total' => count($orphanData),
             ]);
             
         } catch (\Exception $e) {
@@ -606,5 +609,70 @@ class MappingBsmController extends Controller
         }
     }
 
+    public function remapBsm(Request $request)
+    {
+        try {
+            $request->validate([
+                'bsm_id'              => 'required|integer',
+                'target_suratjalanno' => 'required|string',
+                'rkhno'               => 'required|string',
+            ]);
 
+            $companycode = session('companycode');
+            $bsmId       = $request->bsm_id;
+            $targetSj    = $request->target_suratjalanno;
+            $rkhno       = $request->rkhno;
+
+            // Pastikan BSM ini memang milik RKH ini
+            $bsm = DB::selectOne("
+                SELECT c.id, c.suratjalanno
+                FROM lkhdetailbsm c
+                INNER JOIN lkhhdr b ON c.lkhno = b.lkhno AND b.companycode = c.companycode
+                WHERE c.id = ? AND c.companycode = ? AND b.rkhno = ?
+            ", [$bsmId, $companycode, $rkhno]);
+
+            if (!$bsm) {
+                return response()->json(['success' => false, 'message' => 'Data BSM tidak ditemukan'], 404);
+            }
+
+            // Pastikan SJ tujuan ada di suratjalanpos
+            $targetInfo = DB::selectOne("
+                SELECT plot FROM suratjalanpos WHERE companycode = ? AND suratjalanno = ?
+            ", [$companycode, $targetSj]);
+
+            if (!$targetInfo) {
+                return response()->json(['success' => false, 'message' => 'Surat jalan tujuan tidak ditemukan'], 404);
+            }
+
+            // Pastikan SJ tujuan belum punya BSM lain
+            $existing = DB::selectOne("
+                SELECT id FROM lkhdetailbsm WHERE companycode = ? AND suratjalanno = ? AND id != ?
+            ", [$companycode, $targetSj, $bsmId]);
+
+            if ($existing) {
+                return response()->json(['success' => false, 'message' => 'Surat jalan tujuan sudah memiliki data BSM'], 400);
+            }
+
+            DB::table('lkhdetailbsm')
+                ->where('id', $bsmId)
+                ->where('companycode', $companycode)
+                ->update([
+                    'suratjalanno' => $targetSj,
+                    'plot'         => $targetInfo->plot,
+                    'updateby'     => auth()->user()->userid,
+                    'updatedat'    => now(),
+                ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "BSM berhasil dihubungkan ke surat jalan {$targetSj}",
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error in remapBsm', ['message' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
+        }
+    }
 }
