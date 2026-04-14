@@ -341,7 +341,7 @@ class TrashController extends Controller
             $pucukPct    = $beratKotor > 0 ? $this->round3(($pucuk / $beratKotor) * 100) : 0;
             $sogolanPct  = $beratKotor > 0 ? $this->round3(($sogolan / $beratKotor) * 100) : 0;
             $siwlanPct   = $beratKotor > 0 ? $this->round3(($siwilan / $beratKotor) * 100) : 0;
-            $tanahEtc3   = $this->round3($tanahEtc);
+            $tanahEtc3   = $beratKotor > 0 ? $this->round3(($tanahEtc / $beratKotor) * 100) : 0;
 
             // Calculate totals (ambil 4 desimal, bulatkan ke 3 via string)
             $totalTrash = $this->round3($tebumatiPct + $daunPct + $pucukPct + $sogolanPct + $siwlanPct + $tanahEtc3);
@@ -439,7 +439,7 @@ class TrashController extends Controller
             $pucukPct    = $beratKotor > 0 ? $this->round3(($pucuk / $beratKotor) * 100) : 0;
             $sogolanPct  = $beratKotor > 0 ? $this->round3(($sogolan / $beratKotor) * 100) : 0;
             $siwlanPct   = $beratKotor > 0 ? $this->round3(($siwilan / $beratKotor) * 100) : 0;
-            $tanahEtc3   = $this->round3($tanahEtc);
+            $tanahEtc3   = $beratKotor > 0 ? $this->round3(($tanahEtc / $beratKotor) * 100) : 0;
 
             // Calculate totals (ambil 4 desimal, bulatkan ke 3 via string)
             $totalTrash = $this->round3($tebumatiPct + $daunPct + $pucukPct + $sogolanPct + $siwlanPct + $tanahEtc3);
