@@ -49,15 +49,19 @@
         
         <div class="mb-6 border-b border-gray-200">
             <nav class="flex space-x-4">
-                <a href="?activity={{$activityFilter}}&tab={{ request('tab','table') }}" 
-                class="py-2 px-4 border-b-2 font-medium text-sm {{$cropType!=='p'?'border-blue-600 text-blue-600':'border-transparent text-gray-500 hover:text-gray-700'}}">
-                📊 Timeline
-                </a>
-                
-                <a href="?crop=p&activity={{$activityFilter}}&tab={{ request('tab','table') }}"
-                class="py-2 px-4 border-b-2 font-medium text-sm {{$cropType==='p'?'border-blue-600 text-blue-600':'border-transparent text-gray-500 hover:text-gray-700'}}">
-                 🌾 Panen
-                </a>
+                {{-- Toggle Timeline / Panen --}}
+                <div style="display:flex;background:#f3f4f6;border-radius:8px;padding:3px;gap:2px;">
+                    <a href="?activity={{$activityFilter}}&tab={{ request('tab','table') }}"
+                       style="padding:5px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;
+                              {{ $cropType!=='p' ? 'background:white;color:#2563eb;box-shadow:0 1px 3px rgba(0,0,0,.15);' : 'color:#6b7280;' }}">
+                        📊 Timeline
+                    </a>
+                    <a href="?crop=p&activity={{$activityFilter}}&tab={{ request('tab','table') }}"
+                       style="padding:5px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;
+                              {{ $cropType==='p' ? 'background:white;color:#2563eb;box-shadow:0 1px 3px rgba(0,0,0,.15);' : 'color:#6b7280;' }}">
+                        🌾 Panen
+                    </a>
+                </div>
                 
                 <button 
                 @click="activeTab = activeTab === 'map' ? 'table' : 'map'; activeTab === 'map' && $nextTick(() => initMapIfNeeded())" 
@@ -1281,7 +1285,7 @@ function getRingColor(d) {
     }
 
     function renderPanenEfisiensi() {
-        const cats = { siap: [], ready: [], panen: [], proses: [] };
+        const cats = { siap: [], ready: [], panen: [] };
 
         Object.entries(plotActivityDetails).forEach(([plot, d]) => {
             const color = getPlotColor(d);
@@ -1299,14 +1303,13 @@ function getRingColor(d) {
             if (d.is_panen)              cats.panen.push({...item, cat:'panen'});
             else if (color === '#3b82f6') cats.ready.push({...item, cat:'ready'});
             else if (color === '#fb923c') cats.siap.push({...item, cat:'siap'});
-            else                          cats.proses.push({...item, cat:'proses'});
+            // proses/belum siap: tidak ditampilkan di proporsi panen
         });
 
         const totalSiap      = cats.siap.reduce((s,p)  => s+p.luas, 0);
         const totalReady     = cats.ready.reduce((s,p) => s+p.luas, 0);
         const totalPanen     = cats.panen.reduce((s,p) => s+p.luas, 0);
-        const totalProses    = cats.proses.reduce((s,p)=> s+p.luas, 0);
-        const totalAll       = totalSiap + totalReady + totalPanen + totalProses;
+        const totalAll       = totalSiap + totalReady + totalPanen; // hanya yg relevan panen
         const totalSiapReady = totalSiap + totalReady;
 
         const STORAGE_KEY = 'panen_snapshots_{{ session("companycode") ?? "default" }}';
@@ -1328,19 +1331,14 @@ function getRingColor(d) {
                 <div style="font-size:11px;color:#1e3a8a;">${cats.ready.length} plot</div>
             </div>
             <div style="background:#fef9c3;border:2px solid #facc15;border-radius:8px;padding:10px;text-align:center;">
-                <div style="font-size:10px;color:#854d0e;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Total Siap + Ready</div>
+                <div style="font-size:10px;color:#854d0e;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Antrian Panen (Siap+Ready)</div>
                 <div style="font-size:22px;font-weight:800;color:#d97706;">${totalSiapReady.toFixed(2)} HA</div>
-                <div style="font-size:11px;color:#92400e;">${pctSiapReady}% dr total lahan</div>
+                <div style="font-size:11px;color:#92400e;">${pctSiapReady}% dari pipeline</div>
             </div>
             <div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:8px;padding:10px;text-align:center;">
                 <div style="font-size:10px;color:#166534;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Sudah Panen</div>
                 <div style="font-size:22px;font-weight:800;color:#16a34a;">${totalPanen.toFixed(2)} HA</div>
                 <div style="font-size:11px;color:#14532d;">${cats.panen.length} plot · ${pctPanen}%</div>
-            </div>
-            <div style="background:#f9fafb;border:1px solid #d1d5db;border-radius:8px;padding:10px;text-align:center;">
-                <div style="font-size:10px;color:#6b7280;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Total Lahan</div>
-                <div style="font-size:22px;font-weight:800;color:#374151;">${totalAll.toFixed(2)} HA</div>
-                <div style="font-size:11px;color:#6b7280;">${Object.keys(plotActivityDetails).length} plot aktif</div>
             </div>
         </div>
 
@@ -1364,17 +1362,16 @@ function getRingColor(d) {
             </thead>
             <tbody>`;
 
-        const allPlots = [...cats.siap, ...cats.ready, ...cats.panen, ...cats.proses];
+        const allPlots = [...cats.siap, ...cats.ready, ...cats.panen]; // hanya yg relevan panen
         allPlots.sort((a,b) => a.plot.localeCompare(b.plot));
 
         const byBlok = {};
         allPlots.forEach(p => { if (!byBlok[p.blok]) byBlok[p.blok]=[]; byBlok[p.blok].push(p); });
 
         const catLabels = {
-            siap  : { label:'🟠 Siap Panen',  bg:'#fff7ed', color:'#ea580c', border:'#fed7aa' },
-            ready : { label:'🔵 Ready Panen',  bg:'#eff6ff', color:'#2563eb', border:'#bfdbfe' },
-            panen : { label:'✅ Sudah Panen',  bg:'#f0fdf4', color:'#16a34a', border:'#bbf7d0' },
-            proses: { label:'⬜ Dalam Proses', bg:'#fafafa', color:'#6b7280', border:'#e5e7eb' },
+            siap : { label:'🟠 Siap Panen', bg:'#fff7ed', color:'#ea580c', border:'#fed7aa' },
+            ready: { label:'🔵 Ready Panen', bg:'#eff6ff', color:'#2563eb', border:'#bfdbfe' },
+            panen: { label:'✅ Sudah Panen', bg:'#f0fdf4', color:'#16a34a', border:'#bbf7d0' },
         };
 
         Object.keys(byBlok).sort().forEach(blok => {
@@ -1407,7 +1404,7 @@ function getRingColor(d) {
                 <td colspan="2" style="border:1px solid #d1d5db;padding:5px 8px;text-align:right;color:#92400e;">TOTAL</td>
                 <td style="border:1px solid #d1d5db;padding:5px 8px;text-align:right;color:#92400e;">${totalAll.toFixed(2)}</td>
                 <td colspan="2" style="border:1px solid #d1d5db;padding:5px 8px;font-size:10px;color:#6b7280;">
-                    Siap: ${totalSiap.toFixed(1)} · Ready: ${totalReady.toFixed(1)} · Panen: ${totalPanen.toFixed(1)} · Proses: ${totalProses.toFixed(1)}
+                    Siap: ${totalSiap.toFixed(1)} · Ready: ${totalReady.toFixed(1)} · Sudah Panen: ${totalPanen.toFixed(1)}
                 </td>
             </tr></tfoot>
         </table></div>
