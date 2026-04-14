@@ -421,11 +421,11 @@
     </div>
     <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
       <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#fb923c;border:1px solid #d1d5db;"></span>
-      <span>Orange — <strong>siap panen</strong> (umur ≥ 9 bln, belum ZPK)</span>
+      <span>Orange — <strong>siap panen</strong> (umur ≥ 9 bln, belum ZPK) → perlu jadwal ZPK</span>
     </div>
     <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
       <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#3b82f6;border:1px solid #d1d5db;"></span>
-      <span>Biru — siap panen (ZPK 25–35 hari)</span>
+      <span>Biru — <strong>ready tebang</strong> (ZPK 25–35 hari) → window optimal panen</span>
     </div>
     <div class="flex items-center gap-2 bg-white border rounded px-2 py-1">
       <span class="inline-block w-4 h-4 rounded-full flex-shrink-0" style="background:#000;opacity:.30;border:1px solid #d1d5db;"></span>
@@ -869,7 +869,7 @@ function getRingColor(d) {
                     d.innerHTML = `<i class="${this._cls}" style="font-size:17px;color:${this._clr};filter:drop-shadow(0 1px 2px rgba(0,0,0,.55));"></i>`;
                     if (this._fn) d.addEventListener('click', this._fn);
                     this.div = d;
-                    this.getPanes().overlayMouseTarget.appendChild(d);
+                    this.getPanes().floatPane.appendChild(d);
                 }
                 draw() {
                     const proj = this.getProjection();
@@ -1321,12 +1321,12 @@ function getRingColor(d) {
         let html = `
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:16px;">
             <div style="background:#fff7ed;border:2px solid #fb923c;border-radius:8px;padding:10px;text-align:center;">
-                <div style="font-size:10px;color:#92400e;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Siap Panen (belum ZPK)</div>
+                <div style="font-size:10px;color:#92400e;font-weight:700;text-transform:uppercase;margin-bottom:3px;">🟠 Siap — Perlu ZPK Dulu</div>
                 <div style="font-size:22px;font-weight:800;color:#ea580c;">${totalSiap.toFixed(2)} HA</div>
                 <div style="font-size:11px;color:#9a3412;">${cats.siap.length} plot</div>
             </div>
             <div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:8px;padding:10px;text-align:center;">
-                <div style="font-size:10px;color:#1e40af;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Ready Panen (ZPK aktif)</div>
+                <div style="font-size:10px;color:#1e40af;font-weight:700;text-transform:uppercase;margin-bottom:3px;">🔵 Ready — ZPK 25–35 Hari (Tebang!</div>
                 <div style="font-size:22px;font-weight:800;color:#2563eb;">${totalReady.toFixed(2)} HA</div>
                 <div style="font-size:11px;color:#1e3a8a;">${cats.ready.length} plot</div>
             </div>
@@ -1369,9 +1369,9 @@ function getRingColor(d) {
         allPlots.forEach(p => { if (!byBlok[p.blok]) byBlok[p.blok]=[]; byBlok[p.blok].push(p); });
 
         const catLabels = {
-            siap : { label:'🟠 Siap Panen', bg:'#fff7ed', color:'#ea580c', border:'#fed7aa' },
-            ready: { label:'🔵 Ready Panen', bg:'#eff6ff', color:'#2563eb', border:'#bfdbfe' },
-            panen: { label:'✅ Sudah Panen', bg:'#f0fdf4', color:'#16a34a', border:'#bbf7d0' },
+            siap : { label:'🟠 Siap — perlu ZPK',       bg:'#fff7ed', color:'#ea580c', border:'#fed7aa' },
+            ready: { label:'🔵 Ready — tebang sekarang', bg:'#eff6ff', color:'#2563eb', border:'#bfdbfe' },
+            panen: { label:'✅ Sudah Panen',             bg:'#f0fdf4', color:'#16a34a', border:'#bbf7d0' },
         };
 
         Object.keys(byBlok).sort().forEach(blok => {
