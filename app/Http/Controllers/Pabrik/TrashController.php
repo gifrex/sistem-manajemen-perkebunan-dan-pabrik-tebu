@@ -335,7 +335,7 @@ class TrashController extends Controller
             $tanahEtc = $this->parseDecimal($request->tanah_etc ?? '0');
             $beratKotor = $this->parseDecimal($request->berat_kotor);
 
-            // Calculate percentages based on berat kotor (ambil 4 desimal, bulatkan ke 3)
+            // Calculate percentages based on berat kotor (ambil 4 desimal, bulatkan ke 3 via string)
             $tebumatiPct = $beratKotor > 0 ? $this->round3(($tebumati / $beratKotor) * 100) : 0;
             $daunPct     = $beratKotor > 0 ? $this->round3(($daunGulma / $beratKotor) * 100) : 0;
             $pucukPct    = $beratKotor > 0 ? $this->round3(($pucuk / $beratKotor) * 100) : 0;
@@ -343,7 +343,7 @@ class TrashController extends Controller
             $siwlanPct   = $beratKotor > 0 ? $this->round3(($siwilan / $beratKotor) * 100) : 0;
             $tanahEtc3   = $this->round3($tanahEtc);
 
-            // Calculate totals (ambil 4 desimal, bulatkan ke 3)
+            // Calculate totals (ambil 4 desimal, bulatkan ke 3 via string)
             $totalTrash = $this->round3($tebumatiPct + $daunPct + $pucukPct + $sogolanPct + $siwlanPct + $tanahEtc3);
             $nettoTrash = $this->round3($totalTrash - $toleransi);
 
@@ -433,7 +433,7 @@ class TrashController extends Controller
             $tanahEtc = $this->parseDecimal($request->tanah_etc ?? '0');
             $beratKotor = $this->parseDecimal($request->berat_kotor);
 
-            // Calculate percentages based on berat kotor (ambil 4 desimal, bulatkan ke 3)
+            // Calculate percentages based on berat kotor (ambil 4 desimal, bulatkan ke 3 via string)
             $tebumatiPct = $beratKotor > 0 ? $this->round3(($tebumati / $beratKotor) * 100) : 0;
             $daunPct     = $beratKotor > 0 ? $this->round3(($daunGulma / $beratKotor) * 100) : 0;
             $pucukPct    = $beratKotor > 0 ? $this->round3(($pucuk / $beratKotor) * 100) : 0;
@@ -441,7 +441,7 @@ class TrashController extends Controller
             $siwlanPct   = $beratKotor > 0 ? $this->round3(($siwilan / $beratKotor) * 100) : 0;
             $tanahEtc3   = $this->round3($tanahEtc);
 
-            // Calculate totals (ambil 4 desimal, bulatkan ke 3)
+            // Calculate totals (ambil 4 desimal, bulatkan ke 3 via string)
             $totalTrash = $this->round3($tebumatiPct + $daunPct + $pucukPct + $sogolanPct + $siwlanPct + $tanahEtc3);
             $nettoTrash = $this->round3($totalTrash - $toleransi);
 
@@ -511,21 +511,30 @@ class TrashController extends Controller
     }
 
     /**
-     * Round to 3 decimal places using the 4th decimal digit.
-     * Truncate to 4 decimal places first, then round to 3.
-     * 4th digit 1-4 => round down, 5-9 => round up.
-     * Example: 1.07956 -> truncate4 -> 1.0795 -> round3 -> 1.080
-     * Example: 1.07944 -> truncate4 -> 1.0794 -> round3 -> 1.079
+     * Round to 3 decimal places using the 4th decimal digit (string-based, avoids float precision issues).
+     * Step 1: Format to string with 10 decimal places.
+     * Step 2: Read the 4th decimal digit directly from the string.
+     * Step 3: Truncate to 3 decimal places, then add 0.001 if digit >= 5.
+     * Example: 1.07956 -> digit4='5' -> 1.079 + 0.001 = 1.080
+     * Example: 1.07944 -> digit4='4' -> 1.079 (no change)
      */
     private function round3($value)
     {
-        // Truncate to 4 decimal places (no rounding at this step)
         $str = number_format((float) $value, 10, '.', '');
         $dot = strpos($str, '.');
-        $truncated4 = (float) substr($str, 0, $dot + 5);
 
-        // Round to 3 decimal places based on 4th decimal (half up)
-        return round($truncated4, 3, PHP_ROUND_HALF_UP);
+        // Read 4th decimal digit directly from string (avoids float precision bug)
+        $digit4 = isset($str[$dot + 4]) ? (int) $str[$dot + 4] : 0;
+
+        // Truncate to 3 decimal places
+        $base = (float) substr($str, 0, $dot + 4);
+
+        // Round up if 4th digit is 5-9
+        if ($digit4 >= 5) {
+            $base = round($base + 0.001, 3);
+        }
+
+        return $base;
     }
 
     /**
