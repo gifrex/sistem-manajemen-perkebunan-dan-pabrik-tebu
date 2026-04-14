@@ -8,8 +8,10 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
-use Box\Spout\Writer\Common\Creator\Style\StyleBuilder;
-use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
+use OpenSpout\Writer\XLSX\Writer;
+use OpenSpout\Writer\XLSX\Options;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Style;
 
 class RencanaKerjaMingguanController extends Controller
 {
@@ -46,6 +48,7 @@ class RencanaKerjaMingguanController extends Controller
         $endDate = $request->input('end_date', Carbon::now()->endOfWeek()->format('Y-m-d'));
 
         $userid = Auth::user()->userid;
+        $jabatan = Auth::user()->idjabatan;
 
         if ($request->isMethod('post')) {
             $request->validate([
@@ -66,7 +69,7 @@ class RencanaKerjaMingguanController extends Controller
                 $query->whereDate('rkmhdr.rkmdate', '<=', $endDate);
             });
 
-        if ($userid != 'Admin') {
+        if ($jabatan != 0) {
             $querys->where('rkmhdr.inputby', '=', $userid);
         }
 
@@ -492,69 +495,49 @@ class RencanaKerjaMingguanController extends Controller
 
         $tempFile = $tempDir . '/' . $filename;
 
-
-        $writer = WriterEntityFactory::createXLSXWriter();
-
-
-        $writer->setTempFolder($tempDir);
-
+        $writer = new Writer(new Options(tempFolder: $tempDir));
         $writer->openToFile($tempFile);
 
+        $headerStyle = new Style(fontBold: true);
 
-        $headerStyle = (new StyleBuilder())
-            ->setFontBold()
-            ->build();
+        $writer->addRow(Row::fromValuesWithStyle([
+            'No. RKM',
+            'RKM Date',
+            'Start Date',
+            'End Date',
+            'Blok',
+            'Plot',
+            'Luas Plot (Ha)',
+            'Estimasi Pengerjaan (Ha)',
+            'Aktual Pengerjaan (Ha)',
+            'Sisa (Ha)',
+            'Kode Aktivitas',
+            'Nama Aktivitas',
+            'Dibuat Oleh',
+        ], $headerStyle));
 
-
-        $headerCells = [
-            WriterEntityFactory::createCell('No. RKM'),
-            WriterEntityFactory::createCell('RKM Date'),
-            WriterEntityFactory::createCell('Start Date'),
-            WriterEntityFactory::createCell('End Date'),
-            WriterEntityFactory::createCell('Blok'),
-            WriterEntityFactory::createCell('Plot'),
-            WriterEntityFactory::createCell('Luas Plot (Ha)'),
-            WriterEntityFactory::createCell('Estimasi Pengerjaan (Ha)'),
-            WriterEntityFactory::createCell('Aktual Pengerjaan (Ha)'),
-            WriterEntityFactory::createCell('Sisa (Ha)'),
-            WriterEntityFactory::createCell('Kode Aktivitas'),
-            WriterEntityFactory::createCell('Nama Aktivitas'),
-            WriterEntityFactory::createCell('Dibuat Oleh'),
-        ];
-
-        $headerRow = WriterEntityFactory::createRow($headerCells, $headerStyle);
-        $writer->addRow($headerRow);
-
-
-        $query->chunk(1000, function ($rkmChunk) use ($writer, $now) {
+        $query->chunk(1000, function ($rkmChunk) use ($writer) {
             $rows = [];
 
             foreach ($rkmChunk as $list) {
-                $decimalStyle = (new StyleBuilder())
-                    ->setFormat('0.00')
-                    ->build();
-
-                $cells = [
-                    WriterEntityFactory::createCell($list->rkmno),
-                    WriterEntityFactory::createCell($list->rkmdate),
-                    WriterEntityFactory::createCell($list->startdate),
-                    WriterEntityFactory::createCell($list->enddate),
-                    WriterEntityFactory::createCell($list->blok),
-                    WriterEntityFactory::createCell($list->plot),
-                    WriterEntityFactory::createCell($list->totalluasactual),
-                    WriterEntityFactory::createCell($list->totalestimasi),
-                    WriterEntityFactory::createCell($list->hasil),
-                    WriterEntityFactory::createCell($list->sisa),
-                    WriterEntityFactory::createCell($list->activitycode),
-                    WriterEntityFactory::createCell($list->activityname),
-                    WriterEntityFactory::createCell($list->inputby),
-                ];
-
-                $rows[] = WriterEntityFactory::createRow($cells);
+                $rows[] = Row::fromValues([
+                    $list->rkmno,
+                    $list->rkmdate,
+                    $list->startdate,
+                    $list->enddate,
+                    $list->blok,
+                    $list->plot,
+                    $list->totalluasactual,
+                    $list->totalestimasi,
+                    $list->hasil,
+                    $list->sisa,
+                    $list->activitycode,
+                    $list->activityname,
+                    $list->inputby,
+                ]);
             }
 
             $writer->addRows($rows);
-
             unset($rows);
             gc_collect_cycles();
         });

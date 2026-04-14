@@ -9,8 +9,11 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
-use Box\Spout\Writer\Common\Creator\Style\StyleBuilder;
-use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
+use OpenSpout\Writer\XLSX\Writer;
+use OpenSpout\Writer\XLSX\Options;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Cell;
+use OpenSpout\Common\Entity\Style\Style;
 
 class AgronomiController extends Controller
 {
@@ -589,117 +592,116 @@ class AgronomiController extends Controller
             mkdir($tempDir, 0755, true);
         $tempFile = "$tempDir/$filename";
 
-        $writer = WriterEntityFactory::createXLSXWriter();
-        $writer->setTempFolder($tempDir);
+        $writer = new Writer(new Options(tempFolder: $tempDir));
         $writer->openToFile($tempFile);
 
-        $headerStyle = (new StyleBuilder())->setFontBold()->build();
+        $headerStyle = new Style(fontBold: true);
 
-        $headerCells = array_map(
-            fn($h) => WriterEntityFactory::createCell($h),
-            [
-                'No. Sample',
-                'Kebun',
-                'Blok',
-                'Plot',
-                'Luas',
-                'Varietas',
-                'Kategori',
-                'Tanggal Tanam',
-                'Umur Tanam',
-                'Jarak Tanam',
-                'Tanggal Pengamatan',
-                'Bulan Pengamatan',
-                'Bulan Panen',
-                'Umur Panen',
-                'Tanggal ZPK',
-                'No. Urut',
-                'Jumlah Batang',
-                'Jumlah Batang Primer',
-                'Jumlah Batang Sekunder',
-                'Jumlah Batang Tersier',
-                'Jumlah Batang Kuarter',
-                'Panjang GAP',
-                '%GAP',
-                '%Germinasi',
-                'pH Tanah',
-                'Populasi',
-                'Kotak Gulma',
-                '%Penutupan Gulma',
-                'Tinggi Primer',
-                'Tinggi Sekunder',
-                'Tinggi Tersier',
-                'Tinggi Kuarter',
-                'Diameter Primer',
-                'Diameter Sekunder',
-                'Diameter Tersier',
-                'Diameter Kuarter',
-                'Berat Batang Primer',
-                'Berat Batang Sekunder',
-                'Berat Batang Tersier',
-                'Berat Batang Kuarter',
-                'Brix Batang Primer',
-                'Brix Batang Sekunder',
-                'Brix Batang Tersier',
-                'Brix Batang Kuarter',
-            ]
-        );
-        $writer->addRow(WriterEntityFactory::createRow($headerCells, $headerStyle));
+        $writer->addRow(Row::fromValuesWithStyle([
+            'No. Sample',
+            'Kebun',
+            'Blok',
+            'Plot',
+            'Luas',
+            'Varietas',
+            'Kategori',
+            'Tanggal Tanam',
+            'Umur Tanam',
+            'Jarak Tanam',
+            'Tanggal Pengamatan',
+            'Bulan Pengamatan',
+            'Bulan Panen',
+            'Umur Panen',
+            'Tanggal ZPK',
+            'No. Urut',
+            'Jumlah Batang',
+            'Jumlah Batang Primer',
+            'Jumlah Batang Sekunder',
+            'Jumlah Batang Tersier',
+            'Jumlah Batang Kuarter',
+            'Panjang GAP',
+            '%GAP',
+            '%Germinasi',
+            'pH Tanah',
+            'Populasi',
+            'Kotak Gulma',
+            '%Penutupan Gulma',
+            'Tinggi Primer',
+            'Tinggi Sekunder',
+            'Tinggi Tersier',
+            'Tinggi Kuarter',
+            'Diameter Primer',
+            'Diameter Sekunder',
+            'Diameter Tersier',
+            'Diameter Kuarter',
+            'Berat Batang Primer',
+            'Berat Batang Sekunder',
+            'Berat Batang Tersier',
+            'Berat Batang Kuarter',
+            'Brix Batang Primer',
+            'Brix Batang Sekunder',
+            'Brix Batang Tersier',
+            'Brix Batang Kuarter',
+        ], $headerStyle));
 
         $now = Carbon::now();
-        $query->chunk(1000, function ($chunk) use ($writer, $now) {
+        $dec1 = new Style(format: '0.0');
+        $dec2 = new Style(format: '0.00');
+        $dec3 = new Style(format: '0.000');
+        $dec4 = new Style(format: '0.0000');
+
+        $query->chunk(1000, function ($chunk) use ($writer, $now, $dec1, $dec2, $dec3, $dec4) {
             $rows = [];
             foreach ($chunk as $list) {
                 $tglTanam = Carbon::parse($list->tanggaltanam);
                 $umurTanam = $tglTanam->diffInMonths($now);
                 $bulanPengamatan = Carbon::parse($list->tanggalpengamatan)->format('F');
-                $dec2 = (new StyleBuilder())->setFormat('0.00')->build();
 
-                $rows[] = WriterEntityFactory::createRow([
-                    WriterEntityFactory::createCell($list->nosample),
-                    WriterEntityFactory::createCell($list->compName),
-                    WriterEntityFactory::createCell($list->blokName),
-                    WriterEntityFactory::createCell($list->plotName),
-                    WriterEntityFactory::createCell(round((float) $list->luasarea, 10)),
-                    WriterEntityFactory::createCell($list->varietas),
-                    WriterEntityFactory::createCell($list->kat),
-                    WriterEntityFactory::createCell($tglTanam->format('d-M-Y')),
-                    WriterEntityFactory::createCell(round($umurTanam) . ' Bulan'),
-                    WriterEntityFactory::createCell(round((float) $list->jaraktanam, 10)),
-                    WriterEntityFactory::createCell(Carbon::parse($list->tanggalpengamatan)->format('d-M-Y')),
-                    WriterEntityFactory::createCell($bulanPengamatan),
-                    WriterEntityFactory::createCell($list->bulanpanen),
-                    WriterEntityFactory::createCell($list->umurpanen),
-                    WriterEntityFactory::createCell($list->tanggalzpk ? Carbon::parse($list->tanggalzpk)->format('d-M-Y') : '-'),
-                    WriterEntityFactory::createCell($list->nourut),
-                    WriterEntityFactory::createCell($list->jumlahbatang),
-                    WriterEntityFactory::createCell($list->bat_primer),
-                    WriterEntityFactory::createCell($list->bat_sekunder),
-                    WriterEntityFactory::createCell($list->bat_tersier),
-                    WriterEntityFactory::createCell($list->bat_kuarter),
-                    WriterEntityFactory::createCell($list->pan_gap),
-                    WriterEntityFactory::createCell(round((float) $list->per_gap, 10), $dec2),
-                    WriterEntityFactory::createCell(round((float) $list->per_germinasi, 10), $dec2),
-                    WriterEntityFactory::createCell(round((float) $list->ph_tanah, 10)),
-                    WriterEntityFactory::createCell(round((float) $list->populasi, 10)),
-                    WriterEntityFactory::createCell($list->ktk_gulma),
-                    WriterEntityFactory::createCell(round((float) $list->per_gulma, 10), $dec2),
-                    WriterEntityFactory::createCell($list->t_primer),
-                    WriterEntityFactory::createCell($list->t_sekunder),
-                    WriterEntityFactory::createCell($list->t_tersier),
-                    WriterEntityFactory::createCell($list->t_kuarter),
-                    WriterEntityFactory::createCell(round((float) $list->d_primer, 1), (new StyleBuilder())->setFormat('0.0')->build()),
-                    WriterEntityFactory::createCell(round((float) $list->d_sekunder, 2), $dec2),
-                    WriterEntityFactory::createCell(round((float) $list->d_tersier, 3), (new StyleBuilder())->setFormat('0.000')->build()),
-                    WriterEntityFactory::createCell(round((float) $list->d_kuarter, 4), (new StyleBuilder())->setFormat('0.0000')->build()),
-                    WriterEntityFactory::createCell($list->berat_primer),
-                    WriterEntityFactory::createCell($list->berat_sekunder),
-                    WriterEntityFactory::createCell($list->berat_tersier),
-                    WriterEntityFactory::createCell($list->berat_kuarter),
-                    WriterEntityFactory::createCell(round((float) $list->brix_primer, 2), $dec2),
-                    WriterEntityFactory::createCell(round((float) $list->brix_sekunder, 2), $dec2),
-                    WriterEntityFactory::createCell(round((float) $list->brix_tersier, 2), $dec2),
-                    WriterEntityFactory::createCell(round((float) $list->brix_kuarter, 2), $dec2),
+                $rows[] = new Row([
+                    Cell::fromValue($list->nosample),
+                    Cell::fromValue($list->compName),
+                    Cell::fromValue($list->blokName),
+                    Cell::fromValue($list->plotName),
+                    Cell::fromValue(round((float) $list->luasarea, 10)),
+                    Cell::fromValue($list->varietas),
+                    Cell::fromValue($list->kat),
+                    Cell::fromValue($tglTanam->format('d-M-Y')),
+                    Cell::fromValue(round($umurTanam) . ' Bulan'),
+                    Cell::fromValue(round((float) $list->jaraktanam, 10)),
+                    Cell::fromValue(Carbon::parse($list->tanggalpengamatan)->format('d-M-Y')),
+                    Cell::fromValue($bulanPengamatan),
+                    Cell::fromValue($list->bulanpanen),
+                    Cell::fromValue($list->umurpanen),
+                    Cell::fromValue($list->tanggalzpk ? Carbon::parse($list->tanggalzpk)->format('d-M-Y') : '-'),
+                    Cell::fromValue($list->nourut),
+                    Cell::fromValue($list->jumlahbatang),
+                    Cell::fromValue($list->bat_primer),
+                    Cell::fromValue($list->bat_sekunder),
+                    Cell::fromValue($list->bat_tersier),
+                    Cell::fromValue($list->bat_kuarter),
+                    Cell::fromValue($list->pan_gap),
+                    Cell::fromValue(round((float) $list->per_gap, 10), $dec2),
+                    Cell::fromValue(round((float) $list->per_germinasi, 10), $dec2),
+                    Cell::fromValue(round((float) $list->ph_tanah, 10)),
+                    Cell::fromValue(round((float) $list->populasi, 10)),
+                    Cell::fromValue($list->ktk_gulma),
+                    Cell::fromValue(round((float) $list->per_gulma, 10), $dec2),
+                    Cell::fromValue($list->t_primer),
+                    Cell::fromValue($list->t_sekunder),
+                    Cell::fromValue($list->t_tersier),
+                    Cell::fromValue($list->t_kuarter),
+                    Cell::fromValue(round((float) $list->d_primer, 1), $dec1),
+                    Cell::fromValue(round((float) $list->d_sekunder, 2), $dec2),
+                    Cell::fromValue(round((float) $list->d_tersier, 3), $dec3),
+                    Cell::fromValue(round((float) $list->d_kuarter, 4), $dec4),
+                    Cell::fromValue($list->berat_primer),
+                    Cell::fromValue($list->berat_sekunder),
+                    Cell::fromValue($list->berat_tersier),
+                    Cell::fromValue($list->berat_kuarter),
+                    Cell::fromValue(round((float) $list->brix_primer, 2), $dec2),
+                    Cell::fromValue(round((float) $list->brix_sekunder, 2), $dec2),
+                    Cell::fromValue(round((float) $list->brix_tersier, 2), $dec2),
+                    Cell::fromValue(round((float) $list->brix_kuarter, 2), $dec2),
                 ]);
             }
             $writer->addRows($rows);
