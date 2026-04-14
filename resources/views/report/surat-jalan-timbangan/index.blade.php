@@ -2,6 +2,7 @@
     <x-slot:title>{{ $title }}</x-slot:title>
     <x-slot:navbar>{{ $navbar }}</x-slot:navbar>
     <x-slot:nav>{{ $nav }}</x-slot:nav>
+    <script src="{{ asset('asset/xlsx.full.min.js') }}"></script>
 
     <div x-data="suratJalanReport()" x-init="loadData()" class="space-y-5">
         
@@ -478,6 +479,12 @@
                                         <span x-html="getSortIcon('nama_subkontraktor_lengkap')"></span>
                                     </div>
                                 </th>
+                                <th rowspan="2" @click="sortBy('nom')" class="border border-gray-300 px-2 py-2 cursor-pointer hover:bg-gray-200 select-none">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Nom
+                                        <span x-html="getSortIcon('nom')"></span>
+                                    </div>
+                                </th>
                                 <th colspan="4" class="border border-gray-300 px-2 py-1 text-center bg-gray-100">Waktu</th>
                                 <th rowspan="2" @click="sortBy('bruto')" class="border border-gray-300 px-2 py-2 cursor-pointer hover:bg-gray-200 select-none">
                                     <div class="flex items-center justify-center gap-1">
@@ -555,6 +562,7 @@
                                     <td class="border border-gray-300 px-2 py-2" x-text="item.namasupir || '-'"></td>
                                     <td class="border border-gray-300 px-2 py-2 text-xs" x-text="item.nama_kontraktor_lengkap || '-'"></td>
                                     <td class="border border-gray-300 px-2 py-2 text-xs" x-text="item.nama_subkontraktor_lengkap || '-'"></td>
+                                    <td class="border border-gray-300 px-2 py-2 text-center font-mono text-xs" x-text="item.nom || '-'"></td>
                                     <td class="border border-gray-300 px-2 py-2 text-center" x-text="formatTime24(item.tanggalangkut)"></td>
                                     <td class="border border-gray-300 px-2 py-2 text-center" x-text="formatTime24(item.tanggalcetakpossecurity)"></td>
                                     <td class="border border-gray-300 px-2 py-2 text-center" x-text="formatTime24FromJam(item.jam1)"></td>
@@ -1067,25 +1075,7 @@
                     }
                 });
 
-                let html = `
-                    <html><head><meta charset="UTF-8"></head><body>
-                    <table border="1" cellpadding="4" cellspacing="0">
-                        <tr><td colspan="5" style="font-weight:bold;font-size:14px">Summary Surat Jalan &amp; Timbangan</td></tr>
-                        <tr><td colspan="5">Periode: ${startDate} s/d ${endDate}</td></tr>
-                        <tr></tr>
-                        <thead>
-                            <tr style="background:#d0d0d0;font-weight:bold">
-                                <th>No</th>
-                                <th>Kontraktor</th>
-                                <th>Total SJ</th>
-                                <th>Sudah Timbang</th>
-                                <th>Pending</th>
-                                <th>Total Netto (kg)</th>
-                                <th>Total Netto (ton)</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-
+                const rows = [];
                 let no = 1;
                 let totalSJ = 0, totalSudah = 0, totalPending = 0, totalNetto = 0;
                 Object.keys(grouped).sort().forEach(key => {
@@ -1094,49 +1084,100 @@
                     totalSudah += d.sudah_timbang;
                     totalPending += d.pending;
                     totalNetto += d.total_netto;
-                    html += `<tr>
-                        <td>${no++}</td>
-                        <td>${key}</td>
-                        <td>${d.total_sj}</td>
-                        <td>${d.sudah_timbang}</td>
-                        <td>${d.pending}</td>
-                        <td>${d.total_netto.toFixed(0)}</td>
-                        <td>${(d.total_netto / 1000).toFixed(2)}</td>
-                    </tr>`;
+                    rows.push({
+                        'No': no++,
+                        'Kontraktor': key,
+                        'Total SJ': d.total_sj,
+                        'Sudah Timbang': d.sudah_timbang,
+                        'Pending': d.pending,
+                        'Total Netto (kg)': parseFloat(d.total_netto.toFixed(0)),
+                        'Total Netto (ton)': parseFloat((d.total_netto / 1000).toFixed(2)),
+                    });
                 });
 
-                html += `<tr style="font-weight:bold;background:#f0f0f0">
-                    <td colspan="2">TOTAL</td>
-                    <td>${totalSJ}</td>
-                    <td>${totalSudah}</td>
-                    <td>${totalPending}</td>
-                    <td>${totalNetto.toFixed(0)}</td>
-                    <td>${(totalNetto / 1000).toFixed(2)}</td>
-                </tr>`;
+                // Total row
+                rows.push({
+                    'No': '',
+                    'Kontraktor': 'TOTAL',
+                    'Total SJ': totalSJ,
+                    'Sudah Timbang': totalSudah,
+                    'Pending': totalPending,
+                    'Total Netto (kg)': parseFloat(totalNetto.toFixed(0)),
+                    'Total Netto (ton)': parseFloat((totalNetto / 1000).toFixed(2)),
+                });
 
-                html += `</tbody></table></body></html>`;
-
-                const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = `Summary_SJ_${startDate}_${endDate}.xls`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                const ws = XLSX.utils.json_to_sheet(rows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Summary SJ');
+                XLSX.writeFile(wb, `Summary_SJ_${startDate}_${endDate}.xlsx`);
             },
 
             exportDetail() {
-                const table = document.getElementById('detailTable');
-                if (!table) return;
+                const details = this.data.details || [];
+                const startDate = this.filters.start_date;
+                const endDate = this.filters.end_date;
 
-                const html = `<html><head><meta charset="UTF-8"></head><body>${table.outerHTML}</body></html>`;
-                const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = `Detail_SJ_${this.filters.start_date}_${this.filters.end_date}.xls`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                const str = (val) => (val === null || val === undefined || val === '') ? '-' : String(val);
+                const num = (val) => (val !== null && val !== undefined && val !== '') ? Number(val) : null;
+
+                const headers = [
+                    'No', 'Company', 'No SJ', 'Tgl Cetak', 'Mandor', 'Plot', 'Umur',
+                    'Kategori', 'Varietas', 'Kode Tebang', 'Muat GL', 'Langsir', 'Tebu Sulit',
+                    'Jenis Kendaraan', 'No Kendaraan', 'No Polisi', 'Supir',
+                    'Kontraktor', 'Sub Kontraktor', 'Nom',
+                    'Jam Angkut', 'Jam Cetak POS', 'Jam Masuk', 'Jam Keluar',
+                    'Bruto', 'Netto', 'POS ke Timbang (min)', 'Durasi Deload (min)', 'Status'
+                ];
+
+                const rows = details.map((item, i) => ({
+                    'No': i + 1,
+                    'Company': str(item.companycode),
+                    'No SJ': str(item.suratjalanno),
+                    'Tgl Cetak': str(this.formatDate(item.tanggalcetakpossecurity)),
+                    'Mandor': str(item.nama_mandor || item.mandorid),
+                    'Plot': str(item.plot),
+                    'Umur': str(item.umur),
+                    'Kategori': str(item.kategori),
+                    'Varietas': str(item.varietas),
+                    'Kode Tebang': str(item.kodetebang),
+                    'Muat GL': item.muatgl == 1 ? 'GL' : '-',
+                    'Langsir': item.langsir === 1 ? 'Ya' : '-',
+                    'Tebu Sulit': item.tebusulit === 1 ? 'Ya' : '-',
+                    'Jenis Kendaraan': item.kendaraankontraktor === 0 ? 'WL' : 'Umum',
+                    'No Kendaraan': str(item.nomorkendaraan),
+                    'No Polisi': str(item.nomorpolisi),
+                    'Supir': str(item.namasupir),
+                    'Kontraktor': str(item.nama_kontraktor_lengkap),
+                    'Sub Kontraktor': str(item.nama_subkontraktor_lengkap),
+                    'Nom': str(item.nom),
+                    'Jam Angkut': str(this.formatTime24(item.tanggalangkut)),
+                    'Jam Cetak POS': str(this.formatTime24(item.tanggalcetakpossecurity)),
+                    'Jam Masuk': str(this.formatTime24FromJam(item.jam1)),
+                    'Jam Keluar': str(this.formatTime24FromJam(item.jam2)),
+                    'Bruto': num(item.bruto),
+                    'Netto': num(item.netto),
+                    'POS ke Timbang (min)': item.durasi_pos_timbangan !== null ? Math.round(item.durasi_pos_timbangan) : null,
+                    'Durasi Deload (min)': item.durasi_deload !== null ? Math.round(item.durasi_deload) : null,
+                    'Status': str(item.status),
+                }));
+
+                const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+
+                // Force 'Nom' column as text to preserve leading zeros
+                const nomColIndex = headers.indexOf('Nom');
+                const nomColLetter = XLSX.utils.encode_col(nomColIndex);
+                const range = XLSX.utils.decode_range(ws['!ref']);
+                for (let r = range.s.r + 1; r <= range.e.r; r++) {
+                    const cellAddr = `${nomColLetter}${r + 1}`;
+                    if (ws[cellAddr]) {
+                        ws[cellAddr].t = 's';
+                        ws[cellAddr].z = '@';
+                    }
+                }
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Detail SJ');
+                XLSX.writeFile(wb, `Detail_SJ_${startDate}_${endDate}.xlsx`);
             }
         }
     }

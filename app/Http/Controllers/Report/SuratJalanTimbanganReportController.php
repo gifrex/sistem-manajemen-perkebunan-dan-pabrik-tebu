@@ -114,6 +114,7 @@ class SuratJalanTimbanganReportController extends Controller
                 'k.namakontraktor as nama_kontraktor_lengkap',
                 'sj.namasubkontraktor',
                 'sk.namasubkontraktor as nama_subkontraktor_lengkap',
+                'tp.nom',
                 'sj.tanggaltebang',
                 'sj.tanggalangkut',
                 'sj.tanggalcetakpossecurity',
