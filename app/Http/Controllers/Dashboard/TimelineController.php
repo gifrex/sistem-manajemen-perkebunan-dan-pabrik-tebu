@@ -132,6 +132,7 @@ class TimelineController extends Controller
                     'sj.tanggaltebang',
                     'sj.nomorpolisi',
                     'sj.namakontraktor',
+                    'sj.kodetebang',
                     DB::raw('COALESCE(tp.netto, 0) as netto'),
                     DB::raw('COALESCE(tp.bruto, 0) as bruto'),
                     DB::raw('CASE WHEN tp.netto IS NOT NULL THEN 1 ELSE 0 END as sudah_timbang')

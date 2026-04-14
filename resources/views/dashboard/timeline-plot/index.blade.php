@@ -68,6 +68,34 @@
             
                 
 <div class="ml-auto flex items-center gap-3">
+    {{-- Progress Widget --}}
+    <div id="panen-progress-widget" onclick="openPanenEfisiensiModal()"
+         title="Klik untuk lihat detail proporsi panen"
+         style="cursor:pointer;border:1.5px solid #fb923c;border-radius:6px;padding:5px 10px;background:white;min-width:180px;transition:box-shadow .15s;"
+         onmouseover="this.style.boxShadow='0 2px 8px rgba(251,146,60,.4)'"
+         onmouseout="this.style.boxShadow='none'">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <span style="font-size:10px;font-weight:700;color:#374151;">🌾 Harapan Panen</span>
+            <span id="widget-harapan" style="font-size:10px;font-weight:800;color:#92400e;">— HA</span>
+        </div>
+        <div style="margin-bottom:3px;">
+            <div style="font-size:9px;color:#6b7280;display:flex;justify-content:space-between;margin-bottom:1px;">
+                <span>Siap Panen</span><span id="widget-siap-text" style="font-weight:600;">—</span>
+            </div>
+            <div style="background:#e5e7eb;height:5px;border-radius:3px;overflow:hidden;">
+                <div id="widget-siap-bar" style="background:#fb923c;height:100%;width:0%;transition:width .6s;"></div>
+            </div>
+        </div>
+        <div>
+            <div style="font-size:9px;color:#6b7280;display:flex;justify-content:space-between;margin-bottom:1px;">
+                <span>Realisasi</span><span id="widget-real-text" style="font-weight:600;">—</span>
+            </div>
+            <div style="background:#e5e7eb;height:5px;border-radius:3px;overflow:hidden;">
+                <div id="widget-real-bar" style="background:#16a34a;height:100%;width:0%;transition:width .6s;"></div>
+            </div>
+        </div>
+    </div>
+
     <button type="button"
     @click="window.location.href='{{ url()->current() }}?activity={{ $activityFilter }}&fill={{ $fillFilter ?? 'all' }}&export=excel&tab=' + activeTab + '{{ $cropType === 'p' ? '&crop=p' : '' }}'"
     class="py-2 px-4 bg-green-600 hover:bg-green-700 text-white rounded font-medium text-sm flex items-center gap-2">
@@ -572,7 +600,7 @@
     const plotActivityDetails = @json($plotActivityDetails ?? []);
     const activityFilter = @json($activityFilter ?? 'all');
         
-    let map, markers = [], polygons = [];
+    let map, markers = [], polygons = [], iconOverlays = [];
 
     // 🔑 Tentukan warna plot berdasarkan umur, ZPK, dan panen
 function getPlotColor(d) {
@@ -775,10 +803,12 @@ function getRingColor(d) {
                     </div>`
                 });
                 
+                marker.__info = info; // store for FA icon overlay click handler
+
                 marker.addListener('click', () => {
-                if (activeInfoWindow) activeInfoWindow.close();  // tutup yang lama kalau ada
-                info.open(map, marker);                           // buka yang baru
-                activeInfoWindow = info;                          // simpan yang aktif
+                if (activeInfoWindow) activeInfoWindow.close();
+                info.open(map, marker);
+                activeInfoWindow = info;
                 });
 
                 markers.push(marker);
@@ -822,10 +852,68 @@ function getRingColor(d) {
 
 
             });
-            
 
+            // ===== FA ICON OVERLAYS =====
+            class MapIconOverlay extends google.maps.OverlayView {
+                constructor(pos, iconClass, color, clickFn) {
+                    super();
+                    this._pos = pos; this._cls = iconClass; this._clr = color; this._fn = clickFn; this.div = null;
+                }
+                onAdd() {
+                    const d = document.createElement('div');
+                    d.style.cssText = 'position:absolute;cursor:pointer;transform:translate(-50%,-110%);pointer-events:auto;line-height:1;';
+                    d.innerHTML = `<i class="${this._cls}" style="font-size:17px;color:${this._clr};filter:drop-shadow(0 1px 2px rgba(0,0,0,.55));"></i>`;
+                    if (this._fn) d.addEventListener('click', this._fn);
+                    this.div = d;
+                    this.getPanes().overlayMouseTarget.appendChild(d);
+                }
+                draw() {
+                    const proj = this.getProjection();
+                    if (!proj || !this.div) return;
+                    const p = proj.fromLatLngToDivPixel(new google.maps.LatLng(this._pos.lat, this._pos.lng));
+                    if (p) { this.div.style.left = p.x + 'px'; this.div.style.top = p.y + 'px'; }
+                }
+                onRemove() { this.div?.parentNode?.removeChild(this.div); this.div = null; }
+            }
 
+            // Build infoWindow lookup by plot
+            const infoByPlot = {};
+            markers.forEach((m, i) => {
+                const plot = plotHeaders[i]?.plot;
+                if (plot && m.__info) infoByPlot[plot] = { marker: m, info: m.__info };
+            });
 
+            plotHeaders.forEach(h => {
+                const d    = plotActivityDetails[h.plot] || {};
+                const acts = d.activities || [];
+                if (!acts.length) return;
+
+                const allDone   = acts.every(a => parseFloat(a.percentage || 0) >= 100);
+                const isOverdue = !allDone && acts.some(a =>
+                    parseFloat(a.percentage || 0) < 100 && a.tanggal &&
+                    (Date.now() - new Date(a.tanggal)) / 86400000 > 14
+                );
+
+                let cls, clr;
+                if (allDone)        { cls = 'fa-solid fa-person-circle-check';       clr = '#16a34a'; }
+                else if (isOverdue) { cls = 'fa-solid fa-person-circle-exclamation'; clr = '#dc2626'; }
+                else                { cls = 'fa-solid fa-person-digging';            clr = '#0369a1'; }
+
+                const ov = new MapIconOverlay(
+                    { lat: parseFloat(h.centerlatitude), lng: parseFloat(h.centerlongitude) },
+                    cls, clr,
+                    () => {
+                        const entry = infoByPlot[h.plot];
+                        if (!entry) return;
+                        if (activeInfoWindow) activeInfoWindow.close();
+                        entry.info.open(map, entry.marker);
+                        activeInfoWindow = entry.info;
+                    }
+                );
+                ov.setMap(map);
+                iconOverlays.push(ov);
+            });
+            // ===== /FA ICON OVERLAYS =====
         }
 
 
@@ -1024,6 +1112,7 @@ function getRingColor(d) {
                                         <th style="padding:5px 8px;border:1px solid #e5e7eb;">Nopol</th>
                                         <th style="padding:5px 8px;border:1px solid #e5e7eb;">Kontraktor</th>
                                         <th style="padding:5px 8px;border:1px solid #e5e7eb;text-align:right;">Netto (kg)</th>
+                                        <th style="padding:5px 8px;border:1px solid #e5e7eb;text-align:center;">Kualitas</th>
                                         <th style="padding:5px 8px;border:1px solid #e5e7eb;text-align:center;">Status</th>
                                     </tr>
                                 </thead>
@@ -1031,12 +1120,17 @@ function getRingColor(d) {
                                     ${suratJalanList.map((sj, i) => {
                                         const st = sj.sudah_timbang ? '<span style="color:#16a34a;font-weight:600;">✔ Timbang</span>' : '<span style="color:#dc2626;">⏳ Pending</span>';
                                         const bg = i % 2 === 0 ? '#ffffff' : '#f9fafb';
+                                        const isPremium = sj.kodetebang && sj.kodetebang.toLowerCase().includes('premium');
+                                        const kualitasBadge = isPremium
+                                            ? '<span style="background:#7c3aed;color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;">⭐ Premium</span>'
+                                            : (sj.kodetebang ? `<span style="background:#e5e7eb;color:#374151;font-size:9px;padding:1px 5px;border-radius:3px;">${sj.kodetebang}</span>` : '<span style="color:#9ca3af;font-size:9px;">—</span>');
                                         return `<tr style="background:${bg};">
                                             <td style="padding:4px 8px;border:1px solid #e5e7eb;font-weight:600;">${sj.suratjalanno}</td>
                                             <td style="padding:4px 8px;border:1px solid #e5e7eb;">${sj.tanggalangkut ? new Date(sj.tanggalangkut).toLocaleDateString('id-ID') : '-'}</td>
                                             <td style="padding:4px 8px;border:1px solid #e5e7eb;">${sj.nomorpolisi || '-'}</td>
                                             <td style="padding:4px 8px;border:1px solid #e5e7eb;">${sj.namakontraktor || '-'}</td>
                                             <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:right;font-weight:600;">${sj.netto > 0 ? Number(sj.netto).toLocaleString('id-ID') : '-'}</td>
+                                            <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:center;">${kualitasBadge}</td>
                                             <td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:center;">${st}</td>
                                         </tr>`;
                                     }).join('')}
@@ -1146,6 +1240,33 @@ function getRingColor(d) {
 
 
         
+
+    // ===== PROGRESS WIDGET =====
+    function updatePanenProgressWidget() {
+        let totalSiapReady = 0, totalPanen = 0, totalAll = 0;
+        Object.values(plotActivityDetails).forEach(d => {
+            const luas  = parseFloat(d.luas_rkh || 0);
+            const color = getPlotColor(d);
+            totalAll += luas;
+            if (d.is_panen)              totalPanen     += luas;
+            else if (color === '#fb923c' || color === '#3b82f6') totalSiapReady += luas;
+        });
+
+        const STORAGE_KEY = 'panen_snapshots_{{ session("companycode") ?? "default" }}';
+        const snapshots   = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        const lastTarget  = snapshots.length > 0 ? parseFloat(snapshots[snapshots.length-1].harapan_ha || 0) : 0;
+        const harapan     = lastTarget > 0 ? lastTarget : totalAll;
+
+        document.getElementById('widget-harapan').textContent   = lastTarget > 0 ? lastTarget.toFixed(2) + ' HA' : '— HA';
+        document.getElementById('widget-siap-text').textContent = totalSiapReady.toFixed(2) + ' HA';
+        document.getElementById('widget-real-text').textContent = totalPanen.toFixed(2) + ' HA';
+        if (harapan > 0) {
+            document.getElementById('widget-siap-bar').style.width = Math.min(totalSiapReady / harapan * 100, 100) + '%';
+            document.getElementById('widget-real-bar').style.width = Math.min(totalPanen     / harapan * 100, 100) + '%';
+        }
+    }
+    document.addEventListener('DOMContentLoaded', updatePanenProgressWidget);
+    // ===== /PROGRESS WIDGET =====
 
     // ===== PROPORSI PANEN MODAL =====
     function openPanenEfisiensiModal() {
@@ -1392,6 +1513,7 @@ function getRingColor(d) {
         snapshots.push({ tanggal, harapan_ha, realisasi_ha, siap_ha, catatan, saved_at: new Date().toISOString() });
         localStorage.setItem(storageKey, JSON.stringify(snapshots));
         renderPanenEfisiensi();
+        updatePanenProgressWidget();
     }
 
     function deletePanenSnapshot(storageKey, idx) {
