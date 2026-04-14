@@ -22,6 +22,9 @@ RUN VITE_REVERB_APP_KEY=${VITE_REVERB_APP_KEY} \
     VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME} \
     npm run build
 
+# Copy xlsx ke public/asset agar bisa diambil di stage production
+RUN cp node_modules/xlsx/dist/xlsx.full.min.js public/asset/xlsx.full.min.js
+
 # ============================================
 # Stage 2: Install PHP dependencies
 # ============================================
@@ -66,6 +69,7 @@ WORKDIR /var/www/html
 COPY . . 
 COPY --from=composer-builder /app/vendor ./vendor
 COPY --from=node-builder /app/public/build ./public/build
+COPY --from=node-builder /app/public/asset/xlsx.full.min.js ./public/asset/xlsx.full.min.js
 
 # Set permissions untuk Laravel
 RUN chown -R www-data:www-data storage bootstrap/cache \
