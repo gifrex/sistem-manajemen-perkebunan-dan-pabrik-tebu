@@ -33,15 +33,22 @@
                         </button>
                     @endcan
                     @can('transaction.rencanakerjamingguan.export')
-                        <button
-                            class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
-                            onclick="window.location.href='{{ route('transaction.rencana-kerja-mingguan.exportExcel', ['start_date' => old('start_date', request()->start_date), 'end_date' => old('end_date', request()->end_date)]) }}'">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <button id="btn-export-rkm"
+                            class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed disabled:translate-y-0">
+                            <svg id="icon-export-rkm" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                                 <path fill-rule="evenodd"
                                     d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Zm2 0V2h7a2 2 0 0 1 2 2v9.293l-2-2a1 1 0 0 0-1.414 1.414l.293.293h-6.586a1 1 0 1 0 0 2h6.586l-.293.293A1 1 0 0 0 18 16.707l2-2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9h5a2 2 0 0 0 2-2Z"
                                     clip-rule="evenodd" />
                             </svg>
-                            <span>Export</span>
+                            <svg id="spinner-export-rkm" class="w-5 h-5 animate-spin hidden"
+                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                            <span id="text-export-rkm">Export</span>
                         </button>
                     @endcan
                 </div>
@@ -546,8 +553,18 @@
         function showList(rkmno) {
             const modal = document.getElementById('listModal');
             const tableBody = document.getElementById('listTableBody');
+
+            // Show loading indicator immediately
             tableBody.innerHTML =
                 '<tr><td colspan="8" class="text-center py-8"><div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-blue-600"></div></td></tr>';
+
+            // Open modal right away before fetch
+            modal.classList.remove('invisible');
+            modal.classList.add('visible');
+            setTimeout(() => {
+                modal.style.opacity = "1";
+                modal.querySelector('.bg-white').style.transform = "scale(1)";
+            }, 10);
 
             const url =
                 `{{ route('transaction.rencana-kerja-mingguan.show', ['rkmno' => '__rkmno__', 'companycode' => '__companycode__']) }}`
@@ -575,12 +592,6 @@
                                 </tr>`;
                         });
                     }
-                    modal.classList.remove('invisible');
-                    modal.classList.add('visible');
-                    setTimeout(() => {
-                        modal.style.opacity = "1";
-                        modal.querySelector('.bg-white').style.transform = "scale(1)";
-                    }, 10);
                 })
                 .catch(err => {
                     tableBody.innerHTML =
@@ -597,5 +608,61 @@
                 modal.classList.add('invisible');
             }, 300);
         }
+
+        /* ── Export Excel ── */
+        document.getElementById('btn-export-rkm')?.addEventListener('click', function() {
+            const btn = this;
+            const icon = document.getElementById('icon-export-rkm');
+            const spinner = document.getElementById('spinner-export-rkm');
+            const text = document.getElementById('text-export-rkm');
+
+            const startDate = document.getElementById('start_date')?.value ?? '';
+            const endDate = document.getElementById('end_date')?.value ?? '';
+            const search = document.getElementById('search')?.value ?? '';
+
+            const url = new URL('{{ route('transaction.rencana-kerja-mingguan.exportExcel') }}', window.location
+                .origin);
+            if (startDate) url.searchParams.set('start_date', startDate);
+            if (endDate) url.searchParams.set('end_date', endDate);
+            if (search) url.searchParams.set('search', search);
+
+            btn.disabled = true;
+            icon.classList.add('hidden');
+            spinner.classList.remove('hidden');
+            text.textContent = 'Exporting...';
+
+            fetch(url.toString())
+                .then(res => {
+                    const disposition = res.headers.get('Content-Disposition');
+                    let filename = 'RKMReport.xlsx';
+                    if (disposition) {
+                        const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/i);
+                        if (match && match[1]) filename = match[1].replace(/['"]/g, '').trim();
+                    }
+                    return res.blob().then(blob => ({
+                        blob,
+                        filename
+                    }));
+                })
+                .then(({
+                    blob,
+                    filename
+                }) => {
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(a.href);
+                })
+                .catch(err => console.error('Export failed:', err))
+                .finally(() => {
+                    btn.disabled = false;
+                    icon.classList.remove('hidden');
+                    spinner.classList.add('hidden');
+                    text.textContent = 'Export';
+                });
+        });
     </script>
 </x-layout>
